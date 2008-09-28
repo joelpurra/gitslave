@@ -3,12 +3,133 @@
 # Support .gitslave files, recursive processing of git commands into slave directories
 #
 #
+use strict;
+use warnings;
+no warnings 'uninitialized';
 use Cwd;
+use File::Spec;
 use constant GITSLAVE => '.gitslave';
+use Getopt::Long;
+
+
 
 our($GITS_DIR);
+my($USAGE) = "Usage: $0: [--no-master] [--no-commit] [--verbose]+ [-v]+ [--quiet] <command|help> [args]...\n";
+our(%OPTIONS);
+my ($returncode) = 0;
 
-# Find GITS_DIR
+
+
+######################################################################
+#
+# Run a command where we don't care about the output
+#
+sub docmd($)
+{
+  my ($cmd) = @_;
+
+  $cmd .= " 2>/dev/null" if ($OPTIONS{'quiet'});
+  print STDERR "Running command: $cmd\n" if ($OPTIONS{'verbose'} > 1);
+  system($cmd);
+  print STDERR "Command returned: $?\n" if ($OPTIONS{'verbose'} > 1);
+  $? == 0;
+}
+
+
+
+######################################################################
+#
+# Run a command, retrieving the output
+#
+sub getcmd($)
+{
+  my ($cmd) = @_;
+
+#  $cmd .= " 2>/dev/null" if ($OPTIONS{'quiet'});
+  print STDERR "Running command: $cmd\n" if ($OPTIONS{'verbose'} > 1);
+  my $out = `($cmd) 2>&1`;
+  print STDERR "Command returned: ($?, $out)\n" if ($OPTIONS{'verbose'} > 1);
+
+  wantarray?($?, $out):$out;
+}
+
+
+
+######################################################################
+#
+# Find the absolute path to repository (relatives are relative to local repository)
+#
+sub resolve_repository($)
+{
+  my ($repos) = @_;
+
+  # Check for already absolute
+  return $repos if ($repos =~ m-^(/|\w+:/)-);
+
+  # Break into method and path sections
+  my ($prefix, $suffix) = ("", $repos);
+  ($prefix, $suffix) = ($1, $2) if ($repos =~ m-^(\w+:)(.*)-);
+
+  $ENV{'GIT_DIR'} = "$GITS_DIR/.git";
+
+  # Find upstream origin URL
+  my ($ret, $master_repo) = getcmd("git config remote.origin.url");
+  chomp($master_repo);
+  die "Could not find git upstream clone which this is relative to\n" unless ($ret == 0 && $master_repo);
+
+  # Nuke trailing .git, if necessary
+  $master_repo =~ s:/.git$::;
+  my ($mprefix, $msuffix) = ("", $master_repo);
+  ($mprefix, $msuffix) = ($1, $2) if ($repos =~ m-^(\w+:(?://[^/]*|))(.*)-);
+
+  # Is this repository-relative? (keep method://host from master)
+  if ($repos =~ m:^\^(/.*):)
+  {
+    return "$mprefix$1";
+  }
+
+  # Do we have a replacement method://?  (Seems like an unlikely case)
+  if ($prefix)
+  {
+    $master_repo = $prefix.$msuffix;
+  }
+
+  # Handle smushing together, relative paths, etc
+  File::Spec->no_upwards("$master_repo/$suffix");
+}
+
+
+
+######################################################################
+#
+# Get list of currently configured slaves
+#
+sub git_slave_list()
+{
+  my (@gits);
+  open(R, "<", "$GITS_DIR/@{[GITSLAVE]}") || return undef;
+  my ($lineno) = 1;
+  while (<R>)
+  {
+    next if (/^\s*(?:\#.*)$/);
+    die "Bad line $lineno in $GITS_DIR/@{[GITSLAVE]}\n" unless (/^\"(.*)\" \"(.*)\"$/);
+    push(@gits,[$1, $2]);
+  }
+  close(R);
+  @gits;
+}
+
+
+######################################################################
+#
+# Main functionality
+#
+Getopt::Long::Configure("bundling", "no_ignore_case", "no_auto_abbrev", "no_getopt_compat", "require_order");
+GetOptions(\%OPTIONS, 'verbose|v+', 'quiet', 'no-commit', 'no-master') || die $USAGE;
+
+die "$USAGE" if ( $#ARGV < 0);
+
+# Find GITS_DIR -- location of git slave file
 if ($ENV{'GITS_DIR'} && -f $ENV{'GITS_DIR'}."/".GITSLAVE)
 {				# Use gitslave location user told us
   $GITS_DIR = $ENV{'GITS_DIR'};
@@ -20,13 +141,189 @@ else
 
   do
   {
-    last if (-f $GITS_DIR."/".GITSLAVE);
+    if (!-f $GITS_DIR."/".GITSLAVE)
+    {
+      $GITS_DIR .= '/..';
+      $dev = $S[0];
+      $ino = $S[1];
+      @S = stat($GITS_DIR);
+    }
+  } while (!-f $GITS_DIR."/".GITSLAVE && $S[0] != $dev && $S[1] != $ino);
 
-    $GITS_DIR .= '/..';
-    $dev = $S[0];
-    $ino = $S[1];
-    @S = stat($GITS_DIR);
-  } while (!$dev && $S[0] != $dev && $S[1] != $ino);
+}
 
-  die "Could not find @{[GITSLAVE]} file\n";
+# All operations are relative to gitslave base
+if (-f $GITS_DIR."/".GITSLAVE)
+{
+  $GITS_DIR = Cwd::realpath($GITS_DIR);
+  chdir($GITS_DIR);
+  print STDERR "gits: Gitslave found in $GITS_DIR\n" if ($OPTIONS{'verbose'} > 1);
+}
+else
+{
+  die "Could not find @{[GITSLAVE]} file\n" unless ($ARGV[0] eq "inits");
+}
+
+my (@slaves) = git_slave_list();
+
+if ($ARGV[0] eq 'help')
+{
+  print STDERR <<"EOF;";
+gits - Support git operations into slave sub-repositories.  Kinda like
+       gitmodules except recursive.
+
+Commands:
+
+help	    This message
+
+inits	    Prepare a new @{[GITSLAVE]} file in the local directory.
+
+clones <repository> <directory>
+	    Specify a new slave repository to clone.
+	    Repositories may include relative (relative to the clone
+	    path of the local git repository) or ablsolute paths.
+
+checkouts   Find all new slave repositories in the @{[GITSLAVE]} file
+	    and check them out to disk.
+
+<git command> [arguments]
+	    Run the indicated git command, once per slave and once for
+	    the master.  Abort on the first error.  Summarize output.
+
+EOF;
+}
+elsif ($ARGV[0] eq 'inits')
+{
+  die "Inits requires no arguments\n" if ($#ARGV != 0);
+  $GITS_DIR=$ENV{'GITS_DIR'} || ".";
+  die "Refusing to init, $GITS_DIR/@{[GITSLAVE]} already exists\n" if (-f $GITS_DIR."/".GITSLAVE);
+  open(W, ">", $GITS_DIR."/".GITSLAVE) || die "Could not create $GITS_DIR/@{[GITSLAVE]}\n";
+  close(W);
+  docmd("git add @{[GITSLAVE]}");
+  docmd(qq^git commit -m "gits creating @{[GITSLAVE]}" @{[GITSLAVE]}^) unless ($OPTIONS{'no-commit'});
+}
+elsif ($ARGV[0] eq 'clones')
+{
+  die "Clone requires two arguments\n" if ($#ARGV != 2 || !$ARGV[1] || !$ARGV[2]);
+  my ($repos) = resolve_repository($ARGV[1]);
+  die "Destination already exists\n" if (-e $ARGV[2]);
+  if ($ARGV[2] =~ m:(.*)/(.*):)
+  {
+    die "Destination ($ARGV[2]) cannot end in a slash" if (length($2) < 1);
+    die "Destination parent ($1) does not exist\n" if (!-d $1);
+  }
+  my $files = $GITS_DIR."/".GITSLAVE;
+  docmd(qq^git clone "$repos" "$ARGV[2]"^ || die "Could not clone $repos onto $ARGV[2]\n");
+  # Git branch management
+  open(W, ">>", $files);
+  print W qq^"$ARGV[1]" "$ARGV[2]"\n^;
+  close(W);
+
+  if ($ARGV[2] !~ m:/:)
+  {
+    my ($needadd) = 0;
+    $needadd++ if (! -f "$GITS_DIR/.gitignore");
+    open(W, ">>", $GITS_DIR."/.gitignore");
+    print W qq^$ARGV[2]\n^;
+    close(W);
+    $files .= " .gitignore";
+    docmd(qq^git add .gitignore^) if ($needadd);
+  }
+  docmd(qq^git commit -m 'gits adding "$ARGV[1]" "$ARGV[2]"' $files^) unless ($OPTIONS{'no-commit'});
+}
+elsif ($ARGV[0] eq 'checkouts')
+{
+  die "Checkouts requires no arguments\n" if ($#ARGV != 0);
+
+  foreach my $group (@slaves)
+  {
+    if (! -d $group->[1])
+    {
+      print "gits: Checking out $group->[1]\n" if ($OPTIONS{'verbose'});
+      my ($repos) = resolve_repository($group->[0]);
+      docmd(qq^git clone "$repos" "@{[$group->[1]]}"^) || die "Could not clone $repos onto @{[$group->[1]]}\n";
+      # Git branch management
+    }
+    else
+    {
+      print "gits: $group->[1] already exists\n" if ($OPTIONS{'verbose'});
+    }
+  }
+}
+elsif ($ARGV[0] eq 'status')
+{
+  my ($ok,$okcnt);
+  my (@list) = @slaves;
+  unshift(@list,[undef,"."]) unless ($OPTIONS{'no-master'});
+  my ($branch);
+
+  foreach my $group (@list)
+  {
+    my $slave = $group->[1];
+    my ($ret, $msg) = getcmd(qq^cd $slave && git @ARGV^);
+    if ($ret > 1)
+    {
+      my $diemsg = "Aborting gits $ARGV[0], failed at '$slave'.  ";
+      if ($ok)
+      {
+	$diemsg .= "(ran fine on: $ok, did not run on @{[$#list+1-$okcnt]} other(s); no rollbacks)";
+      }
+      else
+      {
+	$diemsg .= "(first entry, no other successfully executed)";
+      }
+      die "$diemsg: $?\n$msg\n";
+    }
+    elsif ($ret == 1)
+    {
+      $returncode = 1;
+    }
+    $ok .= " $slave";
+    $okcnt++;
+
+    die "git status $msg";
+    push(@{$msg{$msg}}, $slave);
+  }
+
+  foreach my $msg (sort { $#{$msg{$a}} <=> $#{$msg{$b}} } keys %msg)
+  {
+    print "On: ", join(', ',@{$msg{$msg}}), ":\n";
+    $msg =~ s/^/  /mg if (length($msg));
+    print $msg;
+  }
+}
+else
+{
+  my ($ok,$okcnt);
+  my %msg;
+  my (@list) = @slaves;
+  unshift(@list,[undef,"."]) unless ($OPTIONS{'no-master'});
+  foreach my $group (@list)
+  {
+    my $slave = $group->[1];
+    my ($ret, $msg) = getcmd(qq^cd $slave && git @ARGV^);
+    if ($ret != 0)
+    {
+      my $diemsg = "Aborting gits $ARGV[0], failed at '$slave'.  ";
+      if ($ok)
+      {
+	$diemsg .= "(ran fine on: $ok, did not run on @{[$#list+1-$okcnt]} other(s); no rollbacks)";
+      }
+      else
+      {
+	$diemsg .= "(first entry, no other successfully executed)";
+      }
+      die "$diemsg: $?\n$msg\n";
+    }
+    $ok .= " $slave";
+    $okcnt++;
+    push(@{$msg{$msg}}, $slave);
+  }
+
+  foreach my $msg (sort { $#{$msg{$a}} <=> $#{$msg{$b}} } keys %msg)
+  {
+    print "On: ", join(', ',@{$msg{$msg}}), ":\n";
+    $msg =~ s/^/  /mg if (length($msg));
+    print $msg;
+  }
 }

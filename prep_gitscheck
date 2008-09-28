@@ -2,8 +2,9 @@
 #
 #
 #
+PATH=$PWD:$PATH
 
-mkdir -p checkdir/master checkdir/slave
+mkdir -p checkdir/master
 (cd checkdir/master
  for f in top sub1 sub2
   do
@@ -14,13 +15,11 @@ mkdir -p checkdir/master checkdir/slave
     echo $f > packagename
     git add *
     git commit -a -m "Initial files")
-  done
- (cd top
- cat > .gitslave <<EOF
- ../sub1 sub1
- ../sub2 sub2
-EOF
- git add .gitslave
- git commit -a -m "Create gitslave package"))
+  done)
 
 git clone $PWD/checkdir/master/top $PWD/checkdir/slave
+cd checkdir/slave
+gits inits
+gits clones ../sub1 sub1
+gits clones ../sub2 sub2
+gits checkouts

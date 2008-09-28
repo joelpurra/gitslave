@@ -8,3 +8,6 @@ install:
 
 clean:
 	rm -rf checkdir *~ core* \#*
+
+check test:
+	./prep_gitscheck
