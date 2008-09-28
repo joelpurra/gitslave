@@ -1,0 +1,26 @@
+#!/bin/sh
+#
+#
+#
+
+mkdir -p checkdir/master checkdir/slave
+(cd checkdir/master
+ for f in top sub1 sub2
+  do
+   mkdir $f
+   (cd $f
+    git init
+    date > datelist
+    echo $f > packagename
+    git add *
+    git commit -a -m "Initial files")
+  done
+ (cd top
+ cat > .gitslave <<EOF
+ ../sub1 sub1
+ ../sub2 sub2
+EOF
+ git add .gitslave
+ git commit -a -m "Create gitslave package"))
+
+git clone $PWD/checkdir/master/top $PWD/checkdir/slave

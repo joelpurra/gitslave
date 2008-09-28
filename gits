@@ -1,0 +1,32 @@
+#!/usr/bin/perl
+#
+# Support .gitslave files, recursive processing of git commands into slave directories
+#
+#
+use Cwd;
+use constant GITSLAVE => '.gitslave';
+
+our($GITS_DIR);
+
+# Find GITS_DIR
+if ($ENV{'GITS_DIR'} && -f $ENV{'GITS_DIR'}."/".GITSLAVE)
+{				# Use gitslave location user told us
+  $GITS_DIR = $ENV{'GITS_DIR'};
+}
+else
+{				# Probe for gitslave location
+  $GITS_DIR = '.';
+  my (@S,$dev,$ino) = stat($GITS_DIR);
+
+  do
+  {
+    last if (-f $GITS_DIR."/".GITSLAVE);
+
+    $GITS_DIR .= '/..';
+    $dev = $S[0];
+    $ino = $S[1];
+    @S = stat($GITS_DIR);
+  } while (!$dev && $S[0] != $dev && $S[1] != $ino);
+
+  die "Could not find @{[GITSLAVE]} file\n";
+}
