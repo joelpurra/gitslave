@@ -1,0 +1,29 @@
+
+* Inconsistent state on an abort is bad
+
+This can happen most easily on a push if someone else managed to sneak
+in a push of their own between your last pull and the current push
+attempt.  This is a race condition.
+
+Possible solution: use a lock file in the top/supermodule managed by
+gits with an automatic timeout.  Create the lock beforehand, push top,
+push everything else, delete lock, push top.
+
+Problems: This file will have MANY commits in it, assumes synchronized
+clocks, and can still have the race if clocks are not synchronized,
+the push gets stalled/takes longer than expected, etc.
+
+
+* On an abort, you don't get to see the output of what worked, so
+  recovery is made harder.
+
+It can be added, but seemingly it is only going to make things more
+cluttered and confused.
+
+
+* Complete log history not available in superproject
+
+We could gather slave history and put it in changelog or something, or
+even a special superproject commit, but this would not work if another
+superproject made the change.
+

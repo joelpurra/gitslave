@@ -2,6 +2,16 @@
 #
 # Support .gitslave files, recursive processing of git commands into slave directories
 #
+# ++Copyright LIBBK++
+#
+# Copyright (c) 2003 The Authors. All rights reserved.
+#
+# This source code is licensed to you under the terms of the file
+# LICENSE.TXT in this release for further details.
+#
+# Mail <projectbaka@baka.org> for further information
+#
+# --Copyright LIBBK--
 #
 use strict;
 use warnings;
@@ -315,6 +325,12 @@ elsif ($ARGV[0] eq 'status')
     $ok .= " $slave";
     $okcnt++;
 
+    my ($premove);
+    while ($msg =~ s/(^[^\#].*\n)//)
+    {
+      $premove .= $1;
+    }
+
     die "gits unexpected status output (missing branch): $msg" unless ($msg =~ s/^\# On branch (.*)\n//);
     $branch = $1 unless ($branch);
     die "Branch ($branch != $1) not identical between @{[$list[0]->[1]]} and $slave\n" unless ($branch eq $1);
@@ -349,7 +365,7 @@ elsif ($ARGV[0] eq 'status')
       }
     }
 
-    push(@{$msg{$msg}}, $slave);
+    push(@{$msg{$premove.$msg}}, $slave);
   }
 
   print "# On branch $branch\n";

@@ -26,25 +26,104 @@ echo
 echo Starting gits checks
 echo ----------------------------------------------------------------------
 set -x
+: Configure the git slave setup and upload it
 gits inits
 gits clones ../sub1 sub1
 gits clones ../sub2 sub2
 gits checkouts
-gits push --all
+gits push
+: Someone else gets a copy of the package and git slave config
 git clone $BASE/checkdir/master/top $BASE/checkdir/slave2
 cd ../slave2
+:  Actually instantiate the slaves
 gits checkouts
 gits pull
+:  Make some mods and commit
 date >> datelist
 date >> sub1/datelist
 gits status
 gits commit -a -m "First stage updates"
-gits push --all
+gits push
+: Get the latest changes, create another slave and publish it
 cd ../slave
 gits pull
 gits clones ../sub3 sub3
-gits branch out
-gits checkout out
+gits push
+: Person2 gets the new slave module
+cd ../slave2
+gits pull
+gits checkouts
+: Create a private branch and do work on it
+cd ../slave
+gits branch privateb
+gits checkout privateb
 date >> sub2/datelist
-gits commit -a -m "Updating date in sub2 on branch out"
+gits commit -a -m "Updating date in sub2 on branch privateb"
+gits push
+: "Person2 checks, but no changes (and no new branch), makes a change, commits"
+cd ../slave2
+gits pull
+gits checkouts
+gits branch -a
+date >> datelist
+gits commit -a -m "Updating date in top"
+gits push
+: Person1 makes another change, checks to see latest changes, merges branch, then publishes
+cd ../slave
+gits fetch
+gits diff master origin/master
+date >> sub2/datelist
+gits commit -a -m "Finish updating date in sub2 on branch privateb"
+gits checkout master
+gits pull
+# "Also works, but Seth does not like fastforward's rewriting of history"
+#gits merge privateb
+gits merge --no-ff privateb
+gits push
+: Person2 finds changes, makes another, commit/publish
+cd ../slave2
+gits pull
+date >> sub2/datelist
+gits commit -a -m "Back at you!"
+gits push
+cd ../slave
+: "Delete private branch to prevent accidential publish (e.g. push -all)"
+gits branch -d privateb
+: "Get latest changes, make public branch"
+gits pull
+gits tag -m "Release 1.0.0" 'checkdir-1.0.0'
+gits push --tags
+gits branch 'checkdir-1.0'
 gits push --all
+: "stupid: my local branch and remote origin branch are disconnected, reconnect them"
+gits branch -d checkdir-1.0
+gits branch checkdir-1.0 origin/checkdir-1.0
+gits push --all
+: "Person2 discovers new release/tag/branch, pulls himself onto branch"
+cd ../slave2
+gits pull
+gits branch -a
+gits tag -l
+gits branch checkdir-1.0 origin/checkdir-1.0
+gits checkout checkdir-1.0
+: "Fixes bug, merges fix onto master, publishes changes"
+date >> sub2/datelist
+gits commit -a -m "Sigh, a bug in the new release"
+gits checkout master
+gits merge --no-ff checkdir-1.0
+gits push --all
+: "Person1 takes change, finds another bug, repeat"
+cd ../slave
+gits pull
+gits checkout master
+(date; cat sub2/datelist) > sub2/datelist1
+mv sub2/datelist1  sub2/datelist
+gits commit -a -m "I am reminded that this is needed for 2.x"
+gits checkout checkdir-1.0
+gits pull
+date >> sub2/datelist
+gits commit -a -m "Sigh, and another bug in the new release"
+gits checkout master
+gits pull
+gits merge --no-ff checkdir-1.0
+gits push
