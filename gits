@@ -24,7 +24,7 @@ use Getopt::Long;
 
 
 our($GITS_DIR);
-my($USAGE) = "Usage: $0: [--no-master] [--no-commit] [--verbose]+ [-v]+ [--quiet] <command|help> [args]...\n";
+my($USAGE) = "Usage: $0: [--no-master] [--no-commit] [--verbose]+ [-v]+ [--quiet] <subcommand|help> [args]...\n";
 our(%OPTIONS);
 my ($returncode) = 0;
 delete($ENV{'GIT_DIR'});
@@ -432,3 +432,186 @@ else
     print $msg;
   }
 }
+
+
+
+=pod
+
+=head1 NAME
+
+gits - The git slave repository tool
+
+=head1 SYNOPSIS
+
+gits [--no-master] [--no-commit] [--verbose]+ [-v]+ [--quiet] <subcommand|help> [args]...
+
+=head1 OVERVIEW
+
+gits is a program which assists in assembling a meta-project from a
+number of individual git repositories which you own and operate as if
+it were one git repository instead of many, similar to how CVS works
+by default and svn (v1.5) can be coerced to work.  Some of these
+individual git repositories may be part of other meta-projects as
+well.
+
+Unfortunately, the functionality provided by git-submodule is not
+sufficient for this mode of operation.  Most git commands, like
+checkout or commit, do not recursively descend into the submodules so
+you are forced to do execute all git commands N+1 times (leading to
+pain and mistakes), also, submodules revisions are tracked in the
+supermodule so that change to the slave project made outside the
+superproject are not automatically seen.  Since git does not allow
+partial checkouts, we are left with little alternative.
+
+Thus, to solve these problems gits was born.  Complexity pain is still
+involved, but the hope is that it is minimized compared to all of the
+other alternatives.
+
+The basic theory is that there are a few sub-commands (inits, clones,
+checkouts) which help set up the meta-project for gits operations.
+Then, for any git command which is not file specific (git add
+<filename>; git reset <filename>; etc), you should use "gits" instead
+of "git", and the command will run on all repositories in the project.
+
+=head2 Example Usage
+
+In the following example, we will have the following master
+repositories:
+
+  ssh://sourcemaster/src/repos/super.git
+  ssh://sourcemaster/src/repos/lib1.git
+  ssh://sourcemaster/src/repos/lib2.git
+
+
+The desired working layout of directories with .git in them on disk
+is:
+
+  ..../super
+  ..../super/lib1
+  ..../super/lib2
+
+
+=head3 Initialize a gits project
+
+gits init
+
+You run this command in the git directory which will be your top level
+master repository (super here).  Typically you would clone this top
+level master from some other location which has all of your git
+projects.
+
+  --------------------------------------------------
+  git clone ssh://sourcemaster/src/repos/super.git super
+  cd super
+  gits init
+  --------------------------------------------------
+
+
+
+=head3 Add a slave repository to top level master
+
+  gits clone <repository> <localpath>
+
+Clone the named git repository into the named local directory, and set
+it up for further gits operations.
+
+Typically <localpath> would be a path relative to the top level master
+checkout, for example, a subdirectory in the top level.
+
+<repository> can also be relative (relative to the URL the top level
+master checkout was cloned from).  It may also be an absolute URL.  If
+the URL starts with ^, it will use only the method and hostname from
+the master's URL.  Otherwise, it will be relative to the fully
+qualified path.  We will show both in operation in the example.
+
+ --------------------------------------------------
+ gits clones ../lib1.git lib1
+ gits clones ^/src/repos/lib2.git lib2
+ --------------------------------------------------
+
+
+=head3 Check out any new slave modules which someone else might have added
+
+  gits checkouts
+
+Go through the list of configured slaves and check out (clone) any which have
+not already been retrieved.
+
+  --------------------------------------------------
+  gits checkouts
+  --------------------------------------------------
+
+
+
+=head3 Everything else
+
+All other commands are passed directly though to git, with one command
+being run per repository.  Output summerization is performed so that
+multiple repositories with the same git output will only have the git
+output shown once.  `git status` has a more aggressive summerization
+to merge the lists of files in each section.
+
+  Examples:
+  --------------------------------------------------
+  gits commit -a -m "This is a change"
+  gits push
+  gits pull
+  gits branch testing
+  gits checkout testing
+  gits diff master testing
+  gits status
+  gits ....
+  --------------------------------------------------
+
+All normal git commands are supported (plus any potential future
+commands) but not all commands make sense to run with gits.  One good
+example is git-daemon.
+
+=head1 DESCRIPTION
+
+=head2 --no-master
+
+This flag requests that gits only run the listed command on the slave
+repositories and NOT the super/master/top repository.  This probably
+will not be needed much.
+
+=head2 --no-commit
+
+This flag requests that gits-internal sub-commands, such as inits or
+clones should not commit their changes after they made them.
+
+=head2 --verbose -v
+
+Ask for more information about what is happening.  You may repeat the
+flag multiple times to get more information.  Two levels of verbosity
+typically prints the underlying commands being executed and the data
+being returned from them.
+
+=head2 --quiet
+
+Ask for less information, which currently means discarding the STDERR
+of some of the administrative git commands which are executed.
+
+=head2 subcommand args...
+
+Run the specified git command (with associated arguments) on the
+repository and all slave repositories.  See OVERVIEW for more
+information on specific subcommands.
+
+=head1 AUTHOR
+
+Seth Robertson
+
+=head1 REPORTING BUGS
+
+Report bugs to <projectbaka@baka.org>
+
+=head1 COPYRIGHT
+
+Copyright (c) 2008 Seth Robertson.  License is similiar to the GNU
+Lesser General Public License version 2.1, see LICENSE.TXT for more
+details.
+
+=head1 SEE ALSO
+
+git(1)
