@@ -4,9 +4,12 @@
 #
 PATH=$PWD:$PATH
 
+set -e
+
 mkdir -p checkdir/master
+BASE=`pwd`
 (cd checkdir/master
- for f in top sub1 sub2
+ for f in top sub1 sub2 sub3
   do
    mkdir $f
    (cd $f
@@ -17,9 +20,31 @@ mkdir -p checkdir/master
     git commit -a -m "Initial files")
   done)
 
-git clone $PWD/checkdir/master/top $PWD/checkdir/slave
+git clone $BASE/checkdir/master/top $BASE/checkdir/slave
 cd checkdir/slave
+echo
+echo Starting gits checks
+echo ----------------------------------------------------------------------
+set -x
 gits inits
 gits clones ../sub1 sub1
 gits clones ../sub2 sub2
 gits checkouts
+gits push --all
+git clone $BASE/checkdir/master/top $BASE/checkdir/slave2
+cd ../slave2
+gits checkouts
+gits pull
+date >> datelist
+date >> sub1/datelist
+gits status
+gits commit -a -m "First stage updates"
+gits push --all
+cd ../slave
+gits pull
+gits clones ../sub3 sub3
+gits branch out
+gits checkout out
+date >> sub2/datelist
+gits commit -a -m "Updating date in sub2 on branch out"
+gits push --all

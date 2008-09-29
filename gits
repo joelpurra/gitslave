@@ -17,7 +17,7 @@ our($GITS_DIR);
 my($USAGE) = "Usage: $0: [--no-master] [--no-commit] [--verbose]+ [-v]+ [--quiet] <command|help> [args]...\n";
 our(%OPTIONS);
 my ($returncode) = 0;
-
+delete($ENV{'GIT_DIR'});
 
 
 ######################################################################
@@ -29,7 +29,7 @@ sub docmd($)
   my ($cmd) = @_;
 
   $cmd .= " 2>/dev/null" if ($OPTIONS{'quiet'});
-  print STDERR "Running command: $cmd\n" if ($OPTIONS{'verbose'} > 1);
+  print STDERR "Running command: `$cmd`\n" if ($OPTIONS{'verbose'} > 1);
   system($cmd);
   print STDERR "Command returned: $?\n" if ($OPTIONS{'verbose'} > 1);
   $? == 0;
@@ -45,9 +45,9 @@ sub getcmd($)
 {
   my ($cmd) = @_;
 
-#  $cmd .= " 2>/dev/null" if ($OPTIONS{'quiet'});
-  print STDERR "Running command: $cmd\n" if ($OPTIONS{'verbose'} > 1);
-  my $out = `($cmd) 2>&1`;
+  $cmd = "($cmd) 2>&1";
+  print STDERR "Running command: `$cmd`\n" if ($OPTIONS{'verbose'} > 1);
+  my $out = `$cmd`;
   print STDERR "Command returned: ($?, $out)\n" if ($OPTIONS{'verbose'} > 1);
 
   wantarray?($?, $out):$out;
@@ -69,8 +69,6 @@ sub resolve_repository($)
   # Break into method and path sections
   my ($prefix, $suffix) = ("", $repos);
   ($prefix, $suffix) = ($1, $2) if ($repos =~ m-^(\w+:)(.*)-);
-
-  $ENV{'GIT_DIR'} = "$GITS_DIR/.git";
 
   # Find upstream origin URL
   my ($ret, $master_repo) = getcmd("git config remote.origin.url");
@@ -95,7 +93,12 @@ sub resolve_repository($)
   }
 
   # Handle smushing together, relative paths, etc
-  File::Spec->no_upwards("$master_repo/$suffix");
+  $repos = "$master_repo/$suffix";
+  while ($repos =~ s:/./:/:) {;}
+  while ($repos =~ s:/[^/]+?/../:/:) {;}
+  while ($repos =~ s-(^\w+://.*)//-$1-g) {;}
+  while ($repos !~ m-^\w+://- && $repos =~ s://:/:g) {;}
+  $repos;
 }
 
 
@@ -117,6 +120,23 @@ sub git_slave_list()
   }
   close(R);
   @gits;
+}
+
+
+
+######################################################################
+#
+# Add shell quoting to avoid problems
+#
+sub quoteit(@)
+{
+  my $str;
+  foreach my $item (@_)
+  {
+    $str .= quotemeta($item).' ';
+  }
+  chop($str);
+  $str;
 }
 
 
@@ -214,7 +234,7 @@ elsif ($ARGV[0] eq 'clones')
   }
   my $files = $GITS_DIR."/".GITSLAVE;
   docmd(qq^git clone "$repos" "$ARGV[2]"^ || die "Could not clone $repos onto $ARGV[2]\n");
-  # Git branch management
+
   open(W, ">>", $files);
   print W qq^"$ARGV[1]" "$ARGV[2]"\n^;
   close(W);
@@ -230,6 +250,13 @@ elsif ($ARGV[0] eq 'clones')
     docmd(qq^git add .gitignore^) if ($needadd);
   }
   docmd(qq^git commit -m 'gits adding "$ARGV[1]" "$ARGV[2]"' $files^) unless ($OPTIONS{'no-commit'});
+
+  my $curbranch = (grep(s/\s*\*\s+//, split(/\n/,getcmd("git branch"))))[0];
+  if ($curbranch ne "master")
+  {
+    print qq^Switching "$ARGV[2]" to branch "$curbranch"\n^;
+    docmd(qq^cd "$ARGV[2]"; git checkout $curbranch^) || die "Branch inconsistency, branch $curbranch does not exist\n";
+  }
 }
 elsif ($ARGV[0] eq 'checkouts')
 {
@@ -242,7 +269,13 @@ elsif ($ARGV[0] eq 'checkouts')
       print "gits: Checking out $group->[1]\n" if ($OPTIONS{'verbose'});
       my ($repos) = resolve_repository($group->[0]);
       docmd(qq^git clone "$repos" "@{[$group->[1]]}"^) || die "Could not clone $repos onto @{[$group->[1]]}\n";
-      # Git branch management
+
+      my $curbranch = (grep(s/\s*\*\s+//, split(/\n/,getcmd("git branch"))))[0];
+      if ($curbranch ne "master")
+      {
+	print qq^Switching "$ARGV[2]" to branch "$curbranch"\n^;
+	docmd(qq^cd "$group->[1]"; git checkout $curbranch^) || die "Branch inconsistency, branch $curbranch does not exist\n";
+      }
     }
     else
     {
@@ -256,17 +289,18 @@ elsif ($ARGV[0] eq 'status')
   my (@list) = @slaves;
   unshift(@list,[undef,"."]) unless ($OPTIONS{'no-master'});
   my ($branch);
+  my (%group,%groupc,%msg);
 
   foreach my $group (@list)
   {
     my $slave = $group->[1];
-    my ($ret, $msg) = getcmd(qq^cd $slave && git @ARGV^);
-    if ($ret > 1)
+    my ($ret, $msg) = getcmd(qq^cd $slave && git ^.quoteit(@ARGV));
+    if ($ret != 0 && $ret != 256)
     {
       my $diemsg = "Aborting gits $ARGV[0], failed at '$slave'.  ";
       if ($ok)
       {
-	$diemsg .= "(ran fine on: $ok, did not run on @{[$#list+1-$okcnt]} other(s); no rollbacks)";
+	$diemsg .= "(ran fine on: $ok, did not run on @{[$#list-$okcnt]} other(s); no rollbacks)";
       }
       else
       {
@@ -274,15 +308,61 @@ elsif ($ARGV[0] eq 'status')
       }
       die "$diemsg: $?\n$msg\n";
     }
-    elsif ($ret == 1)
+    elsif ($ret == 256)
     {
       $returncode = 1;
     }
     $ok .= " $slave";
     $okcnt++;
 
-    die "git status $msg";
+    die "gits unexpected status output (missing branch): $msg" unless ($msg =~ s/^\# On branch (.*)\n//);
+    $branch = $1 unless ($branch);
+    die "Branch ($branch != $1) not identical between @{[$list[0]->[1]]} and $slave\n" unless ($branch eq $1);
+
+    while ($msg =~ s/^(\# \S.*\n)//)
+    {
+      my ($group) = $1;
+      while ($msg =~ s/^(\#\s{2,}\S.*\n)//)
+      {
+	$groupc{$group}->{$1} = 1;
+      }
+      die "Could not parse git status output for $slave <$group> <$msg>\n" unless ($msg =~ s/^(\#\s*\n)//);
+
+      while ($msg =~ s/^(\#(?:\s*|(\s{2,}|\t)\S.*)\n)//)
+      {
+	my ($line) = $1;
+
+	if ($line =~ /([^:]+:\s+)(.*)/s)
+	{
+	  $line = "$1$slave/$2";
+	}
+	elsif ($line =~ /(\#\s+)(.+)/)
+	{
+	  $line = "$1$2 (cd $slave)\n";
+	}
+	else
+	{
+	  next if ($line =~ /\#\s*\n/);
+	}
+
+	$group{$group} .= $line;
+      }
+    }
+
     push(@{$msg{$msg}}, $slave);
+  }
+
+  print "# On branch $branch\n";
+  foreach my $group (sort keys %group)
+  {
+    print $group;
+    foreach my $msg (sort keys %{$groupc{$group}})
+    {
+      print $msg;
+    }
+    print "#\n";
+    print $group{$group};
+    print "#\n";
   }
 
   foreach my $msg (sort { $#{$msg{$a}} <=> $#{$msg{$b}} } keys %msg)
@@ -296,18 +376,27 @@ else
 {
   my ($ok,$okcnt);
   my %msg;
+
+  # This is a sign that you are doing something wrong
+  if (-f $ARGV[$#ARGV])
+  {
+    warn "You have a pathname in a generic gits command, this is a sign that the command\nwill not work since it is unlikely to exist in all modules\nProbably you want to cd to the submodule and run a raw git command\n";
+  }
+
+  # Run the command for each module
   my (@list) = @slaves;
   unshift(@list,[undef,"."]) unless ($OPTIONS{'no-master'});
   foreach my $group (@list)
   {
     my $slave = $group->[1];
-    my ($ret, $msg) = getcmd(qq^cd $slave && git @ARGV^);
-    if ($ret != 0)
+    my ($ret, $msg) = getcmd(qq^cd $slave && git ^.quoteit(@ARGV));
+    if ($ret != 0 &&
+	!($ARGV[0] eq "commit" && $msg =~ /nothing to commit/))
     {
       my $diemsg = "Aborting gits $ARGV[0], failed at '$slave'.  ";
       if ($ok)
       {
-	$diemsg .= "(ran fine on: $ok, did not run on @{[$#list+1-$okcnt]} other(s); no rollbacks)";
+	$diemsg .= "(ran fine on: $ok, did not run on @{[$#list-$okcnt]} other(s); no rollbacks)";
       }
       else
       {
