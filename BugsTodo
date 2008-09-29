@@ -27,3 +27,5 @@ We could gather slave history and put it in changelog or something, or
 even a special superproject commit, but this would not work if another
 superproject made the change.
 
+One bad side-effect of this is that gitk does not have a global
+purview of what is happening.
