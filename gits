@@ -22,7 +22,7 @@ use constant GITSLAVE => '.gitslave';
 use Getopt::Long;
 
 
-
+our($GITSLAVE) = $ENV{'GITSLAVE'}||GITSLAVE;
 our($GITS_DIR);
 my($USAGE) = "Usage: $0: [--no-master] [--no-commit] [--verbose]+ [-v]+ [--quiet] <subcommand|help> [args]...\n";
 our(%OPTIONS);
@@ -120,12 +120,12 @@ sub resolve_repository($)
 sub git_slave_list()
 {
   my (@gits);
-  open(R, "<", "$GITS_DIR/@{[GITSLAVE]}") || return undef;
+  open(R, "<", "$GITS_DIR/@{[$GITSLAVE]}") || return undef;
   my ($lineno) = 1;
   while (<R>)
   {
     next if (/^\s*(?:\#.*)$/);
-    die "Bad line $lineno in $GITS_DIR/@{[GITSLAVE]}\n" unless (/^\"(.*)\" \"(.*)\"$/);
+    die "Bad line $lineno in $GITS_DIR/@{[$GITSLAVE]}\n" unless (/^\"(.*)\" \"(.*)\"$/);
     push(@gits,[$1, $2]);
   }
   close(R);
@@ -160,7 +160,7 @@ GetOptions(\%OPTIONS, 'verbose|v+', 'quiet', 'no-commit', 'no-master') || die $U
 die "$USAGE" if ( $#ARGV < 0);
 
 # Find GITS_DIR -- location of git slave file
-if ($ENV{'GITS_DIR'} && -f $ENV{'GITS_DIR'}."/".GITSLAVE)
+if ($ENV{'GITS_DIR'} && -f $ENV{'GITS_DIR'}."/".$GITSLAVE)
 {				# Use gitslave location user told us
   $GITS_DIR = $ENV{'GITS_DIR'};
 }
@@ -171,19 +171,19 @@ else
 
   do
   {
-    if (!-f $GITS_DIR."/".GITSLAVE)
+    if (!-f $GITS_DIR."/".$GITSLAVE)
     {
       $GITS_DIR .= '/..';
       $dev = $S[0];
       $ino = $S[1];
       @S = stat($GITS_DIR);
     }
-  } while (!-f $GITS_DIR."/".GITSLAVE && $S[0] != $dev && $S[1] != $ino);
+  } while (!-f $GITS_DIR."/".$GITSLAVE && $S[0] != $dev && $S[1] != $ino);
 
 }
 
 # All operations are relative to gitslave base
-if (-f $GITS_DIR."/".GITSLAVE)
+if (-f $GITS_DIR."/".$GITSLAVE)
 {
   $GITS_DIR = Cwd::realpath($GITS_DIR);
   chdir($GITS_DIR);
@@ -191,7 +191,7 @@ if (-f $GITS_DIR."/".GITSLAVE)
 }
 else
 {
-  die "Could not find @{[GITSLAVE]} file\n" unless ($ARGV[0] eq "inits");
+  die "Could not find @{[$GITSLAVE]} file\n" unless ($ARGV[0] eq "inits");
 }
 
 my (@slaves) = git_slave_list();
@@ -206,14 +206,14 @@ Commands:
 
 help	    This message
 
-inits	    Prepare a new @{[GITSLAVE]} file in the local directory.
+inits	    Prepare a new @{[$GITSLAVE]} file in the local directory.
 
 clones <repository> <directory>
 	    Specify a new slave repository to clone.
 	    Repositories may include relative (relative to the clone
 	    path of the local git repository) or ablsolute paths.
 
-checkouts   Find all new slave repositories in the @{[GITSLAVE]} file
+checkouts   Find all new slave repositories in the @{[$GITSLAVE]} file
 	    and check them out to disk.
 
 <git command> [arguments]
@@ -226,11 +226,11 @@ elsif ($ARGV[0] eq 'inits')
 {
   die "Inits requires no arguments\n" if ($#ARGV != 0);
   $GITS_DIR=$ENV{'GITS_DIR'} || ".";
-  die "Refusing to init, $GITS_DIR/@{[GITSLAVE]} already exists\n" if (-f $GITS_DIR."/".GITSLAVE);
-  open(W, ">", $GITS_DIR."/".GITSLAVE) || die "Could not create $GITS_DIR/@{[GITSLAVE]}\n";
+  die "Refusing to init, $GITS_DIR/@{[$GITSLAVE]} already exists\n" if (-f $GITS_DIR."/".$GITSLAVE);
+  open(W, ">", $GITS_DIR."/".$GITSLAVE) || die "Could not create $GITS_DIR/@{[$GITSLAVE]}\n";
   close(W);
-  docmd("git add @{[GITSLAVE]}");
-  docmd(qq^git commit -m "gits creating @{[GITSLAVE]}" @{[GITSLAVE]}^) unless ($OPTIONS{'no-commit'});
+  docmd("git add @{[$GITSLAVE]}");
+  docmd(qq^git commit -m "gits creating @{[$GITSLAVE]}" @{[$GITSLAVE]}^) unless ($OPTIONS{'no-commit'});
 }
 elsif ($ARGV[0] eq 'clones')
 {
@@ -242,7 +242,7 @@ elsif ($ARGV[0] eq 'clones')
     die "Destination ($ARGV[2]) cannot end in a slash" if (length($2) < 1);
     die "Destination parent ($1) does not exist\n" if (!-d $1);
   }
-  my $files = $GITS_DIR."/".GITSLAVE;
+  my $files = $GITS_DIR."/".$GITSLAVE;
   docmd(qq^git clone "$repos" "$ARGV[2]"^ || die "Could not clone $repos onto $ARGV[2]\n");
 
   open(W, ">>", $files);
