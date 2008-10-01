@@ -118,14 +118,19 @@ sub resolve_repository($)
 #
 # Get list of currently configured slaves
 #
-sub git_slave_list()
+sub git_slave_list($)
 {
+  my ($cmd) = @_;
   my (@gits);
 
   foreach my $slavefile (split(/, /,$GITSLAVE))
   {
     $slavefile = "$GITS_DIR/$slavefile";
-    open(R, "<", $slavefile) || return undef;
+    if (!open(R, "<", $slavefile))
+    {
+      die "Could not find $slavefile file\n" unless ($cmd eq "inits");
+      next;
+    }
     my ($lineno) = 1;
     while (<R>)
     {
@@ -168,7 +173,7 @@ GetOptions(\%OPTIONS, 'verbose|v+', 'quiet', 'no-commit', 'no-master') || die $U
 die "$USAGE" if ( $#ARGV < 0);
 
 # Find GITS_DIR -- location of git slave file
-if ($ENV{'GITS_DIR'} && -f $ENV{'GITS_DIR'}."/".$GITSLAVE)
+if ($ENV{'GITS_DIR'} && -f $ENV{'GITS_DIR'}."/".GITSLAVE)
 {				# Use gitslave location user told us
   $GITS_DIR = $ENV{'GITS_DIR'};
 }
@@ -179,27 +184,22 @@ else
 
   do
   {
-    if (!-f $GITS_DIR."/".$GITSLAVE)
+    if (!-f $GITS_DIR."/".GITSLAVE)
     {
       $GITS_DIR .= '/..';
       $dev = $S[0];
       $ino = $S[1];
       @S = stat($GITS_DIR);
     }
-  } while (!-f $GITS_DIR."/".$GITSLAVE && $S[0] != $dev && $S[1] != $ino);
-
+  } while (!-f $GITS_DIR."/".GITSLAVE && $S[0] != $dev && $S[1] != $ino);
 }
 
 # All operations are relative to gitslave base
-if (-f $GITS_DIR."/".$GITSLAVE)
+if (-f $GITS_DIR."/".GITSLAVE)
 {
   $GITS_DIR = Cwd::realpath($GITS_DIR);
   chdir($GITS_DIR);
   print STDERR "gits: Gitslave found in $GITS_DIR\n" if ($OPTIONS{'verbose'} > 1);
-}
-else
-{
-  die "Could not find @{[$GITSLAVE]} file\n" unless ($ARGV[0] eq "inits");
 }
 
 my (@slaves) = git_slave_list();
@@ -214,14 +214,14 @@ Commands:
 
 help	    This message
 
-inits	    Prepare a new @{[$GITSLAVE]} file in the local directory.
+inits	    Prepare a new @{[GITSLAVE]} file in the local directory.
 
 clones <repository> <directory>
 	    Specify a new slave repository to clone.
 	    Repositories may include relative (relative to the clone
 	    path of the local git repository) or ablsolute paths.
 
-checkouts   Find all new slave repositories in the @{[$GITSLAVE]} file
+checkouts   Find all new slave repositories in the @{[GITSLAVE]} file
 	    and check them out to disk.
 
 pulls <args>
@@ -238,6 +238,7 @@ elsif ($ARGV[0] eq 'inits')
 {
   die "Inits requires no arguments\n" if ($#ARGV != 0);
   $GITS_DIR=$ENV{'GITS_DIR'} || ".";
+  die "Refusing to init, \$GITSLAVE variable is multipath\n" if ($GITSLAVE =~ /, /);
   die "Refusing to init, $GITS_DIR/@{[$GITSLAVE]} already exists\n" if (-f $GITS_DIR."/".$GITSLAVE);
   open(W, ">", $GITS_DIR."/".$GITSLAVE) || die "Could not create $GITS_DIR/@{[$GITSLAVE]}\n";
   close(W);
@@ -248,6 +249,7 @@ elsif ($ARGV[0] eq 'clones')
 {
   die "Clone requires two arguments <repository> <directory>\n" if ($#ARGV != 2 || !$ARGV[1] || !$ARGV[2]);
   my ($repos) = resolve_repository($ARGV[1]);
+  die "Refusing to clones, \$GITSLAVE variable is multipath\n" if ($GITSLAVE =~ /, /);
   die "Destination already exists\n" if (-e $ARGV[2]);
   if ($ARGV[2] =~ m:(.*)/(.*):)
   {
@@ -693,9 +695,11 @@ they should be checked out.
 
 =head2 $GITSLAVE
 
-Allow overriding on the NAME of the .gitslave file.  Also, allows a
-comma-space seperated list of files names, the sum of which will be
-the list of slaves to use.
+Allow overriding on the name of the .gitslave file (for supplimental
+activity, the .gitslave file must still exist even if it is not used
+for this particular operation).  Also, allows a comma-space seperated
+list of files names, the sum of which will be the list of slaves to
+use.
 
 An example ".gitslave, .gitslave-extras" would allow an supplimental
 list of slaves for unusual activity (e.g. release tagging) to the
