@@ -99,6 +99,17 @@ OVERVIEW
       gits pulls --rebase
       --------------------------------------------------
 
+   Perform a arbtrary command for all tracked branches
+      gits execs <command> [args]
+
+    For each slave being tracked by the superproject and the superproject
+    itself, cd to the root of the project directory and execute the listed
+    command.
+
+      --------------------------------------------------
+      gits execs gitk
+      --------------------------------------------------
+
    Everything else
     All other commands are passed directly though to git, with one command
     being run per repository. Output summerization is performed so that
@@ -147,6 +158,15 @@ DESCRIPTION
     repository and all slave repositories. See OVERVIEW for more information
     on specific subcommands.
 
+BUGS
+    gits changes directory to the directory where .gitslave exists.
+    Likewise, when executing most git commands, gits changes directory to
+    the root of the git slave, so any pathnames being passed in to gits must
+    be absolute, not relative. Generally this is only a concern for
+    pre-generate commit messages or something, you should NOT be passing
+    files checked into git in a gits command--you will likely get the wrong
+    result.
+
 FILES
   .gitslave
     The file containing the list of slave repositories (possibly in relative
@@ -155,9 +175,10 @@ FILES
 
 ENVIRONMENT
   $GITSLAVE
-    Allow overriding on the NAME of the .gitslave file. Also, allows a
-    comma-space seperated list of files names, the sum of which will be the
-    list of slaves to use.
+    Allow overriding on the name of the .gitslave file (for supplimental
+    activity, the .gitslave file must still exist even if it is not used for
+    this particular operation). Also, allows a comma-space seperated list of
+    files names, the sum of which will be the list of slaves to use.
 
     An example ".gitslave, .gitslave-extras" would allow an supplimental
     list of slaves for unusual activity (e.g. release tagging) to the normal

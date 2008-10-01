@@ -201,6 +201,10 @@ if (-f $GITS_DIR."/".GITSLAVE)
   chdir($GITS_DIR);
   print STDERR "gits: Gitslave found in $GITS_DIR\n" if ($OPTIONS{'verbose'} > 1);
 }
+else
+{
+  die "Must inits gits, could not find @{[GITSLAVE]} file.\n";
+}
 
 my (@slaves) = git_slave_list($ARGV[0]);
 
@@ -314,12 +318,21 @@ elsif ($ARGV[0] eq 'pulls')
   my (@list) = @slaves;
   unshift(@list,[undef,"."]) unless ($OPTIONS{'no-master'});
   my $oldbranch = (grep(s/\s*\*\s+//, split(/\n/,getcmd("git branch"))))[0];
+  my ($warngitslavesync) = 0;
 
   foreach my $branch (grep(s/branch\.(.*)\.remote=.*/$1/,split(/\n/,getcmd(qq%git config -l%))))
   {
     foreach my $group (@list)
     {
       my $slave = $group->[1];
+
+      if (!-d $slave)
+      {
+	warn "Missing one or more git slaves including $slave, consider gits checkouts.  Skipping.\n" unless ($warngitslavesync);
+	$warngitslavesync++;
+	next;
+      }
+
       my ($ret, $msg) = getcmd(qq^cd $slave && git checkout $branch && git pull ^.quoteit(@ARGV));
       if ($ret != 0)
       {
@@ -344,6 +357,7 @@ elsif ($ARGV[0] eq 'pulls')
   foreach my $group (@list)
   {
     my $slave = $group->[1];
+    next unless (-d $slave);
     docmd(qq^cd $slave && git checkout $oldbranch >&/dev/null^);
   }
 
@@ -354,6 +368,54 @@ elsif ($ARGV[0] eq 'pulls')
     print $msg;
   }
 
+}
+elsif ($ARGV[0] eq 'execs')
+{
+  shift(@ARGV);
+  my ($ok,$okcnt);
+  my (@list) = @slaves;
+  unshift(@list,[undef,"."]) unless ($OPTIONS{'no-master'});
+  my ($branch);
+  my (%group,%groupc,%msg);
+  my ($warngitslavesync) = 0;
+
+  foreach my $group (@list)
+  {
+    my $slave = $group->[1];
+
+    if (!-d $slave)
+    {
+      warn "Missing one or more git slaves including $slave, consider gits checkouts.  Skipping.\n" unless ($warngitslavesync);
+      $warngitslavesync++;
+      next;
+    }
+
+    my ($ret, $msg) = getcmd(qq^cd $slave && ^.quoteit(@ARGV));
+    if ($ret != 0)
+    {
+      my $diemsg = "Aborting gits execs $ARGV[0], failed at '$slave'.  ";
+      if ($ok)
+      {
+	$diemsg .= "(ran fine on: $ok, did not run on @{[$#list-$okcnt]} other(s); no rollbacks)";
+      }
+      else
+      {
+	$diemsg .= "(first entry, no other successfully executed)";
+      }
+      die "$diemsg: $?\n$msg\n";
+    }
+    $ok .= " $slave";
+    $okcnt++;
+
+    push(@{$msg{$msg}}, $slave);
+  }
+
+  foreach my $msg (sort { $#{$msg{$a}} <=> $#{$msg{$b}} } keys %msg)
+  {
+    print "On: ", join(', ',@{$msg{$msg}}), ":\n";
+    $msg =~ s/^/  /mg if (length($msg));
+    print $msg;
+  }
 }
 elsif ($ARGV[0] eq 'status')
 {
@@ -473,9 +535,19 @@ else
   # Run the command for each module
   my (@list) = @slaves;
   unshift(@list,[undef,"."]) unless ($OPTIONS{'no-master'});
+  my ($warngitslavesync) = 0;
+
   foreach my $group (@list)
   {
     my $slave = $group->[1];
+
+    if (!-d $slave)
+    {
+      warn "Missing one or more git slaves including $slave, consider gits checkouts.  Skipping.\n" unless ($warngitslavesync);
+      $warngitslavesync++;
+      next;
+    }
+
     my ($ret, $msg) = getcmd(qq^cd $slave && git ^.quoteit(@ARGV));
     if ($ret != 0 &&
 	!($ARGV[0] eq "commit" && $msg =~ /nothing to commit/))
@@ -503,6 +575,7 @@ else
     print $msg;
   }
 }
+exit($returncode);
 
 
 
@@ -628,6 +701,19 @@ then switch back to the branch you were on.
 
 
 
+=head3 Perform a arbtrary command for all tracked branches
+
+  gits execs <command> [args]
+
+For each slave being tracked by the superproject and the superproject itself,
+cd to the root of the project directory and execute the listed command.
+
+  --------------------------------------------------
+  gits execs gitk
+  --------------------------------------------------
+
+
+
 =head3 Everything else
 
 All other commands are passed directly though to git, with one command
@@ -682,6 +768,16 @@ of some of the administrative git commands which are executed.
 Run the specified git command (with associated arguments) on the
 repository and all slave repositories.  See OVERVIEW for more
 information on specific subcommands.
+
+=head1 BUGS
+
+gits changes directory to the directory where .gitslave exists.
+Likewise, when executing most git commands, gits changes directory to
+the root of the git slave, so any pathnames being passed in to gits
+must be absolute, not relative.  Generally this is only a concern for
+pre-generate commit messages or something, you should NOT be passing
+files checked into git in a gits command--you will likely get the
+wrong result.
 
 =head1 FILES
 
