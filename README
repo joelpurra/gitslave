@@ -147,6 +147,25 @@ DESCRIPTION
     repository and all slave repositories. See OVERVIEW for more information
     on specific subcommands.
 
+FILES
+  .gitslave
+    The file containing the list of slave repositories (possibly in relative
+    form) and the directories relative to the master root where they should
+    be checked out.
+
+ENVIRONMENT
+  $GITSLAVE
+    Allow overriding on the NAME of the .gitslave file. Also, allows a
+    comma-space seperated list of files names, the sum of which will be the
+    list of slaves to use.
+
+    An example ".gitslave, .gitslave-extras" would allow an supplimental
+    list of slaves for unusual activity (e.g. release tagging) to the normal
+    list.
+
+    Alternately, you could play tricks where you only get a subset of the
+    modules when you don't need to play with everything.
+
 AUTHOR
     Seth Robertson
 

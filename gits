@@ -16,6 +16,7 @@
 use strict;
 use warnings;
 no warnings 'uninitialized';
+no warnings 'io';
 use Cwd;
 use File::Spec;
 use constant GITSLAVE => '.gitslave';
@@ -104,8 +105,8 @@ sub resolve_repository($)
 
   # Handle smushing together, relative paths, etc
   $repos = "$master_repo/$suffix";
-  while ($repos =~ s:/./:/:) {;}
-  while ($repos =~ s:/[^/]+?/../:/:) {;}
+  while ($repos =~ s:/\./:/:) {;}
+  while ($repos =~ s:/[^/]+?/\.\./:/:) {;}
   while ($repos =~ s-(^\w+://.*)//-$1-g) {;}
   while ($repos !~ m-^\w+://- && $repos =~ s://:/:g) {;}
   $repos;
@@ -120,15 +121,20 @@ sub resolve_repository($)
 sub git_slave_list()
 {
   my (@gits);
-  open(R, "<", "$GITS_DIR/@{[$GITSLAVE]}") || return undef;
-  my ($lineno) = 1;
-  while (<R>)
+
+  foreach my $slavefile (split(/, /,$GITSLAVE))
   {
-    next if (/^\s*(?:\#.*)$/);
-    die "Bad line $lineno in $GITS_DIR/@{[$GITSLAVE]}\n" unless (/^\"(.*)\" \"(.*)\"$/);
-    push(@gits,[$1, $2]);
+    $slavefile = "$GITS_DIR/$slavefile";
+    open(R, "<", $slavefile) || return undef;
+    my ($lineno) = 1;
+    while (<R>)
+    {
+      next if (/^\s*(?:\#.*)$/);
+      die "Bad line $lineno in $slavefile\n" unless (/^\"(.*)\" \"(.*)\"$/);
+      push(@gits,[$1, $2]);
+    }
+    close(R);
   }
-  close(R);
   @gits;
 }
 
@@ -143,7 +149,9 @@ sub quoteit(@)
   my $str;
   foreach my $item (@_)
   {
-    $str .= quotemeta($item).' ';
+    my $qitem = $item;
+    $qitem =~ s/([\\\"])/\\$1/;
+   $str .= '"'.$qitem.'" ';
   }
   chop($str);
   $str;
@@ -238,7 +246,7 @@ elsif ($ARGV[0] eq 'inits')
 }
 elsif ($ARGV[0] eq 'clones')
 {
-  die "Clone requires two arguments\n" if ($#ARGV != 2 || !$ARGV[1] || !$ARGV[2]);
+  die "Clone requires two arguments <repository> <directory>\n" if ($#ARGV != 2 || !$ARGV[1] || !$ARGV[2]);
   my ($repos) = resolve_repository($ARGV[1]);
   die "Destination already exists\n" if (-e $ARGV[2]);
   if ($ARGV[2] =~ m:(.*)/(.*):)
@@ -352,10 +360,19 @@ elsif ($ARGV[0] eq 'status')
   unshift(@list,[undef,"."]) unless ($OPTIONS{'no-master'});
   my ($branch);
   my (%group,%groupc,%msg);
+  my ($warngitslavesync) = 0;
 
   foreach my $group (@list)
   {
     my $slave = $group->[1];
+
+    if (!-d $slave)
+    {
+      warn "Missing one or more git slaves including $slave, consider gits checkouts.  Skipping.\n" unless ($warngitslavesync);
+      $warngitslavesync++;
+      next;
+    }
+
     my ($ret, $msg) = getcmd(qq^cd $slave && git ^.quoteit(@ARGV));
     if ($ret != 0 && $ret != 256)
     {
@@ -663,6 +680,29 @@ of some of the administrative git commands which are executed.
 Run the specified git command (with associated arguments) on the
 repository and all slave repositories.  See OVERVIEW for more
 information on specific subcommands.
+
+=head1 FILES
+
+=head2 .gitslave
+
+The file containing the list of slave repositories (possibly in
+relative form) and the directories relative to the master root where
+they should be checked out.
+
+=head1 ENVIRONMENT
+
+=head2 $GITSLAVE
+
+Allow overriding on the NAME of the .gitslave file.  Also, allows a
+comma-space seperated list of files names, the sum of which will be
+the list of slaves to use.
+
+An example ".gitslave, .gitslave-extras" would allow an supplimental
+list of slaves for unusual activity (e.g. release tagging) to the
+normal list.
+
+Alternately, you could play tricks where you only get a subset of the
+modules when you don't need to play with everything.
 
 =head1 AUTHOR
 
