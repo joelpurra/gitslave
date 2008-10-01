@@ -216,6 +216,10 @@ clones <repository> <directory>
 checkouts   Find all new slave repositories in the @{[$GITSLAVE]} file
 	    and check them out to disk.
 
+pulls <args>
+	    Run a `git pull <args>` for all local tracking branches to
+	    bring them up to date
+
 <git command> [arguments]
 	    Run the indicated git command, once per slave and once for
 	    the master.  Abort on the first error.  Summarize output.
@@ -292,6 +296,52 @@ elsif ($ARGV[0] eq 'checkouts')
       print "gits: $group->[1] already exists\n" if ($OPTIONS{'verbose'});
     }
   }
+}
+elsif ($ARGV[0] eq 'pulls')
+{
+  shift(@ARGV);
+  my ($ok,$okcnt,%msg);
+  my (@list) = @slaves;
+  unshift(@list,[undef,"."]) unless ($OPTIONS{'no-master'});
+  my $oldbranch = (grep(s/\s*\*\s+//, split(/\n/,getcmd("git branch"))))[0];
+
+  foreach my $branch (grep(s/branch\.(.*)\.remote=.*/$1/,split(/\n/,getcmd(qq%git config -l%))))
+  {
+    foreach my $group (@list)
+    {
+      my $slave = $group->[1];
+      my ($ret, $msg) = getcmd(qq^cd $slave && git checkout $branch && git pull ^.quoteit(@ARGV));
+      if ($ret != 0)
+      {
+	my $diemsg = "Aborting gits pulls, now on branch $branch, for this branch failed at '$slave'.  ";
+	if ($ok)
+	{
+	  $diemsg .= "(ran fine on: $ok, did not run on @{[$#list-$okcnt]} other(s); no rollbacks)";
+	}
+	else
+	{
+	  $diemsg .= "(first entry, no other successfully executed)";
+	}
+	die "$diemsg: $?\n$msg\n";
+      }
+      $ok .= " $slave";
+      $okcnt++;
+      push(@{$msg{$msg}}, "$branch\@$slave");
+    }
+  }
+  foreach my $group (@list)
+  {
+    my $slave = $group->[1];
+    docmd(qq^cd $slave && git checkout $oldbranch >&/dev/null^);
+  }
+
+  foreach my $msg (sort { $#{$msg{$a}} <=> $#{$msg{$b}} } keys %msg)
+  {
+    print "On: ", join(', ',@{$msg{$msg}}), ":\n";
+    $msg =~ s/^/  /mg if (length($msg));
+    print $msg;
+  }
+
 }
 elsif ($ARGV[0] eq 'status')
 {
@@ -539,6 +589,20 @@ not already been retrieved.
 
   --------------------------------------------------
   gits checkouts
+  --------------------------------------------------
+
+
+
+=head3 Perform a pull operation for all tracked branches
+
+  gits pulls <args>
+
+For each branch being tracked by the superproject, go through the list
+of configured slaves, check yourself out to the branch, perform a pull,
+then switch back to the branch you were on.
+
+  --------------------------------------------------
+  gits pulls --rebase
   --------------------------------------------------
 
 
