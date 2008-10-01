@@ -324,6 +324,8 @@ elsif ($ARGV[0] eq 'pulls')
 	}
 	die "$diemsg: $?\n$msg\n";
       }
+      $msg =~ s/Switched to branch.*\n//;
+      $msg =~ s/Already on \".*\n//;
       $ok .= " $slave";
       $okcnt++;
       push(@{$msg{$msg}}, "$branch\@$slave");

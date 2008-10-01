@@ -88,6 +88,17 @@ OVERVIEW
       gits checkouts
       --------------------------------------------------
 
+   Perform a pull operation for all tracked branches
+      gits pulls <args>
+
+    For each branch being tracked by the superproject, go through the list
+    of configured slaves, check yourself out to the branch, perform a pull,
+    then switch back to the branch you were on.
+
+      --------------------------------------------------
+      gits pulls --rebase
+      --------------------------------------------------
+
    Everything else
     All other commands are passed directly though to git, with one command
     being run per repository. Output summerization is performed so that
