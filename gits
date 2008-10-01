@@ -202,7 +202,7 @@ if (-f $GITS_DIR."/".GITSLAVE)
   print STDERR "gits: Gitslave found in $GITS_DIR\n" if ($OPTIONS{'verbose'} > 1);
 }
 
-my (@slaves) = git_slave_list();
+my (@slaves) = git_slave_list($ARGV[0]);
 
 if ($ARGV[0] eq 'help')
 {
