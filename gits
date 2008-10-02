@@ -59,7 +59,12 @@ sub getcmd($)
   $cmd = "($cmd) 2>&1";
   print STDERR "Running command: `$cmd`\n" if ($OPTIONS{'verbose'} > 1);
   my $out = `$cmd`;
-  print STDERR "Command returned: ($?, $out)\n" if ($OPTIONS{'verbose'} > 1);
+  if ($OPTIONS{'verbose'} > 1)
+  {
+    my $tout = $out;
+    chomp($tout);
+    print STDERR "Command returned: ($?, $tout)\n";
+  }
 
   wantarray?($?, $out):$out;
 }
