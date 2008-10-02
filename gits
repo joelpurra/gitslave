@@ -25,7 +25,7 @@ use Getopt::Long;
 
 our($GITSLAVE) = $ENV{'GITSLAVE'}||GITSLAVE;
 our($GITS_DIR);
-my($USAGE) = "Usage: $0: [--no-master] [--no-commit] [--verbose]+ [-v]+ [--quiet] <subcommand|help> [args]...\n";
+my($USAGE) = "Usage: $0: [--press-on] [--no-master] [--no-commit] [--verbose]+ [-v]+ [--quiet] <subcommand|help> [args]...\n";
 our(%OPTIONS);
 my ($returncode) = 0;
 delete($ENV{'GIT_DIR'});
@@ -168,7 +168,7 @@ sub quoteit(@)
 # Main functionality
 #
 Getopt::Long::Configure("bundling", "no_ignore_case", "no_auto_abbrev", "no_getopt_compat", "require_order");
-GetOptions(\%OPTIONS, 'verbose|v+', 'quiet', 'no-commit', 'no-master') || die $USAGE;
+GetOptions(\%OPTIONS, 'press-on', 'verbose|v+', 'quiet', 'no-commit', 'no-master') || die $USAGE;
 
 die "$USAGE" if ( $#ARGV < 0);
 
@@ -336,7 +336,13 @@ elsif ($ARGV[0] eq 'pulls')
       my ($ret, $msg) = getcmd(qq^cd $slave && git checkout $branch && git pull ^.quoteit(@ARGV));
       if ($ret != 0)
       {
-	my $diemsg = "Aborting gits pulls, now on branch $branch, for this branch failed at '$slave'.  ";
+	if ($OPTIONS{'press-on'})
+	{
+	  warn "Aborting gits pulls, now on branch $branch, failed with slave '$slave'.";
+	  next;
+	}
+
+	my $diemsg = "Failing gits pulls, now on branch $branch, for this branch failed at '$slave'.  ";
 	if ($ok)
 	{
 	  $diemsg .= "(ran fine on: $ok, did not run on @{[$#list-$okcnt]} other(s); no rollbacks)";
@@ -393,6 +399,12 @@ elsif ($ARGV[0] eq 'execs')
     my ($ret, $msg) = getcmd(qq^cd $slave && ^.quoteit(@ARGV));
     if ($ret != 0)
     {
+      if ($OPTIONS{'press-on'})
+      {
+	warn "Failing gits execs $ARGV[0], failed with slave '$slave'.";
+	next;
+      }
+
       my $diemsg = "Aborting gits execs $ARGV[0], failed at '$slave'.  ";
       if ($ok)
       {
@@ -440,6 +452,12 @@ elsif ($ARGV[0] eq 'status')
     my ($ret, $msg) = getcmd(qq^cd $slave && git ^.quoteit(@ARGV));
     if ($ret != 0 && $ret != 256)
     {
+      if ($OPTIONS{'press-on'})
+      {
+	warn "Failing gits $ARGV[0], failed with slave '$slave'.";
+	next;
+      }
+
       my $diemsg = "Aborting gits $ARGV[0], failed at '$slave'.  ";
       if ($ok)
       {
@@ -552,6 +570,12 @@ else
     if ($ret != 0 &&
 	!($ARGV[0] eq "commit" && $msg =~ /nothing to commit/))
     {
+      if ($OPTIONS{'press-on'})
+      {
+	warn "Failing gits $ARGV[0], failed with slave '$slave'.";
+	next;
+      }
+
       my $diemsg = "Aborting gits $ARGV[0], failed at '$slave'.  ";
       if ($ok)
       {
@@ -750,6 +774,11 @@ will not be needed much.
 
 This flag requests that gits-internal sub-commands, such as inits or
 clones should not commit their changes after they made them.
+
+=head2 --press-on
+
+Do not abort when a subsidiary git command fails, instead print a
+message and continue processing.
 
 =head2 --verbose -v
 

@@ -143,6 +143,10 @@ DESCRIPTION
     This flag requests that gits-internal sub-commands, such as inits or
     clones should not commit their changes after they made them.
 
+  --press-on
+    Do not abort when a subsidiary git command fails, instead print a
+    message and continue processing.
+
   --verbose -v
     Ask for more information about what is happening. You may repeat the
     flag multiple times to get more information. Two levels of verbosity
