@@ -782,8 +782,8 @@ clones should not commit their changes after they made them.
 
 =head2 --press-on
 
-Do not abort when a subsidiary git command fails, instead print a
-message and continue processing.
+Do not abort when a subsidiary git command fails for most commands,
+instead print a message and continue processing.
 
 =head2 --verbose -v
 
