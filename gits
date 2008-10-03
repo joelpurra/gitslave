@@ -361,7 +361,7 @@ if ($OPTIONS{'version'})
     else
     {
       # strip out leading tag alphabetic and space, get just the numbers
-      $desc =~ s/^[A-Za-z_ -]*([0-9][0-9.-_]*[0-9]).*/$1/;
+      $desc =~ s/^[A-Za-z_ -]*([0-9][0-9._-]*[0-9]).*/$1/;
       $desc =~ y=/_=--=;
     }
     print $desc;
