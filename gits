@@ -135,7 +135,7 @@ sub git_slave_list($)
     if (!open(R, "<", $slavefile))
     {
       die "Could not find $slavefile file\n"
-	unless (!defined($cmd) or $cmd eq "inits" or $cmd eq "help");
+	unless (!defined($cmd) or $cmd eq "inits" or $cmd eq "help" or $cmd eq "resolves");
       next;
     }
     my ($lineno) = 1;
@@ -333,7 +333,7 @@ if (-f $GITS_DIR."/".GITSLAVE)
 else
 {
   die "Must inits gits, could not find @{[GITSLAVE]} file.\n"
-    unless ($#ARGV < 0 or $ARGV[0] eq 'help' or $ARGV[0] eq 'inits');
+    unless ($#ARGV < 0 or $ARGV[0] eq 'help' or $ARGV[0] eq 'inits' or $ARGV[0] eq 'resolves');
 }
 
 @slaves = git_slave_list($ARGV[0]);
@@ -622,7 +622,10 @@ elsif ($ARGV[0] eq 'status')
     }
     elsif ($ret == 256)
     {
-      $returncode = 1;
+      # git status seems to return 1 (nee wait 256) under all circumstances, so do
+      # not even propigate this condition.
+      #$returncode = 1;
+      1;
     }
     $ok .= " $slave";
     $okcnt++;
