@@ -332,19 +332,45 @@ if (-f $GITS_DIR."/".GITSLAVE)
 }
 else
 {
-  die "Must inits gits, could not find @{[GITSLAVE]} file.\n" unless ($OPTIONS{'version'} || $OPTIONS{'help'});
+  die "Must inits gits, could not find @{[GITSLAVE]} file.\n"
+    unless ($#ARGV < 0 or $ARGV[0] eq 'help' or $ARGV[0] eq 'inits');
 }
 
 @slaves = git_slave_list($ARGV[0]);
 
 if ($OPTIONS{'version'})
 {
-  my ($ret,$msg) = getcmd("TZ=GMT git log --decorate --date=local '--pretty=tformat:%H'  -n 1 ");
-  chomp($msg);
-  my ($dret,$desc) = getcmd("git describe --tags $msg 2>/dev/null | grep -v cannot || echo Unknown");
-  chomp($desc);
-  print "gits version $desc $msg\n";
-  docmd("git --version");
+  my $version = "{UNTAGGED}";
+
+  # <TRICKY> If the version string is still UNTAGGED, try to run the local
+  # git commands to get the current hash and possibly tag; this is used by
+  # Makefile to get the correct string to replace it with.  Otherwise, the
+  # installation has replaced it with a version; don't mess with it.  Use
+  # string concatenation to keep this check from getting replaced. </TRICKY>
+
+  if ($version eq "{" . "UNTAGGED" . "}")
+  {
+    my ($ret,$hash) = getcmd("git log --pretty=format:%H -n 1");
+    chomp($hash);
+
+    my ($dret,$desc) = getcmd("git describe --tags $hash 2>/dev/null");
+    if ($dret)
+    {
+      $desc = "Untagged ($hash)\n";
+    }
+    else
+    {
+      # strip out leading tag alphabetic and space, get just the numbers
+      $desc =~ s/^[A-Za-z_ -]*([0-9][0-9.-_]*[0-9]).*/$1/;
+      $desc =~ y=/_=--=;
+    }
+    print $desc;
+  }
+  else
+  {
+    print "gits version $version\n";
+    docmd("git --version");
+  }
 }
 elsif ($ARGV[0] eq 'help' or $OPTIONS{'help'})
 {
