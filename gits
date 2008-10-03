@@ -687,7 +687,7 @@ elsif ($ARGV[0] eq 'status')
     elsif ($ret == 256)
     {
       # git status seems to return 1 (nee wait 256) under all circumstances, so do
-      # not even propigate this condition.
+      # not even propagate this condition.
       #$returncode = 1;
       1;
     }
@@ -943,7 +943,7 @@ then switch back to the branch you were on.
 
 
 
-=head3 Perform a arbtrary command for all tracked branches
+=head3 Perform a arbitrary command for all tracked branches
 
   gits execs <command> [args]
 
@@ -991,9 +991,9 @@ remote repository.
 =head3 Everything else
 
 All other commands are passed directly though to git, with one command
-being run per repository.  Output summerization is performed so that
+being run per repository.  Output summarizing is performed so that
 multiple repositories with the same git output will only have the git
-output shown once.  `git status` has a more aggressive summerization
+output shown once.  `git status` has a more aggressive summarizing
 to merge the lists of files in each section.
 
   Examples:
@@ -1073,13 +1073,13 @@ they should be checked out.
 
 =head2 $GITSLAVE
 
-Allow overriding on the name of the .gitslave file (for supplimental
+Allow overriding on the name of the .gitslave file (for supplemental
 activity, the .gitslave file must still exist even if it is not used
-for this particular operation).  Also, allows a comma-space seperated
+for this particular operation).  Also, allows a comma-space separated
 list of files names, the sum of which will be the list of slaves to
 use.
 
-An example ".gitslave, .gitslave-extras" would allow an supplimental
+An example ".gitslave, .gitslave-extras" would allow an supplemental
 list of slaves for unusual activity (e.g. release tagging) to the
 normal list.
 
@@ -1096,7 +1096,7 @@ Report bugs to <projectbaka@baka.org>
 
 =head1 COPYRIGHT
 
-Copyright (c) 2008 Seth Robertson.  License is similiar to the GNU
+Copyright (c) 2008 Seth Robertson.  License is similar to the GNU
 Lesser General Public License version 2.1, see LICENSE.TXT for more
 details.
 
