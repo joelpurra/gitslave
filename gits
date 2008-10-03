@@ -215,33 +215,8 @@ my (@slaves) = git_slave_list($ARGV[0]);
 
 if ($ARGV[0] eq 'help')
 {
-  print STDERR <<"EOF;";
-gits - Support git operations into slave sub-repositories.  Kinda like
-       gitmodules except recursive.
-
-Commands:
-
-help	    This message
-
-inits	    Prepare a new @{[GITSLAVE]} file in the local directory.
-
-clones <repository> <directory>
-	    Specify a new slave repository to clone.
-	    Repositories may include relative (relative to the clone
-	    path of the local git repository) or ablsolute paths.
-
-checkouts   Find all new slave repositories in the @{[GITSLAVE]} file
-	    and check them out to disk.
-
-pulls <args>
-	    Run a `git pull <args>` for all local tracking branches to
-	    bring them up to date
-
-<git command> [arguments]
-	    Run the indicated git command, once per slave and once for
-	    the master.  Abort on the first error.  Summarize output.
-
-EOF;
+  use FindBin qw($Bin);
+  docmd("pod2text < $Bin");
 }
 elsif ($ARGV[0] eq 'inits')
 {
