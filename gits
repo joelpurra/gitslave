@@ -849,6 +849,20 @@ cd to the root of the project directory and execute the listed command.
 
 
 
+=head3 Print out the URLs for arbitrary repositories like clones takes
+
+  gits resolves <repository>...
+
+Go through the same process that gits uses for resolving relative
+repository URLs into absolute URLs, for debugging and certain porting
+efforts.
+
+  --------------------------------------------------
+  gits resolves ../otherpos
+  --------------------------------------------------
+
+
+
 =head3 Everything else
 
 All other commands are passed directly though to git, with one command
