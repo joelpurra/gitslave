@@ -374,8 +374,11 @@ if ($OPTIONS{'version'})
 }
 elsif ($ARGV[0] eq 'help' or $OPTIONS{'help'})
 {
+  print "$USAGE";
   use FindBin qw($Bin);
-  docmd("pod2text < $Bin");
+  docmd("pod2text < $Bin/$0 |" .
+	"sed -n -e '/^DESCRIPTION/,/^BUGS/H'" .
+	" -e '/^BUGS/{x;s/\\n[[:upper:]]*/\\n/g;s/\\n\\n/\\n/;p;}'");
   exit;
 }
 elsif ($ARGV[0] eq 'inits')
