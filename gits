@@ -26,7 +26,7 @@ use Getopt::Long;
 our($GITSLAVE) = $ENV{'GITSLAVE'}||GITSLAVE;
 our($GITS_DIR);
 our(@slaves);
-my($USAGE) = "Usage: $0: [--press-on] [--no-master] [--no-commit] [--verbose]+ [-v]+ [--quiet] <subcommand|help> [args]...\n";
+my($USAGE) = "usage: gits [--version] [--no-master] [--no-commit] [--press-on] [-v|--verbose]+ [--quiet] [--help] <subcommand> [args]...\n";
 our(%OPTIONS);
 my ($returncode) = 0;
 delete($ENV{'GIT_DIR'});
@@ -134,7 +134,8 @@ sub git_slave_list($)
     $slavefile = "$GITS_DIR/$slavefile";
     if (!open(R, "<", $slavefile))
     {
-      die "Could not find $slavefile file\n" unless ($cmd eq "inits");
+      die "Could not find $slavefile file\n"
+	unless (!defined($cmd) or $cmd eq "inits" or $cmd eq "help");
       next;
     }
     my ($lineno) = 1;
@@ -296,9 +297,9 @@ sub do_checkout($@)
 # Main functionality
 #
 Getopt::Long::Configure("bundling", "no_ignore_case", "no_auto_abbrev", "no_getopt_compat", "require_order");
-GetOptions(\%OPTIONS, 'press-on', 'verbose|v+', 'quiet', 'no-commit', 'no-master') || die $USAGE;
+GetOptions(\%OPTIONS, 'version', 'no-master', 'no-commit', 'press-on', 'verbose|v+', 'quiet', 'help') || die $USAGE;
 
-die "$USAGE" if ( $#ARGV < 0);
+die "$USAGE" if ($#ARGV < 0 and !($OPTIONS{'version'} or $OPTIONS{'help'}));
 
 # Find GITS_DIR -- location of git slave file
 if ($ENV{'GITS_DIR'} && -f $ENV{'GITS_DIR'}."/".GITSLAVE)
@@ -331,15 +332,25 @@ if (-f $GITS_DIR."/".GITSLAVE)
 }
 else
 {
-  die "Must inits gits, could not find @{[GITSLAVE]} file.\n";
+  die "Must inits gits, could not find @{[GITSLAVE]} file.\n" unless ($OPTIONS{'version'} || $OPTIONS{'help'});
 }
 
 @slaves = git_slave_list($ARGV[0]);
 
-if ($ARGV[0] eq 'help')
+if ($OPTIONS{'version'})
+{
+  my ($ret,$msg) = getcmd("TZ=GMT git log --decorate --date=local '--pretty=tformat:%H'  -n 1 ");
+  chomp($msg);
+  my ($dret,$desc) = getcmd("git describe --tags $msg 2>/dev/null | grep -v cannot || echo Unknown");
+  chomp($desc);
+  print "gits version $desc $msg\n";
+  docmd("git --version");
+}
+elsif ($ARGV[0] eq 'help' or $OPTIONS{'help'})
 {
   use FindBin qw($Bin);
   docmd("pod2text < $Bin");
+  exit;
 }
 elsif ($ARGV[0] eq 'inits')
 {
@@ -722,7 +733,7 @@ gits - The git slave repository tool
 
 =head1 SYNOPSIS
 
-gits [--no-master] [--no-commit] [--verbose]+ [-v]+ [--quiet] <subcommand|help> [args]...
+gits [--version] [--no-master] [--no-commit] [--press-on] [-v|--verbose]+ [--quiet] [--help] <subcommand> [args]...
 
 =head1 OVERVIEW
 
