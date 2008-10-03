@@ -395,6 +395,16 @@ elsif ($ARGV[0] eq 'checkouts')
 
   do_checkouts();
 }
+elsif ($ARGV[0] eq 'resolves')
+{
+  die "Resolves requires at least one arguments\n" if ($#ARGV < 1);
+
+  shift(@ARGV);
+  foreach my $repos (@ARGV)
+  {
+    print resolve_repository($repos)."\n";
+  }
+}
 elsif ($ARGV[0] eq 'pulls')
 {
   shift(@ARGV);
