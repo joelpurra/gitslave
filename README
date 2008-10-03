@@ -2,8 +2,8 @@ NAME
     gits - The git slave repository tool
 
 SYNOPSIS
-    gits [--no-master] [--no-commit] [--verbose]+ [-v]+ [--quiet]
-    <subcommand|help> [args]...
+    gits [--version] [--no-master] [--no-commit] [--press-on]
+    [-v|--verbose]+ [--quiet] [--help] <subcommand> [args]...
 
 OVERVIEW
     gits is a program which assists in assembling a meta-project from a
@@ -110,6 +110,17 @@ OVERVIEW
       gits execs gitk
       --------------------------------------------------
 
+   Print out the URLs for arbitrary repositories like clones takes
+      gits resolves <repository>...
+
+    Go through the same process that gits uses for resolving relative
+    repository URLs into absolute URLs, for debugging and certain porting
+    efforts.
+
+      --------------------------------------------------
+      gits resolves ../otherpos
+      --------------------------------------------------
+
    Everything else
     All other commands are passed directly though to git, with one command
     being run per repository. Output summerization is performed so that
@@ -144,8 +155,8 @@ DESCRIPTION
     clones should not commit their changes after they made them.
 
   --press-on
-    Do not abort when a subsidiary git command fails, instead print a
-    message and continue processing.
+    Do not abort when a subsidiary git command fails for most commands,
+    instead print a message and continue processing.
 
   --verbose -v
     Ask for more information about what is happening. You may repeat the
