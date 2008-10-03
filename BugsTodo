@@ -29,3 +29,16 @@ superproject made the change.
 
 One bad side-effect of this is that gitk does not have a global
 purview of what is happening.
+
+Alternately, we could have it pull all logs since the last checkpoint.
+
+
+* Interactive commit messages not available
+
+You cannot nicely use gits commit and have the system put up an editor
+for you to type your commit message in.  Or rather, you can, but you
+will have to retype once per slave with a change.
+
+If we could detect this state, we could put up the editor ourselves,
+make a unified template with unified status, and then add the -F flag
+to point at the newly created message
