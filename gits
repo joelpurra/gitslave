@@ -175,7 +175,7 @@ sub quoteit(@)
 #
 # Checkouts, clone projects listed in .gitslaves
 #
-sub do_checkouts($)
+sub do_checkouts(;$)
 {
   my ($nocheckout)=@_;
   my $curbranch;
@@ -193,7 +193,7 @@ sub do_checkouts($)
       docmd(qq^git clone $nocheckout "$repos" "$slave"^) || die "Could not clone $repos onto $slave\n";
 
       $curbranch = (grep(s/\s*\*\s+//, split(/\n/,getcmd("git branch"))))[0] unless ($curbranch);
-      if ($curbranch ne "master" && $curbranch !~ /no branch/))
+      if ($curbranch ne "master" && $curbranch !~ /no branch/)
       {
 	print qq^Switching "$ARGV[2]" to branch "$curbranch"\n^;
 	docmd(qq^cd "$slave"; git checkout $curbranch^) || die "Branch inconsistency, branch $curbranch does not exist for $slave\n";
