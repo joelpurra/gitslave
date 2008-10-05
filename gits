@@ -583,6 +583,67 @@ elsif ($ARGV[0] eq 'execs')
     print $msg;
   }
 }
+elsif ($ARGV[0] eq 'update-remote-url')
+{
+  my ($cmd,$name,$url) = @ARGV;
+  my ($ok,$okcnt);
+  my (@list) = @slaves;
+  unshift(@list,[undef,"."]) unless ($OPTIONS{'no-master'});
+  my (%msg);
+  my ($warngitslavesync) = 0;
+
+  die "update-remote-url <remote-name> <new-super-url>\n" unless ($name && $url);
+
+  foreach my $group (@list)
+  {
+    my $slave = $group->[1];
+
+    if (!-d $slave)
+    {
+      warn "Missing one or more git slaves including $slave, consider gits checkouts.  Skipping.\n" unless ($warngitslavesync);
+      $warngitslavesync++;
+      next;
+    }
+
+    my ($thisurl) = $url;
+    if ($slave ne ".")
+    {
+      $thisurl = resolve_repository($group->[0]);
+    }
+
+    my ($ret, $msg) = getcmd(qq^cd $slave; git config "remote.$name.url" "$thisurl"^);
+    if ($ret != 0)
+    {
+      if ($OPTIONS{'press-on'})
+      {
+	warn "Failing gits $cmd, failed with slave '$slave'.";
+	next;
+      }
+
+      my $diemsg = "Aborting gits $cmd, failed at '$slave'.  ";
+      if ($ok)
+      {
+	$diemsg .= "(ran fine on: $ok, did not run on @{[$#list-$okcnt]} other(s); no rollbacks)";
+      }
+      else
+      {
+	$diemsg .= "(first entry, no other successfully executed)";
+      }
+      die "$diemsg: $?\n$msg\n";
+    }
+    $ok .= " $slave";
+    $okcnt++;
+
+    push(@{$msg{$msg}}, $slave);
+  }
+
+  foreach my $msg (sort { $#{$msg{$a}} <=> $#{$msg{$b}} } keys %msg)
+  {
+    print "On: ", join(', ',@{$msg{$msg}}), ":\n";
+    $msg =~ s/^/  /mg if (length($msg));
+    print $msg;
+  }
+}
 elsif ($ARGV[0] eq 'status')
 {
   my ($ok,$okcnt);
@@ -905,6 +966,24 @@ efforts.
 
   --------------------------------------------------
   gits resolves ../otherpos
+  --------------------------------------------------
+
+
+
+=head3 Update the URL a remote repository points at
+
+  gits update-remote-url <remote-name> <url>
+
+Update the super-project's remote.name.url using the url and remote
+name listed above.  Then go though each slave repository and update
+its url using the normal relative url mechanism.
+
+Very useful when making another copy of a local repository mirroring a
+remote repository which you wish to have the copy also point to the
+remote repository.
+
+  --------------------------------------------------
+  gits update-remote-url origin ssh://git/src/git
   --------------------------------------------------
 
 

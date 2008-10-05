@@ -121,6 +121,21 @@ OVERVIEW
       gits resolves ../otherpos
       --------------------------------------------------
 
+   Update the URL a remote repository points at
+      gits update-remote-url <remote-name> <url>
+
+    Update the super-project's remote.name.url using the url and remote name
+    listed above. Then go though each slave repository and update its url
+    using the normal relative url mechanism.
+
+    Very useful when making another copy of a local repository mirroring a
+    remote repository which you wish to have the copy also point to the
+    remote repository.
+
+      --------------------------------------------------
+      gits update-remote-url origin ssh://git/src/git
+      --------------------------------------------------
+
    Everything else
     All other commands are passed directly though to git, with one command
     being run per repository. Output summerization is performed so that
