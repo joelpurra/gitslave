@@ -175,9 +175,12 @@ sub quoteit(@)
 #
 # Checkouts, clone projects listed in .gitslaves
 #
-sub do_checkouts()
+sub do_checkouts($)
 {
+  my ($nocheckout)=@_
   my $curbranch;
+
+  $nocheckout='-n' if ($nocheckout);
 
   foreach my $group (@slaves)
   {
@@ -187,10 +190,10 @@ sub do_checkouts()
     {
       print "gits: Checking out $slave\n" if ($OPTIONS{'verbose'});
       my ($repos) = resolve_repository($group->[0]);
-      docmd(qq^git clone "$repos" "$slave"^) || die "Could not clone $repos onto $slave\n";
+      docmd(qq^git clone $nocheckout "$repos" "$slave"^) || die "Could not clone $repos onto $slave\n";
 
       $curbranch = (grep(s/\s*\*\s+//, split(/\n/,getcmd("git branch"))))[0] unless ($curbranch);
-      if ($curbranch ne "master")
+      if ($curbranch ne "master" && $curbranch !~ /no branch/))
       {
 	print qq^Switching "$ARGV[2]" to branch "$curbranch"\n^;
 	docmd(qq^cd "$slave"; git checkout $curbranch^) || die "Branch inconsistency, branch $curbranch does not exist for $slave\n";
@@ -230,7 +233,7 @@ sub do_checkout($@)
       @slaves = git_slave_list("checkout");
 
       # New list of slaves might have stuff we need to check out
-      do_checkouts();
+      do_checkouts(1);
     }
   }
   my ($totcnt) = $#slaves + $OPTIONS{'no-master'}?1:2;
