@@ -177,7 +177,7 @@ sub quoteit(@)
 #
 sub do_checkouts($)
 {
-  my ($nocheckout)=@_
+  my ($nocheckout)=@_;
   my $curbranch;
 
   $nocheckout='-n' if ($nocheckout);
