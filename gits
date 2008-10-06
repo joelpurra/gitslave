@@ -1048,7 +1048,7 @@ Run the specified git command (with associated arguments) on the
 repository and all slave repositories.  Typically they are git
 commands run over each slave, but there are gits specific commands
 such as: pulls, checkouts, resolves, inits, clones, execs, and
-update-remote-url, .  See OVERVIEW for more information on specific
+update-remote-url.  See OVERVIEW for more information on specific
 subcommands.
 
 =head1 BUGS
