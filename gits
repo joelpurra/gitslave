@@ -378,8 +378,8 @@ if ($OPTIONS{'version'})
 elsif ($ARGV[0] eq 'help' or $OPTIONS{'help'})
 {
   print "$USAGE";
-  use FindBin qw($Bin);
-  docmd("pod2text < $Bin/$0 |" .
+  use FindBin qw($Bin $Script);
+  docmd("pod2text < $Bin/$Script |" .
 	"sed -n -e '/^DESCRIPTION/,/^BUGS/H'" .
 	" -e '/^BUGS/{x;s/\\n[[:upper:]]*/\\n/g;s/\\n\\n/\\n/;p;}'");
   exit;
@@ -1045,8 +1045,11 @@ of some of the administrative git commands which are executed.
 =head2 subcommand args...
 
 Run the specified git command (with associated arguments) on the
-repository and all slave repositories.  See OVERVIEW for more
-information on specific subcommands.
+repository and all slave repositories.  Typically they are git
+commands run over each slave, but there are gits specific commands
+such as: pulls, checkouts, resolves, inits, clones, execs, and
+update-remote-url, .  See OVERVIEW for more information on specific
+subcommands.
 
 =head1 BUGS
 
