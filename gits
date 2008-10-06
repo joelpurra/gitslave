@@ -372,7 +372,13 @@ if ($OPTIONS{'version'})
   else
   {
     print "gits version $version\n";
-    docmd("git --version");
+    my ($vret,$vers) = getcmd("git --version");
+    if ($vret || ($vers !~ /version ([2-9]|1\.[6-9])/))
+    {
+      print STDERR "git version >= 1.6 required!\n";
+      $returncode = 1;
+    }
+    print $vers;
   }
 }
 elsif ($ARGV[0] eq 'help' or $OPTIONS{'help'})
