@@ -27,11 +27,27 @@ use File::Path;
 our($GITSLAVE) = $ENV{'GITSLAVE'}||GITSLAVE;
 our($GITS_DIR);
 our(@slaves);
-my($USAGE) = "usage: gits [--version] [--no-master] [--no-commit] [--press-on] [-v|--verbose]+ [--quiet] [--help] <subcommand> [args]...\n";
+my($USAGE) = "usage: gits [--version] [--no-master] [--no-commit] [--keep-going] [-v|--verbose]+ [--quiet] [--help] <subcommand> [args]...\n";
 our(%OPTIONS);
 my ($returncode) = 0;
 delete($ENV{'GIT_DIR'});
 
+
+######################################################################
+#
+# Translate wait status ($?) into human-readable terms
+#
+sub exitcode(;$)
+{
+  my ($ret) = @_;
+  $ret = $? if !defined($ret);
+
+  if ($ret & 127)
+  {
+    return "killed by signal " . ($ret & 127);
+  }
+  return "exit " . ($ret >> 8);
+}
 
 ######################################################################
 #
@@ -44,7 +60,7 @@ sub docmd($)
   $cmd .= " 2>/dev/null" if ($OPTIONS{'quiet'});
   print STDERR "Running command: `$cmd`\n" if ($OPTIONS{'verbose'} > 1);
   system($cmd);
-  print STDERR "Command returned: $?\n" if ($OPTIONS{'verbose'} > 1);
+  print STDERR "Command " . exitcode() . "\n" if ($OPTIONS{'verbose'} > 1);
   $? == 0;
 }
 
@@ -65,7 +81,7 @@ sub getcmd($)
   {
     my $tout = $out;
     chomp($tout);
-    print STDERR "Command returned: ($?, $tout)\n";
+    print STDERR "Command " . exitcode() . "\n ($tout)\n";
   }
 
   wantarray?($?, $out):$out;
@@ -123,6 +139,18 @@ sub resolve_repository($)
 
 ######################################################################
 #
+# check whether command requires slave configuration
+#
+sub ephemeral_command($)
+{
+  my ($cmd) = @_;
+  return ($cmd eq "prepare" or $cmd eq "resolve" or $cmd eq "help");
+}
+
+
+
+######################################################################
+#
 # Get list of currently configured slaves
 #
 sub git_slave_list($)
@@ -136,7 +164,7 @@ sub git_slave_list($)
     if (!open(R, "<", $slavefile))
     {
       die "Could not find $slavefile file\n"
-	unless (!defined($cmd) or $cmd eq "inits" or $cmd eq "help" or $cmd eq "resolves");
+	unless (!defined($cmd) or ephemeral_command($cmd));
       next;
     }
     my ($lineno) = 1;
@@ -149,6 +177,26 @@ sub git_slave_list($)
     close(R);
   }
   @gits;
+}
+
+
+
+######################################################################
+#
+# Check for presence of slave
+#
+my ($warngitslavesync) = 0;
+
+sub missing_slave($)
+{
+  my ($slave) = @_;
+  if (!-d $slave)
+  {
+    warn "Missing one or more git slaves including $slave, consider 'gits populate'.\n" unless ($warngitslavesync);
+    $warngitslavesync++;
+    return 1;
+  }
+  return 0;
 }
 
 
@@ -174,9 +222,9 @@ sub quoteit(@)
 
 ######################################################################
 #
-# Checkouts, clone projects listed in .gitslaves
+# Populate - clone projects listed in .gitslaves
 #
-sub do_checkouts(;$)
+sub do_populate(;$)
 {
   my ($nocheckout)=@_;
   my $curbranch;
@@ -189,7 +237,7 @@ sub do_checkouts(;$)
 
     if (! -d $slave)
     {
-      print "gits: Checking out $slave\n" if ($OPTIONS{'verbose'});
+      print "gits: Cloning $slave\n" if ($OPTIONS{'verbose'});
       my ($repos) = resolve_repository($group->[0]);
       docmd(qq^git clone $nocheckout "$repos" "$slave"^) || die "Could not clone $repos onto $slave\n";
 
@@ -234,7 +282,7 @@ sub do_checkout($@)
       @slaves = git_slave_list("checkout");
 
       # New list of slaves might have stuff we need to check out
-      do_checkouts(1);
+      do_populate(1);
     }
   }
   my ($totcnt) = $#slaves + $OPTIONS{'no-master'}?1:2;
@@ -244,13 +292,15 @@ sub do_checkout($@)
   {
     if ($ret != 0)
     {
-      if ($OPTIONS{'press-on'})
+      chomp($msg);
+      my $warn = "gits checkout (@{[join(' ',@args)]}), failed for: '$slave': " . exitcode($ret);
+      if ($OPTIONS{'keep-going'})
       {
-	warn "Failing gits checkout, failed with slave '$slave'.  Pressing on.";
+	warn "Error in $warn (continuing)\n $msg\n";
       }
       else
       {
-	my $diemsg = "Aborting gits checkout (@{[join(' ',@args)]}), failed at '$slave'.  ";
+	my $diemsg = "Aborting $warn\n ";
 	if ($ok)
 	{
 	  $diemsg .= "(ran fine on: $ok, did not run on @{[$totcnt-$okcnt]} other(s); no rollbacks)";
@@ -259,7 +309,7 @@ sub do_checkout($@)
 	{
 	  $diemsg .= "(first entry, no other successfully executed)";
 	}
-	die "$diemsg: $?\n$msg\n";
+	die "$diemsg\n  $msg\n";
       }
     }
     else
@@ -301,7 +351,14 @@ sub do_checkout($@)
 # Main functionality
 #
 Getopt::Long::Configure("bundling", "no_ignore_case", "no_auto_abbrev", "no_getopt_compat", "require_order");
-GetOptions(\%OPTIONS, 'version', 'no-master', 'no-commit', 'press-on', 'verbose|v+', 'quiet', 'help') || die $USAGE;
+GetOptions(\%OPTIONS, 'version', 'no-master', 'no-commit', 'keep-going', 'press-on', 'verbose|v+', 'quiet', 'help') || die $USAGE;
+
+# provide baka terminology compatibility
+my $BAKANAMES = { 'inits' => 'prepare', 'clones' => 'attach',
+		  'checkouts' => 'populate', 'execs' => 'exec',
+		  'resolves' => 'resolve' };
+$ARGV[0] = $BAKANAMES->{$ARGV[0]} if $BAKANAMES->{$ARGV[0]};
+$OPTIONS{'keep-going'} = 1 if $OPTIONS{'press-on'};
 
 die "$USAGE" if ($#ARGV < 0 and !($OPTIONS{'version'} or $OPTIONS{'help'}));
 
@@ -336,8 +393,8 @@ if (-f $GITS_DIR."/".GITSLAVE)
 }
 else
 {
-  die "Must inits gits, could not find @{[GITSLAVE]} file.\n"
-    unless ($#ARGV < 0 or $ARGV[0] eq 'help' or $ARGV[0] eq 'inits' or $ARGV[0] eq 'resolves');
+  die "You must run 'gits prepare', could not find @{[GITSLAVE]}\n"
+    unless ($#ARGV < 0 or ephemeral_command($ARGV[0]));
 }
 
 @slaves = git_slave_list($ARGV[0]);
@@ -391,23 +448,23 @@ elsif ($ARGV[0] eq 'help' or $OPTIONS{'help'})
 	" -e '/^BUGS/{x;s/\\n[[:upper:]]*/\\n/g;s/\\n\\n/\\n/;p;}'");
   exit;
 }
-elsif ($ARGV[0] eq 'inits')
+elsif ($ARGV[0] eq 'prepare')
 {
-  die "Inits requires no arguments\n" if ($#ARGV != 0);
+  die "gits prepare takes no arguments\n" if ($#ARGV != 0);
   $GITS_DIR=$ENV{'GITS_DIR'} || ".";
-  die "Refusing to init, \$GITSLAVE variable is multipath\n" if ($GITSLAVE =~ /, /);
-  die "Refusing to init, $GITS_DIR/@{[$GITSLAVE]} already exists\n" if (-f $GITS_DIR."/".$GITSLAVE);
+  die "Refusing to prepare, \$GITSLAVE variable is multipath\n" if ($GITSLAVE =~ /, /);
+  die "Refusing to prepare, $GITS_DIR/@{[$GITSLAVE]} already exists\n" if (-f $GITS_DIR."/".$GITSLAVE);
   open(W, ">", $GITS_DIR."/".$GITSLAVE) || die "Could not create $GITS_DIR/@{[$GITSLAVE]}\n";
   close(W);
   docmd("git add @{[$GITSLAVE]}");
   docmd(qq^git commit -m "gits creating @{[$GITSLAVE]}" @{[$GITSLAVE]}^) unless ($OPTIONS{'no-commit'});
 }
-elsif ($ARGV[0] eq 'clones')
+elsif ($ARGV[0] eq 'attach')
 {
-  die "Clone requires two arguments <repository> <directory>\n" if ($#ARGV != 2 || !$ARGV[1] || !$ARGV[2]);
+  die "gits attach requires two arguments\nusage: gits attach <repository> <directory>\n" if ($#ARGV != 2 || !$ARGV[1] || !$ARGV[2]);
   my ($repos) = resolve_repository($ARGV[1]);
-  die "Refusing to clones, \$GITSLAVE variable is multipath\n" if ($GITSLAVE =~ /, /);
-  die "Destination already exists\n" if (-e $ARGV[2]);
+  die "Refusing to attach, \$GITSLAVE variable is multipath\n" if ($GITSLAVE =~ /, /);
+  die "Destination ($ARGV[2]) already exists\n" if (-e $ARGV[2]);
   if ($ARGV[2] =~ m:(.*)/(.*):)
   {
     die "Destination ($ARGV[2]) cannot end in a slash" if (length($2) < 1);
@@ -439,15 +496,15 @@ elsif ($ARGV[0] eq 'clones')
     docmd(qq^cd "$ARGV[2]"; git checkout $curbranch^) || die "Branch inconsistency, branch $curbranch does not exist\n";
   }
 }
-elsif ($ARGV[0] eq 'checkouts')
+elsif ($ARGV[0] eq 'populate')
 {
-  die "Checkouts requires no arguments\n" if ($#ARGV != 0);
+  die "gits populate takes no arguments\n" if ($#ARGV != 0);
 
-  do_checkouts();
+  do_populate();
 }
-elsif ($ARGV[0] eq 'resolves')
+elsif ($ARGV[0] eq 'resolve')
 {
-  die "Resolves requires at least one arguments\n" if ($#ARGV < 1);
+  die "gits resolve requires at least one argument\n" if ($#ARGV < 1);
 
   shift(@ARGV);
   foreach my $repos (@ARGV)
@@ -462,7 +519,6 @@ elsif ($ARGV[0] eq 'pulls')
   my (@list) = @slaves;
   unshift(@list,[undef,"."]) unless ($OPTIONS{'no-master'});
   my $oldbranch = (grep(s/\s*\*\s+//, split(/\n/,getcmd("git branch"))))[0];
-  my ($warngitslavesync) = 0;
 
   foreach my $branch (grep(s/branch\.(.*)\.remote=.*/$1/,split(/\n/,getcmd(qq%git config -l%))))
   {
@@ -472,23 +528,20 @@ elsif ($ARGV[0] eq 'pulls')
     {
       my $slave = $group->[1];
 
-      if (!-d $slave)
-      {
-	warn "Missing one or more git slaves including $slave, consider gits checkouts.  Skipping.\n" unless ($warngitslavesync);
-	$warngitslavesync++;
-	next;
-      }
+      next if missing_slave($slave);
 
       my ($ret, $msg) = getcmd(qq^cd $slave && git pull ^.quoteit(@ARGV));
       if ($ret != 0)
       {
-	if ($OPTIONS{'press-on'})
+	chomp($msg);
+	my $warn = "gits pulls, failed on branch $branch for: '$slave': " . exitcode($ret);
+	if ($OPTIONS{'keep-going'})
 	{
-	  warn "Aborting gits pulls, now on branch $branch, failed with slave '$slave'.";
+	  warn "Error in $warn (continuing)\n $msg\n";
 	  next;
 	}
 
-	my $diemsg = "Failing gits pulls, now on branch $branch, for this branch failed at '$slave'.  ";
+	my $diemsg = "Aborting $warn\n ";
 	if ($ok)
 	{
 	  $diemsg .= "(ran fine on: $ok, did not run on @{[$#list-$okcnt]} other(s); no rollbacks)";
@@ -497,7 +550,7 @@ elsif ($ARGV[0] eq 'pulls')
 	{
 	  $diemsg .= "(first entry, no other successfully executed)";
 	}
-	die "$diemsg: $?\n$msg\n";
+	die "$diemsg\n  $msg\n";
       }
       $msg =~ s/Switched to branch.*\n//;
       $msg =~ s/Already on \".*\n//;
@@ -536,7 +589,7 @@ elsif ($ARGV[0] eq 'checkout')
   }
 
 }
-elsif ($ARGV[0] eq 'execs')
+elsif ($ARGV[0] eq 'exec')
 {
   shift(@ARGV);
   my ($ok,$okcnt);
@@ -550,23 +603,21 @@ elsif ($ARGV[0] eq 'execs')
   {
     my $slave = $group->[1];
 
-    if (!-d $slave)
-    {
-      warn "Missing one or more git slaves including $slave, consider gits checkouts.  Skipping.\n" unless ($warngitslavesync);
-      $warngitslavesync++;
-      next;
-    }
+    next if missing_slave($slave);
 
     my ($ret, $msg) = getcmd(qq^cd $slave && ^.quoteit(@ARGV));
     if ($ret != 0)
     {
-      if ($OPTIONS{'press-on'})
+      chomp($msg);
+      my $warn = "gits exec $ARGV[0], failed for: '$slave': " . exitcode($ret);
+
+      if ($OPTIONS{'keep-going'})
       {
-	warn "Failing gits execs $ARGV[0], failed with slave '$slave'.";
+	warn "Error in $warn (continuing)\n $msg\n";
 	next;
       }
 
-      my $diemsg = "Aborting gits execs $ARGV[0], failed at '$slave'.  ";
+      my $diemsg = "Aborting $warn\n ";
       if ($ok)
       {
 	$diemsg .= "(ran fine on: $ok, did not run on @{[$#list-$okcnt]} other(s); no rollbacks)";
@@ -575,7 +626,7 @@ elsif ($ARGV[0] eq 'execs')
       {
 	$diemsg .= "(first entry, no other successfully executed)";
       }
-      die "$diemsg: $?\n$msg\n";
+      die "$diemsg\n  $msg\n";
     }
     $ok .= " $slave";
     $okcnt++;
@@ -599,18 +650,13 @@ elsif ($ARGV[0] eq 'update-remote-url')
   my (%msg);
   my ($warngitslavesync) = 0;
 
-  die "update-remote-url <remote-name> <new-super-url>\n" unless ($name && $url);
+  die "gits update-remote-url requires two arguments\nusage: gits update-remote-url <remote-name> <new-super-url>\n" unless ($name && $url);
 
   foreach my $group (@list)
   {
     my $slave = $group->[1];
 
-    if (!-d $slave)
-    {
-      warn "Missing one or more git slaves including $slave, consider gits checkouts.  Skipping.\n" unless ($warngitslavesync);
-      $warngitslavesync++;
-      next;
-    }
+    next if missing_slave($slave);
 
     my ($thisurl) = $url;
     if ($slave ne ".")
@@ -621,13 +667,16 @@ elsif ($ARGV[0] eq 'update-remote-url')
     my ($ret, $msg) = getcmd(qq^cd $slave; git config "remote.$name.url" "$thisurl"^);
     if ($ret != 0)
     {
-      if ($OPTIONS{'press-on'})
+      chomp($msg);
+      my $warn = "gits $cmd, failed for: '$slave': " . exitcode($ret);
+
+      if ($OPTIONS{'keep-going'})
       {
-	warn "Failing gits $cmd, failed with slave '$slave'.";
+	warn "Error in $warn\n $msg\n";
 	next;
       }
 
-      my $diemsg = "Aborting gits $cmd, failed at '$slave'.  ";
+      my $diemsg = "Aborting $warn\n ";
       if ($ok)
       {
 	$diemsg .= "(ran fine on: $ok, did not run on @{[$#list-$okcnt]} other(s); no rollbacks)";
@@ -636,7 +685,7 @@ elsif ($ARGV[0] eq 'update-remote-url')
       {
 	$diemsg .= "(first entry, no other successfully executed)";
       }
-      die "$diemsg: $?\n$msg\n";
+      die "$diemsg\n  $msg\n";
     }
     $ok .= " $slave";
     $okcnt++;
@@ -664,23 +713,21 @@ elsif ($ARGV[0] eq 'status')
   {
     my $slave = $group->[1];
 
-    if (!-d $slave)
-    {
-      warn "Missing one or more git slaves including $slave, consider gits checkouts.  Skipping.\n" unless ($warngitslavesync);
-      $warngitslavesync++;
-      next;
-    }
+    next if missing_slave($slave);
 
     my ($ret, $msg) = getcmd(qq^cd $slave && git ^.quoteit(@ARGV));
     if ($ret != 0 && $ret != 256)
     {
-      if ($OPTIONS{'press-on'})
+      chomp($msg);
+      my $warn = "gits $ARGV[0], failed for: '$slave': " . exitcode($ret);
+
+      if ($OPTIONS{'keep-going'})
       {
-	warn "Failing gits $ARGV[0], failed with slave '$slave'.";
+	warn "Error in $warn\n $msg\n";
 	next;
       }
 
-      my $diemsg = "Aborting gits $ARGV[0], failed at '$slave'.  ";
+      my $diemsg = "Aborting $warn\n ";
       if ($ok)
       {
 	$diemsg .= "(ran fine on: $ok, did not run on @{[$#list-$okcnt]} other(s); no rollbacks)";
@@ -689,7 +736,7 @@ elsif ($ARGV[0] eq 'status')
       {
 	$diemsg .= "(first entry, no other successfully executed)";
       }
-      die "$diemsg: $?\n$msg\n";
+      die "$diemsg\n  $msg\n";
     }
     elsif ($ret == 256)
     {
@@ -793,7 +840,7 @@ elsif ($ARGV[0] eq 'clean')
 
     if (!-d $slave)
     {
-      warn "Missing one or more git slaves including $slave, consider gits checkouts.  Skipping.\n" unless ($warngitslavesync);
+      warn "Missing one or more git slaves including $slave, consider gits populate.  Skipping.\n" unless ($warngitslavesync);
       $warngitslavesync++;
       next;
     }
@@ -808,13 +855,16 @@ elsif ($ARGV[0] eq 'clean')
     my ($ret, $msg) = getcmd($cmd);
     if ($ret != 0)
     {
-      if ($OPTIONS{'press-on'})
+      chomp($msg);
+      my $warn = "gits $ARGV[0], failed for: '$slave': " . exitcode($ret);
+
+      if ($OPTIONS{'keep-going'})
       {
-	warn "Failing gits clean, failed with slave '$slave'.";
+	warn "Error in $warn\n $msg\n";
 	next;
       }
 
-      my $diemsg = "Aborting gits clean, failed at '$slave'.  ";
+      my $diemsg = "Aborting $warn\n ";
       if ($ok)
       {
 	$diemsg .= "(ran fine on: $ok, did not run on @{[$#list-$okcnt]} other(s); no rollbacks)";
@@ -823,7 +873,7 @@ elsif ($ARGV[0] eq 'clean')
       {
 	$diemsg .= "(first entry, no other successfully executed)";
       }
-      die "$diemsg: $?\n$msg\n";
+      die "$diemsg\n  $msg\n";
     }
     $ok .= " $slave";
     $okcnt++;
@@ -902,24 +952,22 @@ else
   {
     my $slave = $group->[1];
 
-    if (!-d $slave)
-    {
-      warn "Missing one or more git slaves including $slave, consider gits checkouts.  Skipping.\n" unless ($warngitslavesync);
-      $warngitslavesync++;
-      next;
-    }
+    next if missing_slave($slave);
 
     my ($ret, $msg) = getcmd(qq^cd $slave && git ^.quoteit(@ARGV));
     if ($ret != 0 &&
 	!($ARGV[0] eq "commit" && $msg =~ /nothing to commit/))
     {
-      if ($OPTIONS{'press-on'})
+      chomp($msg);
+      my $warn = "gits $ARGV[0], failed for: '$slave': " . exitcode($ret);
+
+      if ($OPTIONS{'keep-going'})
       {
-	warn "Failing gits $ARGV[0], failed with slave '$slave'.";
+	warn "Error in $warn\n $msg\n";
 	next;
       }
 
-      my $diemsg = "Aborting gits $ARGV[0], failed at '$slave'.  ";
+      my $diemsg = "Aborting $warn\n ";
       if ($ok)
       {
 	$diemsg .= "(ran fine on: $ok, did not run on @{[$#list-$okcnt]} other(s); no rollbacks)";
@@ -928,7 +976,7 @@ else
       {
 	$diemsg .= "(first entry, no other successfully executed)";
       }
-      die "$diemsg: $?\n$msg\n";
+      die "$diemsg\n  $msg\n";
     }
     $ok .= " $slave";
     $okcnt++;
@@ -954,7 +1002,7 @@ gits - The git slave repository tool
 
 =head1 SYNOPSIS
 
-gits [--version] [--no-master] [--no-commit] [--press-on] [-v|--verbose]+ [--quiet] [--help] <subcommand> [args]...
+gits [--version] [--no-master] [--no-commit] [--keep-going] [-v|--verbose]+ [--quiet] [--help] <subcommand> [args]...
 
 =head1 OVERVIEW
 
@@ -978,8 +1026,8 @@ Thus, to solve these problems gits was born.  Complexity pain is still
 involved, but the hope is that it is minimized compared to all of the
 other alternatives.
 
-The basic theory is that there are a few sub-commands (inits, clones,
-checkouts) which help set up the meta-project for gits operations.
+The basic theory is that there are a few sub-commands (prepare, attach,
+populate) which help set up the meta-project for gits operations.
 Then, for any git command which is not file specific (git add
 <filename>; git reset <filename>; etc), you should use "gits" instead
 of "git", and the command will run on all repositories in the project.
@@ -1014,20 +1062,20 @@ projects.
   --------------------------------------------------
   git clone ssh://sourcemaster/src/repos/super.git super
   cd super
-  gits init
+  gits prepare
   --------------------------------------------------
 
 
 
 =head3 Add a slave repository to top level master
 
-  gits clone <repository> <localpath>
+  gits attach <repository> <localpath>
 
 Clone the named git repository into the named local directory, and set
 it up for further gits operations.
 
-Typically <localpath> would be a path relative to the top level master
-checkout, for example, a subdirectory in the top level.
+Typically <localpath> would be a path relative to the top level
+working directory, for example, a subdirectory in the top level.
 
 <repository> can also be relative (relative to the URL the top level
 master checkout was cloned from).  It may also be an absolute URL.  If
@@ -1036,22 +1084,21 @@ the master's URL.  Otherwise, it will be relative to the fully
 qualified path.  We will show both in operation in the example.
 
  --------------------------------------------------
- gits clones ../lib1.git lib1
- gits clones ^/src/repos/lib2.git lib2
+ gits attach ../lib1.git lib1
+ gits attach ^/src/repos/lib2.git lib2
  --------------------------------------------------
 
 
 =head3 Check out any new slave modules which someone else might have added
 
-  gits checkouts
+  gits populate
 
 Go through the list of configured slaves and check out (clone) any which have
 not already been retrieved.
 
   --------------------------------------------------
-  gits checkouts
+  gits populate
   --------------------------------------------------
-
 
 
 =head3 Perform a pull operation for all tracked branches
@@ -1070,27 +1117,27 @@ then switch back to the branch you were on.
 
 =head3 Perform an arbitrary command for all tracked branches
 
-  gits execs <command> [args]
+  gits exec <command> [args]
 
 For each slave being tracked by the superproject and the superproject itself,
 cd to the root of the project directory and execute the listed command.
 
   --------------------------------------------------
-  gits execs gitk
+  gits exec gitk
   --------------------------------------------------
 
 
 
-=head3 Print out the URLs for arbitrary repositories like clones takes
+=head3 Print out URLs for arbitrary repositories like those used by attach
 
-  gits resolves <repository>...
+  gits resolve <repository>...
 
 Go through the same process that gits uses for resolving relative
 repository URLs into absolute URLs, for debugging and certain porting
 efforts.
 
   --------------------------------------------------
-  gits resolves ../otherpos
+  gits resolve ../otherpos
   --------------------------------------------------
 
 
@@ -1147,13 +1194,13 @@ will not be needed much.
 
 =head2 --no-commit
 
-This flag requests that gits-internal sub-commands, such as inits or
-clones should not commit their changes after they made them.
+This flag requests that gits-internal sub-commands, such as prepare or
+attach should not commit their changes after they made them.
 
-=head2 --press-on
+=head2 --keep-going
 
 Do not abort when a subsidiary git command fails for most commands,
-instead print a message and continue processing.
+instead print a warning and continue processing.
 
 =head2 --verbose -v
 
@@ -1172,7 +1219,7 @@ of some of the administrative git commands which are executed.
 Run the specified git command (with associated arguments) on the
 repository and all slave repositories.  Typically they are git
 commands run over each slave, but there are gits specific commands
-such as: pulls, checkouts, resolves, inits, clones, execs, and
+such as: prepare, attach, populate, resolve, exec, and
 update-remote-url.  See OVERVIEW for more information on specific
 subcommands.
 

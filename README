@@ -2,7 +2,7 @@ NAME
     gits - The git slave repository tool
 
 SYNOPSIS
-    gits [--version] [--no-master] [--no-commit] [--press-on]
+    gits [--version] [--no-master] [--no-commit] [--keep-going]
     [-v|--verbose]+ [--quiet] [--help] <subcommand> [args]...
 
 OVERVIEW
@@ -25,8 +25,8 @@ OVERVIEW
     involved, but the hope is that it is minimized compared to all of the
     other alternatives.
 
-    The basic theory is that there are a few sub-commands (inits, clones,
-    checkouts) which help set up the meta-project for gits operations. Then,
+    The basic theory is that there are a few sub-commands (prepare, attach,
+    populate) which help set up the meta-project for gits operations. Then,
     for any git command which is not file specific (git add <filename>; git
     reset <filename>; etc), you should use "gits" instead of "git", and the
     command will run on all repositories in the project.
@@ -55,17 +55,17 @@ OVERVIEW
       --------------------------------------------------
       git clone ssh://sourcemaster/src/repos/super.git super
       cd super
-      gits init
+      gits prepare
       --------------------------------------------------
 
    Add a slave repository to top level master
-      gits clone <repository> <localpath>
+      gits attach <repository> <localpath>
 
     Clone the named git repository into the named local directory, and set
     it up for further gits operations.
 
-    Typically <localpath> would be a path relative to the top level master
-    checkout, for example, a subdirectory in the top level.
+    Typically <localpath> would be a path relative to the top level working
+    directory, for example, a subdirectory in the top level.
 
     <repository> can also be relative (relative to the URL the top level
     master checkout was cloned from). It may also be an absolute URL. If the
@@ -74,18 +74,18 @@ OVERVIEW
     path. We will show both in operation in the example.
 
      --------------------------------------------------
-     gits clones ../lib1.git lib1
-     gits clones ^/src/repos/lib2.git lib2
+     gits attach ../lib1.git lib1
+     gits attach ^/src/repos/lib2.git lib2
      --------------------------------------------------
 
    Check out any new slave modules which someone else might have added
-      gits checkouts
+      gits populate
 
     Go through the list of configured slaves and check out (clone) any which
     have not already been retrieved.
 
       --------------------------------------------------
-      gits checkouts
+      gits populate
       --------------------------------------------------
 
    Perform a pull operation for all tracked branches
@@ -100,25 +100,25 @@ OVERVIEW
       --------------------------------------------------
 
    Perform an arbitrary command for all tracked branches
-      gits execs <command> [args]
+      gits exec <command> [args]
 
     For each slave being tracked by the superproject and the superproject
     itself, cd to the root of the project directory and execute the listed
     command.
 
       --------------------------------------------------
-      gits execs gitk
+      gits exec gitk
       --------------------------------------------------
 
-   Print out the URLs for arbitrary repositories like clones takes
-      gits resolves <repository>...
+   Print out URLs for arbitrary repositories like those used by attach
+      gits resolve <repository>...
 
     Go through the same process that gits uses for resolving relative
     repository URLs into absolute URLs, for debugging and certain porting
     efforts.
 
       --------------------------------------------------
-      gits resolves ../otherpos
+      gits resolve ../otherpos
       --------------------------------------------------
 
    Update the URL a remote repository points at
@@ -166,12 +166,12 @@ DESCRIPTION
     not be needed much.
 
   --no-commit
-    This flag requests that gits-internal sub-commands, such as inits or
-    clones should not commit their changes after they made them.
+    This flag requests that gits-internal sub-commands, such as prepare or
+    attach should not commit their changes after they made them.
 
-  --press-on
+  --keep-going
     Do not abort when a subsidiary git command fails for most commands,
-    instead print a message and continue processing.
+    instead print a warning and continue processing.
 
   --verbose -v
     Ask for more information about what is happening. You may repeat the
@@ -187,8 +187,8 @@ DESCRIPTION
     Run the specified git command (with associated arguments) on the
     repository and all slave repositories. Typically they are git commands
     run over each slave, but there are gits specific commands such as:
-    pulls, checkouts, resolves, inits, clones, execs, and update-remote-url.
-    See OVERVIEW for more information on specific subcommands.
+    prepare, attach, populate, resolve, exec, and update-remote-url. See
+    OVERVIEW for more information on specific subcommands.
 
 BUGS
     gits changes directory to the directory where .gitslave exists.

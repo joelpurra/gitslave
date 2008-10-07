@@ -27,16 +27,16 @@ echo Starting gits checks
 echo ----------------------------------------------------------------------
 set -x
 : Configure the git slave setup and upload it
-gits inits
-gits clones ../sub1 sub1
-gits clones ../sub2 sub2
-gits checkouts
+gits prepare
+gits attach ../sub1 sub1
+gits attach ../sub2 sub2
+gits populate
 gits push
 : Someone else gets a copy of the package and git slave config
 git clone $BASE/checkdir/master/top $BASE/checkdir/slave2
 cd ../slave2
 :  Actually instantiate the slaves
-gits checkouts
+gits populate
 gits pull
 :  Make some mods and commit
 date >> datelist
@@ -47,12 +47,12 @@ gits push
 : Get the latest changes, create another slave and publish it
 cd ../slave
 gits pull
-gits clones ../sub3 sub3
+gits attach ../sub3 sub3
 gits push
 : Person2 gets the new slave module
 cd ../slave2
 gits pull
-gits checkouts
+gits populate
 : Create a private branch and do work on it
 cd ../slave
 gits branch privateb
@@ -63,7 +63,7 @@ gits push
 : "Person2 checks, but no changes (and no new branch), makes a change, commits"
 cd ../slave2
 gits pull
-gits checkouts
+gits populate
 gits branch -a
 date >> datelist
 gits commit -a -m "Updating date in top"
