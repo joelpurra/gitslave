@@ -710,6 +710,12 @@ elsif ($ARGV[0] eq 'status')
     $branch = $1 unless ($branch);
     die "Branch ($branch != $1) not identical between @{[$list[0]->[1]]} and $slave\n" unless ($branch eq $1);
 
+    if ($msg =~ s/^\# (Your branch is .*\n)//)
+    {
+      $premove .= $1;
+      $msg =~ s/^\#\s*\n//;
+    }
+
     while ($msg =~ s/^(\# \S.*\n)//)
     {
       my ($group) = $1;
