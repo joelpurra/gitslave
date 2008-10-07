@@ -99,7 +99,7 @@ OVERVIEW
       gits pulls --rebase
       --------------------------------------------------
 
-   Perform a arbtrary command for all tracked branches
+   Perform an arbitrary command for all tracked branches
       gits execs <command> [args]
 
     For each slave being tracked by the superproject and the superproject
@@ -138,9 +138,9 @@ OVERVIEW
 
    Everything else
     All other commands are passed directly though to git, with one command
-    being run per repository. Output summerization is performed so that
+    being run per repository. Output summarizing is performed so that
     multiple repositories with the same git output will only have the git
-    output shown once. `git status` has a more aggressive summerization to
+    output shown once. `git status` has a more aggressive summarizing to
     merge the lists of files in each section.
 
       Examples:
@@ -185,8 +185,10 @@ DESCRIPTION
 
   subcommand args...
     Run the specified git command (with associated arguments) on the
-    repository and all slave repositories. See OVERVIEW for more information
-    on specific subcommands.
+    repository and all slave repositories. Typically they are git commands
+    run over each slave, but there are gits specific commands such as:
+    pulls, checkouts, resolves, inits, clones, execs, and update-remote-url.
+    See OVERVIEW for more information on specific subcommands.
 
 BUGS
     gits changes directory to the directory where .gitslave exists.
@@ -205,12 +207,12 @@ FILES
 
 ENVIRONMENT
   $GITSLAVE
-    Allow overriding on the name of the .gitslave file (for supplimental
+    Allow overriding on the name of the .gitslave file (for supplemental
     activity, the .gitslave file must still exist even if it is not used for
-    this particular operation). Also, allows a comma-space seperated list of
+    this particular operation). Also, allows a comma-space separated list of
     files names, the sum of which will be the list of slaves to use.
 
-    An example ".gitslave, .gitslave-extras" would allow an supplimental
+    An example ".gitslave, .gitslave-extras" would allow an supplemental
     list of slaves for unusual activity (e.g. release tagging) to the normal
     list.
 
@@ -224,7 +226,7 @@ REPORTING BUGS
     Report bugs to <projectbaka@baka.org>
 
 COPYRIGHT
-    Copyright (c) 2008 Seth Robertson. License is similiar to the GNU Lesser
+    Copyright (c) 2008 Seth Robertson. License is similar to the GNU Lesser
     General Public License version 2.1, see LICENSE.TXT for more details.
 
 SEE ALSO
