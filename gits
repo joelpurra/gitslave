@@ -781,11 +781,11 @@ elsif ($ARGV[0] eq 'clean')
   my ($warngitslavesync) = 0;
   my ($commonout);
 
-  my $CLEAN_USAGE = "$ARGV[0] [-dfnqxX] [--] [path]...\n";
+  my $CLEAN_USAGE = "usage: gits clean -f|-n [-dqxX] [--] [path]...\n";
   my %COPTIONS;
   GetOptions(\%COPTIONS, 'd', 'f', 'q', 'n', 'X', 'x') || die $CLEAN_USAGE;
 
-  die "Must set at least one of -n or -f" unless ($COPTIONS{'d'} || $COPTIONS{'n'});
+  die "Must set exactly one of -n or -f\n$CLEAN_USAGE" unless (!$COPTIONS{'f'} != !$COPTIONS{'n'});
 
   foreach my $group (@list)
   {
