@@ -949,7 +949,7 @@ then switch back to the branch you were on.
 
 
 
-=head3 Perform a arbitrary command for all tracked branches
+=head3 Perform an arbitrary command for all tracked branches
 
   gits execs <command> [args]
 
