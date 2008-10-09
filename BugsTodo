@@ -1,3 +1,28 @@
+* Add -n, --dry-run option to display, but not run, subcommands
+
+This is especially useful when trying to understand how this all works.
+Implementing this could be tricky when the output from a git command is
+used to determine what other commands will be run.  We might need an extra
+argument to getcmd() that says 'this command won't change anything, and I
+need the output' and use this to selectively run certain safe commands even
+in -n mode.
+
+
+* Push is very slow
+
+At the cost of thoroughness (missing unpushed commits on branches other
+than current), a command/option that only does a git push when git status
+shows the local repository ahead of the remote branch.
+
+
+* Pull is very slow
+
+Because of the need to contact many repositories (setting up an ssh session
+for each one), doing a pull can be very slow.
+
+Possible solution: run subsidiary pulls in parallel (up to some limit
+specified by -j/--jobs) with default value configured in master repository.
+
 
 * Inconsistent state on an abort is bad
 
