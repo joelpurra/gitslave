@@ -3,7 +3,7 @@
 gits.1: gits
 	pod2man < $^ > $@
 
-install: gits gits.1
+install: gits gits.1 README
 	mkdir -p /usr/local/share/man/man1
 	install -m 444 gits.1 /usr/local/share/man/man1
 	VERSION=`./gits --version`; \
