@@ -8,13 +8,6 @@ need the output' and use this to selectively run certain safe commands even
 in -n mode.
 
 
-* Push is very slow
-
-At the cost of thoroughness (missing unpushed commits on branches other
-than current), a command/option that only does a git push when git status
-shows the local repository ahead of the remote branch.
-
-
 * Pull is very slow
 
 Because of the need to contact many repositories (setting up an ssh session

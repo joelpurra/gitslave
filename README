@@ -136,6 +136,23 @@ OVERVIEW
       gits update-remote-url origin ssh://git/src/git
       --------------------------------------------------
 
+   Push a change to a remote repository
+      gits push [--quick] [standard args]
+
+    This is the standard git push command--with the addition of a --quick
+    option which will only attempt to push for branches which have
+    outstanding changes. For slow connections to large number of slave
+    repositories, the overhead of an empty push can be large.
+
+    However, --quick only checks to see if the CURRENT branch needs to push
+    data. If you have changes on other branches, a slow push is still
+    required, as it is if you are pushing to someplace other than your
+    standard origin.
+
+      --------------------------------------------------
+      gits push --quick
+      --------------------------------------------------
+
    Everything else
     All other commands are passed directly though to git, with one command
     being run per repository. Output summarizing is performed so that
