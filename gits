@@ -30,13 +30,13 @@ my ($progress);
 our($GITSLAVE) = $ENV{'GITSLAVE'}||GITSLAVE;
 our($GITS_DIR);
 our(@slaves);
-my($USAGE) = "usage: gits [--no-progress] [--version] [--no-master] [--no-commit] [--keep-going] [-v|--verbose]+ [--quiet] [--help] <subcommand> [args]...\n";
+my($USAGE) = "usage: gits [--version] [--no-master] [--no-commit] [--keep-going] [--no-progress] [-v|--verbose]+ [--quiet] [--help] <subcommand> [args]...\n";
 our(%OPTIONS);
 my ($returncode) = 0;
 delete($ENV{'GIT_DIR'});
 
-# Some people of stupid enough to have CDPATH turned on and that screws up the formatting.
-undef $ENV{'CDPATH'};
+# Some people are stupid enough to set CDPATH and that screws up the formatting
+delete($ENV{'CDPATH'});
 
 ######################################################################
 #
@@ -1100,7 +1100,7 @@ gits - The git slave repository tool
 
 =head1 SYNOPSIS
 
-gits [--version] [--no-progress] [--no-master] [--no-commit] [--keep-going] [-v|--verbose]+ [--quiet] [--help] <subcommand> [args]...
+gits [--version] [--no-master] [--no-commit] [--keep-going] [--no-progress] [-v|--verbose]+ [--quiet] [--help] <subcommand> [args]...
 
 =head1 OVERVIEW
 
@@ -1150,7 +1150,7 @@ is:
 
 =head3 Initialize a gits project
 
-gits init
+gits prepare
 
 You run this command in the git directory which will be your top level
 master repository (super here).  Typically you would clone this top
@@ -1333,6 +1333,11 @@ Ask for more information about what is happening.  You may repeat the
 flag multiple times to get more information.  Two levels of verbosity
 typically prints the underlying commands being executed and the data
 being returned from them.
+
+=head2 --no-progress
+
+Do not display a progress bar for slow operations.  Currently, these are
+checkout, pulls, and push.
 
 =head2 --quiet
 

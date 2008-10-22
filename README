@@ -2,8 +2,9 @@ NAME
     gits - The git slave repository tool
 
 SYNOPSIS
-    gits [--version] [--no-progress] [--no-master] [--no-commit]
-    [--keep-going] [-v|--verbose]+ [--quiet] [--help] <subcommand> [args]...
+    gits [--version] [--no-master] [--no-commit] [--keep-going]
+    [--no-progress] [-v|--verbose]+ [--quiet] [--help] <subcommand>
+    [args]...
 
 OVERVIEW
     gits is a program which assists in assembling a meta-project from a
@@ -46,7 +47,7 @@ OVERVIEW
       ..../super/lib2
 
    Initialize a gits project
-    gits init
+    gits prepare
 
     You run this command in the git directory which will be your top level
     master repository (super here). Typically you would clone this top level
@@ -201,6 +202,10 @@ DESCRIPTION
     flag multiple times to get more information. Two levels of verbosity
     typically prints the underlying commands being executed and the data
     being returned from them.
+
+  --no-progress
+    Do not display a progress bar for slow operations. Currently, these are
+    checkout, pulls, and push.
 
   --quiet
     Ask for less information, which currently means discarding the STDERR of
