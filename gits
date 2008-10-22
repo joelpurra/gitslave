@@ -22,12 +22,15 @@ use File::Spec;
 use constant GITSLAVE => '.gitslave';
 use Getopt::Long;
 use File::Path;
-
+my ($want_progress,$progress_count) = (0,0);
+eval 'use Term::ProgressBar;';
+undef($want_progress) if ($@);
+my ($progress);
 
 our($GITSLAVE) = $ENV{'GITSLAVE'}||GITSLAVE;
 our($GITS_DIR);
 our(@slaves);
-my($USAGE) = "usage: gits [--version] [--no-master] [--no-commit] [--keep-going] [-v|--verbose]+ [--quiet] [--help] <subcommand> [args]...\n";
+my($USAGE) = "usage: gits [--progress] [--version] [--no-master] [--no-commit] [--keep-going] [-v|--verbose]+ [--quiet] [--help] <subcommand> [args]...\n";
 our(%OPTIONS);
 my ($returncode) = 0;
 delete($ENV{'GIT_DIR'});
@@ -272,6 +275,7 @@ sub do_checkout($@)
   my (%msg);
   my ($group, $slave) = (undef, ".");
 
+
   if (!$OPTIONS{'no-master'})
   {
     my ($cmd) = qq^cd $slave && git checkout ^.quoteit(@args);
@@ -288,6 +292,8 @@ sub do_checkout($@)
     }
   }
   my ($totcnt) = $#slaves + $OPTIONS{'no-master'}?1:2;
+  $progress = Term::ProgressBar->new({remove=>1, count=>($#slaves+1)}) if ($want_progress);
+  $progress->max_update_rate(1) if ($progress);
 
   # Tricky: This backwards loop is designed so that the return code processing can be shared between superproject and slaves
   do
@@ -340,6 +346,8 @@ sub do_checkout($@)
       $cmd .= " >&/dev/null" if ($pushprocessing == 2);
       ($ret, $msg) = getcmd($cmd);
     }
+
+    $progress->update($slavecnt);
   } while ($slavecnt <= $#slaves);
 
   %msg;
@@ -353,7 +361,7 @@ sub do_checkout($@)
 # Main functionality
 #
 Getopt::Long::Configure("bundling", "no_ignore_case", "no_auto_abbrev", "no_getopt_compat", "require_order");
-GetOptions(\%OPTIONS, 'version', 'no-master', 'no-commit', 'keep-going', 'press-on', 'verbose|v+', 'quiet', 'help') || die $USAGE;
+GetOptions(\%OPTIONS, 'progress', 'version', 'no-master', 'no-commit', 'keep-going', 'press-on', 'verbose|v+', 'quiet', 'help') || die $USAGE;
 
 # provide baka terminology compatibility
 my $BAKANAMES = { 'inits' => 'prepare', 'clones' => 'attach',
@@ -400,6 +408,19 @@ else
 }
 
 @slaves = git_slave_list($ARGV[0]);
+
+if ($OPTIONS{'progress'})
+{
+  if (defined($want_progress))
+  {
+    $want_progress = 1;
+  }
+  else
+  {
+    warn "Progress bar unavailable--install Term::ProgressBar\n";
+  }
+}
+
 
 if ($OPTIONS{'version'})
 {
@@ -521,8 +542,12 @@ elsif ($ARGV[0] eq 'pulls')
   my (@list) = @slaves;
   unshift(@list,[undef,"."]) unless ($OPTIONS{'no-master'});
   my $oldbranch = (grep(s/\s*\*\s+//, split(/\n/,getcmd("git branch"))))[0];
+  my @branches = grep(s/branch\.(.*)\.remote=.*/$1/,split(/\n/,getcmd(qq%git config -l%)));
 
-  foreach my $branch (grep(s/branch\.(.*)\.remote=.*/$1/,split(/\n/,getcmd(qq%git config -l%))))
+  $progress = Term::ProgressBar->new({remove=>1, ETA => 'linear', count=>(($#branches + 1)*($#list+1))}) if ($want_progress);
+  $progress->max_update_rate(1) if ($progress);
+
+  foreach my $branch (@branches)
   {
     my (%newmsg) = do_checkout(1, $branch);
 
@@ -560,6 +585,8 @@ elsif ($ARGV[0] eq 'pulls')
       $okcnt++;
       $msg = $newmsg{$slave}.$msg;
       push(@{$msg{$msg}}, "$branch\@$slave");
+
+      $progress->update(++$progress_count) if ($progress);
     }
   }
   foreach my $group (@list)
@@ -590,6 +617,9 @@ elsif ($ARGV[0] eq 'push')
     $quick = 1;
     @ARGV = grep(!/^--quick$/,@ARGV);
   }
+
+  $progress = Term::ProgressBar->new({remove=>1, ETA => 'linear', count=>($#list+1)}) if ($want_progress);
+  $progress->max_update_rate(1) if ($progress);
 
   foreach my $group (@list)
   {
@@ -632,6 +662,8 @@ elsif ($ARGV[0] eq 'push')
     $ok .= " $slave";
     $okcnt++;
     push(@{$msg{$msg}}, $slave);
+
+    $progress->update(++$progress_count) if ($progress);
   }
 
   foreach my $msg (sort { $#{$msg{$a}} <=> $#{$msg{$b}} } keys %msg)
