@@ -30,7 +30,7 @@ my ($progress);
 our($GITSLAVE) = $ENV{'GITSLAVE'}||GITSLAVE;
 our($GITS_DIR);
 our(@slaves);
-my($USAGE) = "usage: gits [--progress] [--version] [--no-master] [--no-commit] [--keep-going] [-v|--verbose]+ [--quiet] [--help] <subcommand> [args]...\n";
+my($USAGE) = "usage: gits [--no-progress] [--version] [--no-master] [--no-commit] [--keep-going] [-v|--verbose]+ [--quiet] [--help] <subcommand> [args]...\n";
 our(%OPTIONS);
 my ($returncode) = 0;
 delete($ENV{'GIT_DIR'});
@@ -292,7 +292,7 @@ sub do_checkout($@)
     }
   }
   my ($totcnt) = $#slaves + $OPTIONS{'no-master'}?1:2;
-  $progress = Term::ProgressBar->new({remove=>1, count=>($#slaves+1)}) if ($want_progress);
+  my ($progress) = Term::ProgressBar->new({remove=>1, count=>($#slaves+1)}) if ($want_progress && !$pushprocessing);
   $progress->max_update_rate(1) if ($progress);
 
   # Tricky: This backwards loop is designed so that the return code processing can be shared between superproject and slaves
@@ -347,7 +347,7 @@ sub do_checkout($@)
       ($ret, $msg) = getcmd($cmd);
     }
 
-    $progress->update($slavecnt);
+    $progress->update($slavecnt) if ($progress);
   } while ($slavecnt <= $#slaves);
 
   %msg;
@@ -361,7 +361,7 @@ sub do_checkout($@)
 # Main functionality
 #
 Getopt::Long::Configure("bundling", "no_ignore_case", "no_auto_abbrev", "no_getopt_compat", "require_order");
-GetOptions(\%OPTIONS, 'progress', 'version', 'no-master', 'no-commit', 'keep-going', 'press-on', 'verbose|v+', 'quiet', 'help') || die $USAGE;
+GetOptions(\%OPTIONS, 'no-progress', 'version', 'no-master', 'no-commit', 'keep-going', 'press-on', 'verbose|v+', 'quiet', 'help') || die $USAGE;
 
 # provide baka terminology compatibility
 my $BAKANAMES = { 'inits' => 'prepare', 'clones' => 'attach',
@@ -409,15 +409,16 @@ else
 
 @slaves = git_slave_list($ARGV[0]);
 
-if ($OPTIONS{'progress'})
+if (!$OPTIONS{'no-progress'})
 {
-  if (defined($want_progress))
+  if (defined($want_progress) && -t STDERR)
   {
     $want_progress = 1;
   }
   else
   {
-    warn "Progress bar unavailable--install Term::ProgressBar\n";
+    #warn "Progress bar unavailable--install Term::ProgressBar\n";
+    1;
   }
 }
 
@@ -1099,7 +1100,7 @@ gits - The git slave repository tool
 
 =head1 SYNOPSIS
 
-gits [--version] [--no-master] [--no-commit] [--keep-going] [-v|--verbose]+ [--quiet] [--help] <subcommand> [args]...
+gits [--version] [--no-progress] [--no-master] [--no-commit] [--keep-going] [-v|--verbose]+ [--quiet] [--help] <subcommand> [args]...
 
 =head1 OVERVIEW
 
@@ -1308,6 +1309,13 @@ example is git-daemon.
 This flag requests that gits only run the listed command on the slave
 repositories and NOT the super/master/top repository.  This probably
 will not be needed much.
+
+=head2 --no-progress
+
+This flag requests that gits NOT print a progress bar, which it does
+by default for slow operations if Term::ProgressBar is loaded.  Slow
+operations are defined as: checkout, pulls, push.  You may use this
+flag for all operations.
 
 =head2 --no-commit
 

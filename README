@@ -2,8 +2,8 @@ NAME
     gits - The git slave repository tool
 
 SYNOPSIS
-    gits [--version] [--no-master] [--no-commit] [--keep-going]
-    [-v|--verbose]+ [--quiet] [--help] <subcommand> [args]...
+    gits [--version] [--no-progress] [--no-master] [--no-commit]
+    [--keep-going] [-v|--verbose]+ [--quiet] [--help] <subcommand> [args]...
 
 OVERVIEW
     gits is a program which assists in assembling a meta-project from a
@@ -181,6 +181,12 @@ DESCRIPTION
     This flag requests that gits only run the listed command on the slave
     repositories and NOT the super/master/top repository. This probably will
     not be needed much.
+
+  --no-progress
+    This flag requests that gits NOT print a progress bar, which it does by
+    default for slow operations if Term::ProgressBar is loaded. Slow
+    operations are defined as: checkout, pulls, push. You may use this flag
+    for all operations.
 
   --no-commit
     This flag requests that gits-internal sub-commands, such as prepare or
