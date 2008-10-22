@@ -1334,11 +1334,6 @@ flag multiple times to get more information.  Two levels of verbosity
 typically prints the underlying commands being executed and the data
 being returned from them.
 
-=head2 --no-progress
-
-Do not display a progress bar for slow operations.  Currently, these are
-checkout, pulls, and push.
-
 =head2 --quiet
 
 Ask for less information, which currently means discarding the STDERR
