@@ -32,6 +32,8 @@ our(%OPTIONS);
 my ($returncode) = 0;
 delete($ENV{'GIT_DIR'});
 
+# Some people of stupid enough to have CDPATH turned on and that screws up the formatting. 
+undef $ENVE{'CDPATH'};
 
 ######################################################################
 #
