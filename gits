@@ -391,7 +391,7 @@ else
       $ino = $S[1];
       @S = stat($GITS_DIR);
     }
-  } while (!-f $GITS_DIR."/".GITSLAVE && $S[0] != $dev && $S[1] != $ino);
+  } while (!-f $GITS_DIR."/".GITSLAVE && $S[0] == $dev && $S[1] != $ino);
 }
 
 # All operations are relative to gitslave base
