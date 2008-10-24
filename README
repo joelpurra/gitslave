@@ -203,10 +203,6 @@ DESCRIPTION
     typically prints the underlying commands being executed and the data
     being returned from them.
 
-  --no-progress
-    Do not display a progress bar for slow operations. Currently, these are
-    checkout, pulls, and push.
-
   --quiet
     Ask for less information, which currently means discarding the STDERR of
     some of the administrative git commands which are executed.
