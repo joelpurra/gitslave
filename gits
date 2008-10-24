@@ -403,7 +403,13 @@ if (-f $GITS_DIR."/".GITSLAVE)
 }
 else
 {
-  die "You must run 'gits prepare', could not find @{[GITSLAVE]}\n"
+  die "Could not find @{[GITSLAVE]}, either you are not inside a meta-module
+or one of its slaves or this is a new meta-module which has not yet
+been configured for gits.  Probably it is the first case so you simply
+need to cd into the correct git checkout with a @{[GITSLAVE]} file, but in
+the rare event that this is a new meta-module, you need run `gits
+prepare` and then a few `gits attach` commands to set up gits for this
+new meta-module.\n";
     unless ($#ARGV < 0 or ephemeral_command($ARGV[0]));
 }
 
