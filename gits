@@ -1054,7 +1054,8 @@ else
 
     my ($ret, $msg) = getcmd(qq^cd $slave && git ^.quoteit(@ARGV));
     if ($ret != 0 &&
-	!($ARGV[0] eq "commit" && $msg =~ /nothing to commit/))
+	!($ARGV[0] eq "commit" && $msg =~ /nothing to commit/) &&
+	!($ARGV[0] eq "stash" && $ARGV[1] eq "apply" && $msg =~ /no valid stashed state found/))
     {
       chomp($msg);
       my $warn = "gits $ARGV[0], failed for: '$slave': " . exitcode($ret);
