@@ -22,6 +22,9 @@ use File::Spec;
 use constant GITSLAVE => '.gitslave';
 use Getopt::Long;
 use File::Path;
+my ($want_parallel) = (0);
+eval 'use Parallel::Iterator;';
+undef($want_parallel) if ($@);
 my ($want_progress,$progress_count) = (0,0);
 eval 'use Term::ProgressBar;';
 undef($want_progress) if ($@);
@@ -30,7 +33,7 @@ my ($progress);
 our($GITSLAVE) = $ENV{'GITSLAVE'}||GITSLAVE;
 our($GITS_DIR);
 our(@slaves);
-my($USAGE) = "usage: gits [--version] [--no-master] [--no-commit] [--keep-going] [--no-progress] [-v|--verbose]+ [--quiet] [--help] <subcommand> [args]...\n";
+my($USAGE) = "usage: gits [--version] [--no-master] [--no-commit] [--keep-going] [--no-progress] [--parallel|-p count][-v|--verbose]+ [--quiet] [--help] <subcommand> [args]...\n";
 our(%OPTIONS);
 my ($returncode) = 0;
 delete($ENV{'GIT_DIR'});
@@ -361,7 +364,7 @@ sub do_checkout($@)
 # Main functionality
 #
 Getopt::Long::Configure("bundling", "no_ignore_case", "no_auto_abbrev", "no_getopt_compat", "require_order");
-GetOptions(\%OPTIONS, 'no-progress', 'version', 'no-master', 'no-commit', 'keep-going', 'press-on', 'verbose|v+', 'quiet', 'help') || die $USAGE;
+GetOptions(\%OPTIONS, 'no-progress', 'version', 'no-master', 'no-commit', 'keep-going', 'parallel|p=i', 'press-on', 'verbose|v+', 'quiet', 'help') || die $USAGE;
 
 # provide baka terminology compatibility
 my $BAKANAMES = { 'inits' => 'prepare', 'clones' => 'attach',
@@ -369,6 +372,9 @@ my $BAKANAMES = { 'inits' => 'prepare', 'clones' => 'attach',
 		  'resolves' => 'resolve' };
 $ARGV[0] = $BAKANAMES->{$ARGV[0]} if $BAKANAMES->{$ARGV[0]};
 $OPTIONS{'keep-going'} = 1 if $OPTIONS{'press-on'};
+
+$want_parallel = $OPTIONS{'parallel'} if (defined($want_parallel));
+$OPTIONS{'no-progress'} = 1 if ($want_parallel);
 
 die "$USAGE" if ($#ARGV < 0 and !($OPTIONS{'version'} or $OPTIONS{'help'}));
 
@@ -552,13 +558,36 @@ elsif ($ARGV[0] eq 'pulls')
   {
     my (%newmsg) = do_checkout(1, $branch);
 
+    my (%results);
+
+    foreach my $group (@list)
+    {
+      my $slave = $group->[1];
+      next if missing_slave($slave);
+
+      my $cmd = qq^cd $slave && git pull ^.quoteit(@ARGV);
+      if ($want_parallel)
+      {
+	$results{$group} = $cmd;
+      }
+      else
+      {
+	$results{$group} = [getcmd($cmd)];
+	$progress->update(++$progress_count) if ($progress);
+      }
+    }
+    if ($want_parallel)
+    {
+      %results = Parallel::Iterator::iterate_as_hash({'workers' => $want_parallel},sub { print STDERR "$_[0] - $_[1]\n"; [getcmd($_[1])] }, \%results);
+    }
+
     foreach my $group (@list)
     {
       my $slave = $group->[1];
 
       next if missing_slave($slave);
 
-      my ($ret, $msg) = getcmd(qq^cd $slave && git pull ^.quoteit(@ARGV));
+      my ($ret, $msg) = @{$results{$group}};
       if ($ret != 0)
       {
 	chomp($msg);
@@ -586,8 +615,6 @@ elsif ($ARGV[0] eq 'pulls')
       $okcnt++;
       $msg = $newmsg{$slave}.$msg;
       push(@{$msg{$msg}}, "$branch\@$slave");
-
-      $progress->update(++$progress_count) if ($progress);
     }
   }
   foreach my $group (@list)
@@ -1101,7 +1128,7 @@ gits - The git slave repository tool
 
 =head1 SYNOPSIS
 
-gits [--version] [--no-master] [--no-commit] [--keep-going] [--no-progress] [-v|--verbose]+ [--quiet] [--help] <subcommand> [args]...
+gits [--version] [--no-master] [--no-commit] [--keep-going] [--parallel count] [--no-progress] [-v|--verbose]+ [--quiet] [--help] <subcommand> [args]...
 
 =head1 OVERVIEW
 
@@ -1317,6 +1344,27 @@ This flag requests that gits NOT print a progress bar, which it does
 by default for slow operations if Term::ProgressBar is loaded.  Slow
 operations are defined as: checkout, pulls, push.  You may use this
 flag for all operations.
+
+=head2 --parallel count
+
+Specify the number of parallel git operations you wish to execute.
+Parallelism is only activated for "push" and "pulls" subcommands.
+This can speed up your processing quite nicely if you have large
+numbers of submodules.
+
+If your repositories are accessed over ssh, you may also wish to
+activate ssh "ControlMaster" multiplexing.
+
+  ssh_config
+  --------------------------------------------------
+  Host git
+     ControlMaster auto
+     ControlPath ~/.ssh/master-%r@%h:%p
+  --------------------------------------------------
+
+However, there currently is a "auto" race condition so the first batch
+of peers do not necessarily take advantage of the multiplexing.
+
 
 =head2 --no-commit
 
