@@ -2,14 +2,14 @@ NAME
     gits - The git slave repository tool
 
 SYNOPSIS
-    gits [--version] [--no-master] [--no-commit] [--keep-going] [--parallel
-    count] [--no-progress] [-v|--verbose]+ [--quiet] [--help] <subcommand>
-    [args]...
+    gits [--version] [--no-master] [--no-commit] [--keep-going]
+    [--no-progress] [-p|--parallel <count>] [-v|--verbose]+ [--quiet]
+    [--help] <subcommand> [args]...
 
 OVERVIEW
-    gits is a program which assists in assembling a meta-project from a
-    number of individual git repositories which you own and operate as if it
-    were one git repository instead of many, similar to how CVS works by
+    gits is a program that assists in assembling a meta-project from a
+    number of individual git repositories which operate as if they were one
+    git repository instead of many, similar to the way that CVS works by
     default and svn (v1.5) can be coerced to work. Some of these individual
     git repositories may be part of other meta-projects as well.
 
@@ -189,13 +189,13 @@ DESCRIPTION
     operations are defined as: checkout, pulls, push. You may use this flag
     for all operations.
 
-  --parallel count
+  --parallel COUNT
     Specify the number of parallel git operations you wish to execute.
     Parallelism is only activated for "push" and "pulls" subcommands. This
-    can speed up your processing quite nicely if you have large numbers of
+    can speed up your processing significantly for large numbers of
     submodules.
 
-    If your repositories are accessed over ssh, you may also wish to
+    If remote repositories are accessed over ssh, you may also wish to
     activate ssh "ControlMaster" multiplexing.
 
       ssh_config
@@ -207,15 +207,16 @@ DESCRIPTION
 
     However, there currently is a "auto" race condition so the first batch
     of peers do not necessarily take advantage of the multiplexing and there
-    have occassionally been spurious errors with this enabled.
+    have occasionally been spurious errors with this enabled.
 
   --no-commit
     This flag requests that gits-internal sub-commands, such as prepare or
     attach should not commit their changes after they made them.
 
   --keep-going
-    Do not abort when a subsidiary git command fails for most commands,
-    instead print a warning and continue processing.
+    Do not abort when any subsidiary git command fails - instead print a
+    warning and continue processing. Some git command failures will still be
+    considered fatal and cause gits to abort.
 
   --verbose -v
     Ask for more information about what is happening. You may repeat the
