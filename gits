@@ -22,12 +22,27 @@ use File::Spec;
 use constant GITSLAVE => '.gitslave';
 use Getopt::Long;
 use File::Path;
+my $eval_errs = '';
 my ($want_parallel) = (0);
 eval 'use Parallel::Iterator;';
-undef($want_parallel) if ($@);
+if ($@)
+{
+  undef($want_parallel);
+  my $err = $@;
+  $err =~ s/\(\@INC [^)]*\)//g;
+  $err =~ s/ at .* line \d+\.//g;
+  $eval_errs .= $err;
+}
 my ($want_progress,$progress_count) = (0,0);
 eval 'use Term::ProgressBar;';
-undef($want_progress) if ($@);
+if ($@)
+{
+  undef($want_progress);
+  my $err = $@;
+  $err =~ s/\(\@INC [^)]*\)//g;
+  $err =~ s/ at .* line \d+\.//g;
+  $eval_errs .= $err;
+}
 my ($progress);
 
 our($GITSLAVE) = $ENV{'GITSLAVE'}||GITSLAVE;
@@ -66,7 +81,7 @@ sub docmd($)
   my ($cmd) = @_;
 
   $cmd .= " 2>/dev/null" if ($OPTIONS{'quiet'});
-  print STDERR "Running command: `$cmd`\n" if ($OPTIONS{'verbose'} > 1);
+  print STDERR "Running command: `$cmd`\n" if ($OPTIONS{'verbose'} > 0);
   system($cmd);
   print STDERR "Command " . exitcode() . "\n" if ($OPTIONS{'verbose'} > 1);
   $? == 0;
@@ -83,7 +98,7 @@ sub getcmd($)
   my ($cmd) = @_;
 
   $cmd = "($cmd) 2>&1";
-  print STDERR "Running command: `$cmd`\n" if ($OPTIONS{'verbose'} > 1);
+  print STDERR "Running command: `$cmd`\n" if ($OPTIONS{'verbose'} > 0);
   my $out = `$cmd`;
   if ($OPTIONS{'verbose'} > 1)
   {
@@ -378,6 +393,8 @@ $OPTIONS{'no-progress'} = 1 if ($want_parallel);
 
 die "$USAGE" if ($#ARGV < 0 and !($OPTIONS{'version'} or $OPTIONS{'help'}));
 
+print STDERR $eval_errs if ($eval_errs ne '' && $OPTIONS{'verbose'} > 1);
+
 # Find GITS_DIR -- location of git slave file
 if ($ENV{'GITS_DIR'} && -f $ENV{'GITS_DIR'}."/".GITSLAVE)
 {				# Use gitslave location user told us
@@ -423,8 +440,18 @@ if (!$OPTIONS{'no-progress'})
   }
   else
   {
-    #warn "Progress bar unavailable--install Term::ProgressBar\n";
-    1;
+    warn "Progress bar unavailable - install Term::ProgressBar" .
+      " (perl-Term-ProgressBar RPM)\n"
+      if ($OPTIONS{'verbose'} > 0);
+  }
+}
+
+if ($OPTIONS{'parallel'})
+{
+  if (!defined($want_parallel))
+  {
+    warn "Parallelism unavailable - install Parallel::Iterator" .
+      " (no RPM exists, use CPAN)\n";
   }
 }
 
