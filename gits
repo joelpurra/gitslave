@@ -614,7 +614,13 @@ elsif ($ARGV[0] eq 'pulls')
       $ok .= " $slave";
       $okcnt++;
       $msg = $newmsg{$slave}.$msg;
-      $msg =~ s/\b$slave\b/%MODULE%/g;
+      if ($slave ne '.')
+      {
+	$msg =~ s/\b$slave\b/%MODULE%/g;
+	my $subslave = $slave;
+	$subslave =~ s=.*/==;
+	$msg =~ s/\b$subslave\b/%MODULE%/g if ($slave ne $subslave);
+      }
       push(@{$msg{$msg}}, "$branch\@$slave");
 
       $progress->update(++$progress_count) if ($progress);
