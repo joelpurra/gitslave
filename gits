@@ -607,6 +607,8 @@ elsif ($ARGV[0] eq 'pulls')
 	{
 	  $diemsg .= "(first entry, no other successfully executed)";
 	}
+	# <TODO>some way for do_checkout to only operate on some slaves</TODO>
+	do_checkout(2, $oldbranch);
 	die "$diemsg\n  $msg\n";
       }
       $msg =~ s/Switched to branch.*\n//;
@@ -626,13 +628,7 @@ elsif ($ARGV[0] eq 'pulls')
       $progress->update(++$progress_count) if ($progress);
     }
   }
-  foreach my $group (@list)
-  {
-    my $slave = $group->[1];
-
-    next unless (-d $slave);
-    do_checkout(2, $oldbranch);
-  }
+  do_checkout(2, $oldbranch);
 
   foreach my $msg (sort { $#{$msg{$a}} <=> $#{$msg{$b}} } keys %msg)
   {
