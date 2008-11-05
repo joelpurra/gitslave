@@ -2,8 +2,8 @@ NAME
     gits - The git slave repository tool
 
 SYNOPSIS
-    gits [--version] [--no-master] [--no-commit] [--keep-going]
-    [--no-progress] [-v|--verbose]+ [--quiet] [--help] <subcommand>
+    gits [--version] [--no-master] [--no-commit] [--keep-going] [--parallel
+    count] [--no-progress] [-v|--verbose]+ [--quiet] [--help] <subcommand>
     [args]...
 
 OVERVIEW
@@ -188,6 +188,26 @@ DESCRIPTION
     default for slow operations if Term::ProgressBar is loaded. Slow
     operations are defined as: checkout, pulls, push. You may use this flag
     for all operations.
+
+  --parallel count
+    Specify the number of parallel git operations you wish to execute.
+    Parallelism is only activated for "push" and "pulls" subcommands. This
+    can speed up your processing quite nicely if you have large numbers of
+    submodules.
+
+    If your repositories are accessed over ssh, you may also wish to
+    activate ssh "ControlMaster" multiplexing.
+
+      ssh_config
+      --------------------------------------------------
+      Host git
+         ControlMaster auto
+         ControlPath ~/.ssh/master-%r@%h:%p
+      --------------------------------------------------
+
+    However, there currently is a "auto" race condition so the first batch
+    of peers do not necessarily take advantage of the multiplexing and there
+    have occassionally been spurious errors with this enabled.
 
   --no-commit
     This flag requests that gits-internal sub-commands, such as prepare or

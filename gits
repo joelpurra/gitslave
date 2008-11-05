@@ -565,20 +565,11 @@ elsif ($ARGV[0] eq 'pulls')
       my $slave = $group->[1];
       next if missing_slave($slave);
 
-      my $cmd = qq^cd $slave && git pull ^.quoteit(@ARGV);
-      if ($want_parallel)
-      {
-	$results{$group} = $cmd;
-      }
-      else
-      {
-	$results{$group} = [getcmd($cmd)];
-	$progress->update(++$progress_count) if ($progress);
-      }
+      $results{$group} = qq^cd $slave && git pull ^.quoteit(@ARGV);
     }
     if ($want_parallel)
     {
-      %results = Parallel::Iterator::iterate_as_hash({'workers' => $want_parallel},sub { print STDERR "$_[0] - $_[1]\n"; [getcmd($_[1])] }, \%results);
+      %results = Parallel::Iterator::iterate_as_hash({'workers' => $want_parallel},sub { [getcmd($_[1])] }, \%results);
     }
 
     foreach my $group (@list)
@@ -587,14 +578,23 @@ elsif ($ARGV[0] eq 'pulls')
 
       next if missing_slave($slave);
 
-      my ($ret, $msg) = @{$results{$group}};
+      my ($ret, $msg);
+      if ($want_parallel)
+      {
+	($ret, $msg) = @{$results{$group}};
+      }
+      else
+      {
+	($ret, $msg) = getcmd($results{$group});
+      }
       if ($ret != 0)
       {
 	chomp($msg);
 	my $warn = "gits pulls, failed on branch $branch for: '$slave': " . exitcode($ret);
-	if ($OPTIONS{'keep-going'})
+	if ($OPTIONS{'keep-going'} || $want_parallel)
 	{
 	  warn "Error in $warn (continuing)\n $msg\n";
+	  $returncode = 2;
 	  next;
 	}
 
@@ -615,6 +615,8 @@ elsif ($ARGV[0] eq 'pulls')
       $okcnt++;
       $msg = $newmsg{$slave}.$msg;
       push(@{$msg{$msg}}, "$branch\@$slave");
+
+      $progress->update(++$progress_count) if ($progress);
     }
   }
   foreach my $group (@list)
@@ -649,6 +651,7 @@ elsif ($ARGV[0] eq 'push')
   $progress = Term::ProgressBar->new({remove=>1, ETA => 'linear', count=>($#list+1)}) if ($want_progress);
   $progress->max_update_rate(1) if ($progress);
 
+  my (%results);
   foreach my $group (@list)
   {
     my $slave = $group->[1];
@@ -660,19 +663,42 @@ elsif ($ARGV[0] eq 'push')
       my ($ret, $msg) = getcmd(qq^cd $slave && git status^);
       if (!($msg =~ /Your branch is /))
       {
-	push(@{$msg{"Skipping push, this branch is up to date.\n"}}, $slave);
+	$results{$group} = [0, "Skipping push, this branch is up to date.\n"];
 	next;
       }
     }
 
-    my ($ret, $msg) = getcmd(qq^cd $slave && git ^.quoteit(@ARGV));
+    $results{$group} = qq^cd $slave && git ^.quoteit(@ARGV);
+  }
+
+  if ($want_parallel)
+  {
+    %results = Parallel::Iterator::iterate_as_hash({'workers' => $want_parallel},sub { [getcmd($_[1])] }, \%results);
+  }
+
+  foreach my $group (@list)
+  {
+    my $slave = $group->[1];
+
+    next if missing_slave($slave);
+
+    my ($ret, $msg);
+    if ($want_parallel)
+    {
+      ($ret, $msg) = @{$results{$group}};
+    }
+    else
+    {
+      ($ret, $msg) = getcmd($results{$group});
+    }
     if ($ret != 0)
     {
       chomp($msg);
       my $warn = "gits $ARGV[0], failed for: '$slave': " . exitcode($ret);
-      if ($OPTIONS{'keep-going'})
+      if ($OPTIONS{'keep-going'} || $want_parallel)
       {
 	warn "Error in $warn (continuing)\n $msg\n";
+	$returncode = 2;
 	next;
       }
 
@@ -739,6 +765,7 @@ elsif ($ARGV[0] eq 'exec')
       if ($OPTIONS{'keep-going'})
       {
 	warn "Error in $warn (continuing)\n $msg\n";
+	$returncode = 2;
 	next;
       }
 
@@ -798,6 +825,7 @@ elsif ($ARGV[0] eq 'update-remote-url')
       if ($OPTIONS{'keep-going'})
       {
 	warn "Error in $warn\n $msg\n";
+	$returncode = 2;
 	next;
       }
 
@@ -849,6 +877,7 @@ elsif ($ARGV[0] eq 'status')
       if ($OPTIONS{'keep-going'})
       {
 	warn "Error in $warn\n $msg\n";
+	$returncode = 2;
 	next;
       }
 
@@ -986,6 +1015,7 @@ elsif ($ARGV[0] eq 'clean')
       if ($OPTIONS{'keep-going'})
       {
 	warn "Error in $warn\n $msg\n";
+	$returncode = 2;
 	next;
       }
 
@@ -1090,6 +1120,7 @@ else
       if ($OPTIONS{'keep-going'})
       {
 	warn "Error in $warn\n $msg\n";
+	$returncode = 2;
 	next;
       }
 
@@ -1363,7 +1394,8 @@ activate ssh "ControlMaster" multiplexing.
   --------------------------------------------------
 
 However, there currently is a "auto" race condition so the first batch
-of peers do not necessarily take advantage of the multiplexing.
+of peers do not necessarily take advantage of the multiplexing and
+there have occassionally been spurious errors with this enabled.
 
 
 =head2 --no-commit
