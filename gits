@@ -444,7 +444,7 @@ if ($OPTIONS{'version'})
     my ($ret,$hash) = getcmd("git log --pretty=format:%H -n 1");
     chomp($hash);
 
-    my ($dret,$desc) = getcmd("git describe --tags $hash 2>/dev/null");
+    my ($dret,$desc) = getcmd("git describe --candidates=1 --tags $hash 2>/dev/null");
     if ($dret)
     {
       $desc = "Untagged ($hash)\n";
