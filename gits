@@ -713,7 +713,7 @@ elsif ($ARGV[0] eq 'push')
     next if missing_slave($slave);
 
     my ($ret, $msg);
-    if ($want_parallel)
+    if ($want_parallel || ref($results{$group}))
     {
       ($ret, $msg) = @{$results{$group}};
     }
