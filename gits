@@ -681,7 +681,7 @@ elsif ($ARGV[0] eq 'push')
   $progress = Term::ProgressBar->new({remove=>1, ETA => 'linear', count=>($#list+1)}) if ($want_progress);
   $progress->max_update_rate(1) if ($progress);
 
-  my (%results);
+  my (%results,%worklist);
   foreach my $group (@list)
   {
     my $slave = $group->[1];
@@ -698,12 +698,12 @@ elsif ($ARGV[0] eq 'push')
       }
     }
 
-    $results{$group} = qq^cd $slave && git ^.quoteit(@ARGV);
+    $worklist{$group} = qq^cd $slave && git ^.quoteit(@ARGV);
   }
 
   if ($want_parallel)
   {
-    %results = Parallel::Iterator::iterate_as_hash({'workers' => $want_parallel},sub { [getcmd($_[1])] }, \%results);
+    %results = Parallel::Iterator::iterate_as_hash({'workers' => $want_parallel},sub { [getcmd($_[1])] }, \%worklist);
   }
 
   foreach my $group (@list)
@@ -719,7 +719,7 @@ elsif ($ARGV[0] eq 'push')
     }
     else
     {
-      ($ret, $msg) = getcmd($results{$group});
+      ($ret, $msg) = getcmd($worklist{$group});
     }
     if ($ret != 0)
     {
