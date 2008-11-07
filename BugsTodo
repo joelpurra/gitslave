@@ -8,13 +8,42 @@ need the output' and use this to selectively run certain safe commands even
 in -n mode.
 
 
+* Git coloring and paging are ineffective for gits
+
+Running `gits diff` doesn't provide automatic coloring or paging, since the
+output of each git diff command is directed into a pipe.  Since the diff
+command is unlikely to be collapsible (except if it is entirely empty),
+having the output collapsing isn't that useful.  Add -C, --no-collapse
+option to disable output duplication collapse
+
+Another way to do this might be to have a direct subcommand; you could then
+say `gits direct git diff` to get direct (uncollapsed) git diff output.
+
+Alternately, have an option to force automatic coloring, and (another to)
+enable automatic paging for gits output (the latter might well be useful
+for many commands).
+
+
 * Pull is very slow
 
 Because of the need to contact many repositories (setting up an ssh session
 for each one), doing a pull can be very slow.
 
-Possible solution: run subsidiary pulls in parallel (up to some limit
-specified by -j/--jobs) with default value configured in master repository.
+This is mitigated by use of -p|--parallel=COUNT option, which runs
+subsidiary pulls in parallel, assuming that you have Parallel::Iterate from
+CPAN installed.  It is an imperfect solution, since there are some race
+conditions, especially if you re-use ssh sessions by adding the following
+to your .ssh/config:
+
+Host git
+        ControlMaster auto
+        ControlPath ~/.ssh/master-%r@%h:%p
+
+and either manually running (ssh -N git&) or wrapping gits in a shell
+script that starts a control master ssh if needed.  (Check an existing
+control path for liveness with `ssh -S $PATH -O check localhost`, and use
+`ssh -S $PATH -O exit localhost` to cleanly terminate one started up for
+gits operation.)
 
 
 * Inconsistent state on an abort is bad
@@ -39,6 +68,14 @@ It can be added, but seemingly it is only going to make things more
 cluttered and confused.
 
 
+* awb/bkmk requires complete rebuild after pulls with multiple branches
+
+In a repository with multiple local tracking branches, `gits pulls` will
+perform a `git checkout` for each branch.  One undesirably side-effect of
+this is that awb/bkmk will detect a (timestamp?) change to the configure
+script or its results, and re-run the entire Baka configure script again.
+
+
 * Complete log history not available in superproject
 
 We could gather slave history and put it in changelog or something, or
@@ -60,3 +97,12 @@ will have to retype once per slave with a change.
 If we could detect this state, we could put up the editor ourselves,
 make a unified template with unified status, and then add the -F flag
 to point at the newly created message
+
+
+* Collapse of redundant messages in output stymied by hash ids
+
+In quite a few commands the presence of different hash ids in each slave
+module generates insignificant differences in the output that prevent them
+from being coalesced.  There is better support for eliminating these in the
+gits pulls command (even there it is probably not complete) but not really
+any for other commands, especially pass-throughs.
