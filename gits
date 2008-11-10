@@ -644,6 +644,7 @@ elsif ($ARGV[0] eq 'pulls')
       $ok .= " $slave";
       $okcnt++;
       $msg = $newmsg{$slave}.$msg;
+      # replace slave module name with %MODULE% to collapse redundant messages
       if ($slave ne '.')
       {
 	$msg =~ s/\b$slave\b/%MODULE%/g;
@@ -651,6 +652,10 @@ elsif ($ARGV[0] eq 'pulls')
 	$subslave =~ s=.*/==;
 	$msg =~ s/\b$subslave\b/%MODULE%/g if ($slave ne $subslave);
       }
+      # remove hash ids in various places to collapse redundant messages
+      $msg =~ s/^ {5}[::xdigit::]{7}\.\.[::xdigit::]{7}/   /g;
+      $msg =~ s/^  Updating [::xdigit::]{7}\.\.[::xdigit::]{7}\n//g;
+      $msg =~ s/(Fast-forwarded \S+) to [::xdigit::]*\./$1/g;
       push(@{$msg{$msg}}, "$branch\@$slave");
 
       $progress->update(++$progress_count) if ($progress);
