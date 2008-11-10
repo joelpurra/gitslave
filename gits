@@ -671,6 +671,93 @@ elsif ($ARGV[0] eq 'pulls')
   }
 
 }
+elsif ($ARGV[0] eq 'pull')
+{
+  my ($ok,$okcnt,%msg);
+  my (@list) = @slaves;
+  unshift(@list,[undef,"."]) unless ($OPTIONS{'no-master'});
+
+  $progress = Term::ProgressBar->new({remove=>1, ETA => 'linear', count=>($#list+1)}) if ($want_progress);
+  $progress->max_update_rate(1) if ($progress);
+
+  my (%results,%worklist);
+  foreach my $group (@list)
+  {
+    my $slave = $group->[1];
+
+    next if missing_slave($slave);
+
+    $worklist{$group} = qq^cd $slave && git ^.quoteit(@ARGV);
+  }
+
+  if ($want_parallel)
+  {
+    %results = Parallel::Iterator::iterate_as_hash({'workers' => $want_parallel},sub { [getcmd($_[1])] }, \%worklist);
+  }
+
+  foreach my $group (@list)
+  {
+    my $slave = $group->[1];
+
+    next if missing_slave($slave);
+
+    my ($ret, $msg);
+    if ($want_parallel || ref($results{$group}))
+    {
+      ($ret, $msg) = @{$results{$group}};
+    }
+    else
+    {
+      ($ret, $msg) = getcmd($worklist{$group});
+    }
+    if ($ret != 0)
+    {
+      chomp($msg);
+      my $warn = "gits $ARGV[0], failed for: '$slave': " . exitcode($ret);
+      if ($OPTIONS{'keep-going'} || $want_parallel)
+      {
+	warn "Error in $warn (continuing)\n $msg\n";
+	$returncode = 2;
+	next;
+      }
+
+      my $diemsg = "Aborting $warn\n ";
+      if ($ok)
+      {
+	$diemsg .= "(ran fine on: $ok, did not run on @{[$#list-$okcnt]} other(s); no rollbacks)";
+      }
+      else
+      {
+	$diemsg .= "(first entry, no other successfully executed)";
+      }
+      die "$diemsg\n  $msg\n";
+    }
+    $ok .= " $slave";
+    $okcnt++;
+    # replace slave module name with %MODULE% to collapse redundant messages
+    if ($slave ne '.')
+    {
+      $msg =~ s/\b$slave\b/%MODULE%/g;
+      my $subslave = $slave;
+      $subslave =~ s=.*/==;
+      $msg =~ s/\b$subslave\b/%MODULE%/g if ($slave ne $subslave);
+    }
+    # remove hash ids in various places to collapse redundant messages
+    $msg =~ s/^ {5}[::xdigit::]{7}\.\.[::xdigit::]{7}/   /g;
+    $msg =~ s/^  Updating [::xdigit::]{7}\.\.[::xdigit::]{7}\n//g;
+    $msg =~ s/(Fast-forwarded \S+) to [::xdigit::]*\./$1/g;
+    push(@{$msg{$msg}}, $slave);
+
+    $progress->update(++$progress_count) if ($progress);
+  }
+
+  foreach my $msg (sort { $#{$msg{$a}} <=> $#{$msg{$b}} } keys %msg)
+  {
+    print "On: ", join(', ',@{$msg{$msg}}), ":\n";
+    $msg =~ s/^/  /mg if (length($msg));
+    print $msg;
+  }
+}
 elsif ($ARGV[0] eq 'push')
 {
   my ($ok,$okcnt,%msg);
