@@ -183,6 +183,10 @@ DESCRIPTION
     repositories and NOT the super/master/top repository. This probably will
     not be needed much.
 
+  --exclude regexp
+    Provide a regular expression which excludes those slaves from
+    consideration from gits commands which it matches.
+
   --no-progress
     This flag requests that gits NOT print a progress bar, which it does by
     default for slow operations if Term::ProgressBar is loaded. Slow

@@ -48,7 +48,7 @@ my ($progress);
 our($GITSLAVE) = $ENV{'GITSLAVE'}||GITSLAVE;
 our($GITS_DIR);
 our(@slaves);
-my($USAGE) = "usage: gits [--version] [--no-master] [--no-commit] [--keep-going] [--no-progress] [-p|--parallel <count>][-v|--verbose]+ [--quiet] [--help] <subcommand> [args]...\n";
+my($USAGE) = "usage: gits [--exclude /slave-regexp/] [--version] [--no-master] [--no-commit] [--keep-going] [--no-progress] [-p|--parallel <count>][-v|--verbose]+ [--quiet] [--help] <subcommand> [args]...\n";
 our(%OPTIONS);
 my ($returncode) = 0;
 delete($ENV{'GIT_DIR'});
@@ -194,6 +194,7 @@ sub git_slave_list($)
     while (<R>)
     {
       next if (/^\s*(?:\#.*)$/);
+      next if ($OPTIONS{'exclude'} && /$OPTIONS{'exclude'}/);
       die "Bad line $lineno in $slavefile\n" unless (/^\"(.*)\" \"(.*)\"$/);
       push(@gits,[$1, $2]);
     }
@@ -379,7 +380,7 @@ sub do_checkout($@)
 # Main functionality
 #
 Getopt::Long::Configure("bundling", "no_ignore_case", "no_auto_abbrev", "no_getopt_compat", "require_order");
-GetOptions(\%OPTIONS, 'no-progress', 'version', 'no-master', 'no-commit', 'keep-going', 'parallel|p=i', 'press-on', 'verbose|v+', 'quiet', 'help') || die $USAGE;
+GetOptions(\%OPTIONS, 'no-progress', 'exclude=s', 'version', 'no-master', 'no-commit', 'keep-going', 'parallel|p=i', 'press-on', 'verbose|v+', 'quiet', 'help') || die $USAGE;
 
 # provide baka terminology compatibility
 my $BAKANAMES = { 'inits' => 'prepare', 'clones' => 'attach',
@@ -1398,6 +1399,11 @@ example is git-daemon.
 This flag requests that gits only run the listed command on the slave
 repositories and NOT the super/master/top repository.  This probably
 will not be needed much.
+
+=head2 --exclude regexp
+
+Provide a regular expression which excludes those slaves from
+consideration from gits commands which it matches.
 
 =head2 --no-progress
 
