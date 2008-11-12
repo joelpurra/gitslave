@@ -653,8 +653,8 @@ elsif ($ARGV[0] eq 'pulls')
 	$msg =~ s/\b$subslave\b/%MODULE%/g if ($slave ne $subslave);
       }
       # remove hash ids in various places to collapse redundant messages
-      $msg =~ s/^ {5}[::xdigit::]{7}\.\.[::xdigit::]{7}/   /g;
-      $msg =~ s/^  Updating [::xdigit::]{7}\.\.[::xdigit::]{7}\n//g;
+      $msg =~ s/\n {3}[::xdigit::]{7}\.\.[::xdigit::]{7}/\n /g;
+      $msg =~ s/\nUpdating [::xdigit::]{7}\.\.[::xdigit::]{7}\n/\n/g;
       $msg =~ s/(Fast-forwarded \S+) to [::xdigit::]*\./$1/g;
       push(@{$msg{$msg}}, "$branch\@$slave");
 
@@ -743,8 +743,8 @@ elsif ($ARGV[0] eq 'pull')
       $msg =~ s/\b$subslave\b/%MODULE%/g if ($slave ne $subslave);
     }
     # remove hash ids in various places to collapse redundant messages
-    $msg =~ s/^ {5}[::xdigit::]{7}\.\.[::xdigit::]{7}/   /g;
-    $msg =~ s/^  Updating [::xdigit::]{7}\.\.[::xdigit::]{7}\n//g;
+    $msg =~ s/\n {3}[::xdigit::]{7}\.\.[::xdigit::]{7}/\n /g;
+    $msg =~ s/\nUpdating [::xdigit::]{7}\.\.[::xdigit::]{7}\n/\n/g;
     $msg =~ s/(Fast-forwarded \S+) to [::xdigit::]*\./$1/g;
     push(@{$msg{$msg}}, $slave);
 
