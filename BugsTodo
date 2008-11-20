@@ -8,6 +8,18 @@ need the output' and use this to selectively run certain safe commands even
 in -n mode.
 
 
+* Gits clean -fdx should provide more warning about deleting unlisted slaves
+
+While gits clean checks for slave directories (that would otherwise get
+removed by git clean -fdx) it should double check for .git directories
+inside any other subdirectories that are not listed as slaves.  Especially
+in a case where GITSLAVE environment variable is used to select different
+sub- and super-sets of slaves, there may be slaves present that aren't in
+the currently active set, and you probably (although not always) don't want
+to remove them.  Another -f argument (or maybe -F?) should be necessary to
+force their removal.
+
+
 * Git coloring and paging are ineffective for gits
 
 Running `gits diff` doesn't provide automatic coloring or paging, since the
@@ -22,6 +34,17 @@ say `gits direct git diff` to get direct (uncollapsed) git diff output.
 Alternately, have an option to force automatic coloring, and (another to)
 enable automatic paging for gits output (the latter might well be useful
 for many commands).
+
+
+* Relative paths aren't handled intelligently by gits add
+
+Right now, `gits add submod/some/thing.c` will just abort, telling you that
+you are trying to do something very tricky that needs to be handled
+manually.  Of course, it is tricky enough that the user will probably botch
+it too, especially if there are multiple submodules (think rh-dist/anaconda
+and jtt).  There should be an intelligent gits add that does something
+other than fail - it has all the necessary information to figure out the
+appropriate slave modules from the pathname.
 
 
 * Pull is very slow
