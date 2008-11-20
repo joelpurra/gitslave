@@ -8,6 +8,18 @@ need the output' and use this to selectively run certain safe commands even
 in -n mode.
 
 
+* Gits clean -fdx should provide more warning about deleting unlisted slaves
+
+While gits clean checks for slave directories (that would otherwise get
+removed by git clean -fdx) it should double check for .git directories
+inside any other subdirectories that are not listed as slaves.  Especially
+in a case where GITSLAVE environment variable is used to select different
+sub- and super-sets of slaves, there may be slaves present that aren't in
+the currently active set, and you probably (although not always) don't want
+to remove them.  Another -f argument (or maybe -F?) should be necessary to
+force their removal.
+
+
 * Git coloring and paging are ineffective for gits
 
 Running `gits diff` doesn't provide automatic coloring or paging, since the
