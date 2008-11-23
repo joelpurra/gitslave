@@ -47,27 +47,6 @@ other than fail - it has all the necessary information to figure out the
 appropriate slave modules from the pathname.
 
 
-* Gits populate doesn't work correctly on non-master branch
-
-When running gits populate on a non-master branch, the checkout fails
-because the local branch doesn't exist:
-
-$ gits branch
-On: ., admincmd, alarmer, antura-dist, arpd, awb-ids, binary-plug, bkmk, conn-plug, constfile-plug, copy-plug, csv-plug, dbtools, exec-plug, genup, libbk, libclc, libdnet, libevent, libpcap, meta-accum-plug, middleearth, miscfeatures-plug, netpcap_tool, network-plug, pcap-plug, pcap-ringdir, perlbk, perlmods, pg-proto-plug, pg-tagset-plug, postgres-plug, postgres, sd2004-plug, ssltools, st-plug, sysd-licensing, sysd-php, tcpdump, tcpslice, upad-plug:
-  * HADIT-1
-
-$ gits populate
-Initialized empty Git repository in /proj/udell/dupuy/awb/rh-dist/.git/
-Checking out files: 100% (152/152), done.
-Switching "" to branch "HADIT-1"
-error: pathspec 'HADIT-1' did not match any file(s) known to git.
-Branch inconsistency, branch HADIT-1 does not exist for rh-dist
-
-This might be aggravated by fact that I have deleted the master branch for
-this checkout - I don't need it, and it speeds up pulls, but I suspect the
-problem would still exist.
-
-
 * Pull is very slow
 
 Because of the need to contact many repositories (setting up an ssh session
