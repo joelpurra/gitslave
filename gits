@@ -269,7 +269,7 @@ sub do_populate(;$)
       if ($curbranch ne "master" && $curbranch !~ /no branch/)
       {
 	print qq^Switching "$ARGV[2]" to branch "$curbranch"\n^;
-	docmd(qq^cd "$slave"; git checkout $curbranch^) || die "Branch inconsistency, branch $curbranch does not exist for $slave\n";
+	docmd(qq^cd "$slave"; git checkout -b $curbranch origin/$curbranch^) || die "Branch inconsistency, branch $curbranch does not exist for $slave\n";
       }
     }
     else
