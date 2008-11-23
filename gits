@@ -480,7 +480,7 @@ if ($OPTIONS{'version'})
     else
     {
       # strip out leading tag alphabetic and space, get just the numbers
-      $desc =~ s/^[A-Za-z_ -]*([0-9][0-9._-]*[0-9]).*/$1/;
+      $desc =~ s/^.*?([0-9][0-9._-]*[0-9]).*/$1/;
       $desc =~ y=/_=--=;
     }
     print $desc;
@@ -494,6 +494,11 @@ if ($OPTIONS{'version'})
       print STDERR "git version >= 1.6 required!\n";
       $returncode = 1;
     }
+    print $vers;
+    ($vret,$vers) = getcmd("perl --version");
+    $vers =~ s/^\n//;
+    $vers =~ s/This is perl,/Perl/;
+    $vers =~ s/\nCopyright.*//s;
     print $vers;
   }
 }
