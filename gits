@@ -305,11 +305,11 @@ sub do_checkout($@)
       ($ret, $msg) = getcmd($cmd);
       if ($ret == 0 && !grep(/^\s*(\*\s+)?$args[0]\s*$/, split(/\n/, $msg)))
       {
-        $cmd = qq^cd $slave && git checkout -b $args[0] origin/$args[0]^;
+	$cmd = qq^cd $slave && git checkout -b $args[0] origin/$args[0]^;
       }
       else
       {
-        $cmd = qq^cd $slave && git checkout $args[0]^;
+	$cmd = qq^cd $slave && git checkout $args[0]^;
       }
     }
     else
