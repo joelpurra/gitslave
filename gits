@@ -285,6 +285,10 @@ sub do_populate(;$)
 #
 # git checkout, gits style
 #
+# pushprocessing: 0 -- want progress bar
+# pushprocessing: 1 -- Print informational messages
+# pushprocessing: 2 -- Do not complain on errors
+#
 sub do_checkout($@)
 {
   my ($pushprocessing,@args) = @_;
@@ -301,7 +305,6 @@ sub do_checkout($@)
     if ($#args == 0 && $args[0] !~ m/^-/)
     {
       $cmd = qq^cd $slave && git branch^;
-      $cmd .= " >&/dev/null" if ($pushprocessing == 2);
       ($ret, $msg) = getcmd($cmd);
       if ($ret == 0 && !grep(/^\s*(\*\s+)?$args[0]\s*$/, split(/\n/, $msg)))
       {
