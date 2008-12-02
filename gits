@@ -286,18 +286,21 @@ sub do_populate(;$)
 # git checkout, gits style
 #
 # pushprocessing: 0 -- want progress bar
-# pushprocessing: 1 -- Print informational messages
-# pushprocessing: 2 -- Do not complain on errors
+# pushprocessing: 1 -- print informational messages, revert to oldbranch on die
+#			(oldbranch is first argument, popped from @args)
+# pushprocessing: 2 -- do not complain on errors
 #
 sub do_checkout($@)
 {
   my ($pushprocessing,@args) = @_;
+  my ($oldbranch);
   my ($ret, $msg) = (0, undef);
   my ($slavecnt) = -1;
   my ($ok, $okcnt);
   my (%msg);
   my ($group, $slave) = (undef, ".");
 
+  $oldbranch = shift(@args) if ($pushprocessing == 1);
 
   if (!$OPTIONS{'no-master'})
   {
@@ -358,6 +361,8 @@ sub do_checkout($@)
 	{
 	  $diemsg .= "(first entry, no other successfully executed)";
 	}
+	# <TODO>try to restore old branch, if desirable/possible</TODO>
+	do_checkout(2, $oldbranch) if ($pushprocessing == 1);
 	die "$diemsg\n  $msg\n";
       }
     }
@@ -611,7 +616,7 @@ elsif ($ARGV[0] eq 'pulls')
 
   foreach my $branch (@branches)
   {
-    my (%newmsg) = do_checkout(1, $branch);
+    my (%newmsg) = do_checkout(1, $oldbranch, $branch);
 
     my (%results);
 
