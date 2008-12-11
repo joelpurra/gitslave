@@ -1,0 +1,141 @@
+#! /usr/bin/perl -w # -*- Perl -*-
+
+use Getopt::Long;
+use Sys::Hostname;
+use File::Basename;
+use strict;
+
+my $progname = basename($0);
+
+my $fetch = 1;
+
+my $USAGE = "Usage: $progname [--remote-branch=BRANCH [--no-fetch] [--git=GIT]\n";
+our(%OPTIONS);
+Getopt::Long::Configure("bundling", "no_ignore_case", "no_auto_abbrev", "no_getopt_compat");
+GetOptions(\%OPTIONS, 'remote-branch=s', 'fetch!', 'git=s', 'help|?') || die $USAGE;
+
+die $USAGE if ($OPTIONS{'help'});
+
+my $master_branch = $OPTIONS{'remote-branch'} || "origin/master";
+
+my $git = $OPTIONS{'git'} || ((-f ".gitslave" )?"gits":"git");
+
+$fetch = $OPTIONS{'fetch'} if (defined($OPTIONS{'fetch'}));
+
+if ($git eq "gits")
+{
+  `$git fetch` unless(!$fetch);
+}
+
+my (@files, $pkgs);
+
+open(GIT, "$git ls-files --full-name --with-tree=${master_branch} -t| ") || die "Could not start $git: %!\n";
+
+while (my $line = <GIT>)
+{
+  chomp($line);
+  $line =~ s/^\s+//;
+
+  next if ($line =~ /^H\s/);
+
+  if ($line =~ /On:\s*([^:]*):\s*$/)
+  {
+    # New On: pkg1,pkg2,...,pkhN: line. Pop all output we've bee buffering (if any)
+    if (@files)
+    {
+      my @output;
+      foreach my $pkg (split(/\s*,\s*/, $pkgs))
+      {
+	foreach my $file_line (@files)
+	{
+	  my($status, $file) = split(/\s+/, $file_line, 2);
+	  push @output, "$status ${pkg}/${file}" if (! -d "${pkg}/${file}");
+	}
+      }
+      print "" . join("\n", @output) . "\n";
+    }
+    $pkgs = $1;
+    @files = ();
+  }
+  else
+  {
+    push @files, "$line";
+  }
+}
+
+if ($git eq "git")
+{
+  # If we're using git, there are no "On: machine:" lines, so there has been no output yet
+  print "" . join("\n", @files) . "\n";
+}
+
+close(GIT) || die "$git did not complete successfully: $!\n";
+
+exit(0);
+
+=pod
+
+=head1 NAME
+
+B<gits-checkup.pl> -- Show the state of a git (or gits) package in a fashion sort of like cvs -n update.
+
+=head1 SYNOPSIS
+
+B<gits-checkup.pl> [--remote-branch=branch [--no-fetch]
+
+=head1 DESCRIPTION
+
+B<gits-checkup.pl> is a perl script which aproximates the output of CVS's
+cvs -n update. By default it fetches the latest code and then prints out
+the status of the working set as compared agasint origin/master. If your
+CWD contains the file F<.gitslave>, <gits-checkup.pl> runs F<gits>,
+otherwise it runs F<git>. You can also specify the correct program with the
+command line option B<--git>.
+
+
+=over 6
+
+=item B<--fetch | --no-fetch>
+
+Specify whether B<gits-checkup.pl> should take the (often lengthy) time to
+do a full fetch. Generally you will want to do this the first time you're
+expecting there might have been a few commits, but then most definitely
+I<not> when rerunning B<gits-checkup.pl> just to refresh your memory.
+
+=over 8
+
+=item B<Default>: on
+
+=back
+
+=item B<--remote-branch>
+
+Specify which remote tracking branch against which to check your working set.
+
+=over 8
+
+=item B<Default>: F<origin/master>
+
+=back
+
+=item B<--git>
+
+Specify the path to the B<git> or B<gits> program to use.
+
+=over 8
+
+=item B<Default>: None
+
+=back
+
+=back
+
+=head1 SEE ALSO
+
+F<git>(1) F<gits>(1)
+
+=head1 BUGS
+
+Well let's face it. This is a pretty damned simple script.
+
+=cut
