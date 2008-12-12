@@ -22,14 +22,11 @@ my $git = $OPTIONS{'git'} || ((-f ".gitslave" )?"gits":"git");
 
 $fetch = $OPTIONS{'fetch'} if (defined($OPTIONS{'fetch'}));
 
-if ($git eq "gits")
-{
-  `$git fetch` unless(!$fetch);
-}
+system("$git fetch") unless(!$fetch);
 
 my (@files, $pkgs);
 
-open(GIT, "$git ls-files --full-name --with-tree=${master_branch} -t| ") || die "Could not start $git: %!\n";
+open(GIT, "$git ls-files --full-name --with-tree=${master_branch} -m| ") || die "Could not start $git: %!\n";
 
 while (my $line = <GIT>)
 {
