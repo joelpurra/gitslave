@@ -1075,7 +1075,7 @@ elsif ($ARGV[0] eq 'status')
 	}
 	elsif ($line =~ /(\#\s+)(.+)/)
 	{
-	  $line = "$1$2 (cd $slave)\n";
+	  $line = "$1$slave/$2 # Do not git(s) add this path\n";
 	}
 	else
 	{
