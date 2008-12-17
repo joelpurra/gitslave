@@ -67,6 +67,27 @@ This might be aggravated by fact that I have deleted the master branch for
 this checkout - I don't need it, and it speeds up pulls, but I suspect the
 problem would still exist.
 
+    The problem seems to be if master has a local branch (HADIT-1) and
+    you perhaps adjust the GITSLAVE or .gitslave (or failed to create
+    the local branch using gits), git populate fails because the new
+    children do not have the HADIT-1 branch.
+
+    The fix did not handle this case, it created the HADIT-1 branch on the
+    top level without the request of the user, but then failed to create
+    the branch for any of the children.
+
+    In any case, gits has no business creating branches without an
+    explicit request.  golden-build is attempting to check out a tag
+    (a perfectly valid way to operate) but this change made the top
+    level attempt to create a local branch from a tag, which really
+    cannot work. .  What I could see being legal would be, if the top
+    level repo had a local branch and the slave did not, perhaps
+    automatically creating the local branch for the slave, but even
+    this is fallable.  Branch and tag operations are really important
+    to create correctly the first time instead of updating them
+    piecemeal.  Expecting gits to intuit what the user wanted to have
+    happen is likely to be very challenging and error-prone.
+
 
 * Pull is very slow
 
@@ -80,14 +101,24 @@ conditions, especially if you re-use ssh sessions by adding the following
 to your .ssh/config:
 
 Host git
-        ControlMaster auto
-        ControlPath ~/.ssh/master-%r@%h:%p
+	ControlMaster auto
+	ControlPath ~/.ssh/master-%r@%h:%p
 
 and either manually running (ssh -N git&) or wrapping gits in a shell
 script that starts a control master ssh if needed.  (Check an existing
 control path for liveness with `ssh -S $PATH -O check localhost`, and use
 `ssh -S $PATH -O exit localhost` to cleanly terminate one started up for
 gits operation.)
+
+
+* Pulls is even slower
+
+Because it needs to run a pull on each branch, it slows it down even
+more.  In theory, only the first operation needs to communicate with
+the network.  The others should be able to just do a local
+merge/rebase.  However, the manual page has tantalizing hints that pull
+has some magic interaction with merge/rebase which might make that
+a slightly different operation.
 
 
 * Inconsistent state on an abort is bad
