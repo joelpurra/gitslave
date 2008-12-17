@@ -52,6 +52,7 @@ my($USAGE) = "usage: gits [--exclude /slave-regexp/] [--version] [--no-master] [
 our(%OPTIONS);
 my ($returncode) = 0;
 delete($ENV{'GIT_DIR'});
+our($fromcheckout);
 
 # Some people are stupid enough to set CDPATH and that screws up the formatting
 delete($ENV{'CDPATH'});
@@ -114,11 +115,11 @@ sub getcmd($)
 
 ######################################################################
 #
-# Find the absolute path to repository (relatives are relative to local repository)
+# Find the absolute path to repository (relatives are relative to upstream repository)
 #
-sub resolve_repository($)
+sub resolve_repository($$)
 {
-  my ($repos) = @_;
+  my ($repos,$relative) = @_;
 
   # Check for already absolute
   return $repos if ($repos =~ m-^(/|\w+:/)-);
@@ -134,27 +135,35 @@ sub resolve_repository($)
 
   # Nuke trailing .git, if necessary
   $master_repo =~ s:/.git$::;
-  my ($mprefix, $msuffix) = ("", $master_repo);
-  ($mprefix, $msuffix) = ($1, $2) if ($repos =~ m-^(\w+:(?://[^/]*|))(.*)-);
 
-  # Is this repository-relative? (keep method://host from master)
-  if ($repos =~ m:^\^(/.*):)
+  if ($fromcheckout)
   {
-    return "$mprefix$1";
+    $repos = "$master_repo/$relative";
   }
-
-  # Do we have a replacement method://?  (Seems like an unlikely case)
-  if ($prefix)
+  else
   {
-    $master_repo = $prefix.$msuffix;
-  }
+    my ($mprefix, $msuffix) = ("", $master_repo);
+    ($mprefix, $msuffix) = ($1, $2) if ($repos =~ m-^(\w+:(?://[^/]*|))(.*)-);
 
-  # Handle smushing together, relative paths, etc
-  $repos = "$master_repo/$suffix";
-  while ($repos =~ s:/\./:/:) {;}
-  while ($repos =~ s:/[^/]+?/\.\./:/:) {;}
-  while ($repos =~ s-(^\w+://.*)//-$1-g) {;}
-  while ($repos !~ m-^\w+://- && $repos =~ s://:/:g) {;}
+    # Is this repository-relative? (keep method://host from master)
+    if ($repos =~ m:^\^(/.*):)
+    {
+      return "$mprefix$1";
+    }
+
+    # Do we have a replacement method://?  (Seems like an unlikely case)
+    if ($prefix)
+    {
+      $master_repo = $prefix.$msuffix;
+    }
+
+    # Handle smushing together, relative paths, etc
+    $repos = "$master_repo/$suffix";
+    while ($repos =~ s:/\./:/:) {;}
+    while ($repos =~ s:/[^/]+?/\.\./:/:) {;}
+    while ($repos =~ s-(^\w+://.*)//-$1-g) {;}
+    while ($repos !~ m-^\w+://- && $repos =~ s://:/:g) {;}
+  }
   $repos;
 }
 
@@ -181,6 +190,10 @@ sub git_slave_list($)
   my ($cmd) = @_;
   my (@gits);
 
+  # Discover the current fromcheckout status
+  my $thisfromcheckout = `git config gits.fromcheckout`;
+  $fromcheckout = 1 if ($thisfromcheckout && $thisfromcheckout ne "false");
+
   foreach my $slavefile (split(/, /,$GITSLAVE))
   {
     $slavefile = "$GITS_DIR/$slavefile";
@@ -201,6 +214,27 @@ sub git_slave_list($)
     close(R);
   }
   @gits;
+}
+
+
+
+######################################################################
+#
+# Configure persistent fromcheckout
+#
+sub set_fromcheckout($)
+{
+  if ($_[0])
+  {
+    `git config gits.fromcheckout 1`;
+    $fromcheckout = 1;
+  }
+  else
+  {
+    `git config --unset gits.fromcheckout`;
+    $fromcheckout = 0;
+  }
+  $? == 0;
 }
 
 
@@ -262,7 +296,7 @@ sub do_populate(;$)
     if (! -d $slave)
     {
       print "gits: Cloning $slave\n" if ($OPTIONS{'verbose'});
-      my ($repos) = resolve_repository($group->[0]);
+      my ($repos) = resolve_repository($group->[0],$group->[1]);
       docmd(qq^git clone $nocheckout "$repos" "$slave"^) || die "Could not clone $repos onto $slave\n";
 
       $curbranch = (grep(s/\s*\*\s+//, split(/\n/,getcmd("git branch"))))[0] unless ($curbranch);
@@ -535,7 +569,7 @@ elsif ($ARGV[0] eq 'prepare')
 elsif ($ARGV[0] eq 'attach')
 {
   die "gits attach requires two arguments\nusage: gits attach <repository> <directory>\n" if ($#ARGV != 2 || !$ARGV[1] || !$ARGV[2]);
-  my ($repos) = resolve_repository($ARGV[1]);
+  my ($repos) = resolve_repository($ARGV[1],$ARGV[2]);
   die "Refusing to attach, \$GITSLAVE variable is multipath\n" if ($GITSLAVE =~ /, /);
   die "Destination ($ARGV[2]) already exists\n" if (-e $ARGV[2]);
   if ($ARGV[2] =~ m:(.*)/(.*):)
@@ -571,19 +605,39 @@ elsif ($ARGV[0] eq 'attach')
 }
 elsif ($ARGV[0] eq 'populate')
 {
-  die "gits populate takes no arguments\n" if ($#ARGV != 0);
+  if (grep(/^--fromcheckout$/,@ARGV))
+  {
+    set_fromcheckout(1);
+    @ARGV = grep(!/^--fromcheckout$/,@ARGV);
+  }
+
+  if (grep(/^--no-fromcheckout$/,@ARGV))
+  {
+    set_fromcheckout(0);
+    @ARGV = grep(!/^--no-fromcheckout$/,@ARGV);
+  }
+
+  die "gits populate takes no arguments except possibly --fromcheckout\n" if ($#ARGV != 0);
 
   do_populate();
 }
 elsif ($ARGV[0] eq 'resolve')
 {
-  die "gits resolve requires at least one argument\n" if ($#ARGV < 1);
-
-  shift(@ARGV);
-  foreach my $repos (@ARGV)
+  if (grep(/^--fromcheckout$/,@ARGV))
   {
-    print resolve_repository($repos)."\n";
+    $fromcheckout = 1;
+    @ARGV = grep(!/^--fromcheckout$/,@ARGV);
   }
+
+  if (grep(/^--no-fromcheckout$/,@ARGV))
+  {
+    $fromcheckout = 0;
+    @ARGV = grep(!/^--no-fromcheckout$/,@ARGV);
+  }
+
+  die "gits resolve requires exactly two arguments\n" if ($#ARGV ne 2);
+
+  print resolve_repository($ARGV[1], $ARGV[2])."\n";
 }
 elsif ($ARGV[0] eq 'pulls')
 {
@@ -933,6 +987,19 @@ elsif ($ARGV[0] eq 'exec')
 }
 elsif ($ARGV[0] eq 'update-remote-url')
 {
+  $fromcheckout = 0;
+  if (grep(/^--fromcheckout$/,@ARGV))
+  {
+    $fromcheckout = 1;
+    @ARGV = grep(!/^--fromcheckout$/,@ARGV);
+  }
+
+  if (grep(/^--no-fromcheckout$/,@ARGV))
+  {
+    $fromcheckout = 0;
+    @ARGV = grep(!/^--no-fromcheckout$/,@ARGV);
+  }
+
   my ($cmd,$name,$url) = @ARGV;
   my ($ok,$okcnt);
   my (@list) = @slaves;
@@ -940,7 +1007,18 @@ elsif ($ARGV[0] eq 'update-remote-url')
   my (%msg);
   my ($warngitslavesync) = 0;
 
-  die "gits update-remote-url requires two arguments\nusage: gits update-remote-url <remote-name> <new-super-url>\n" unless ($name && $url);
+  unless ($name && $url)
+  {
+    my $example = `git config remote.origin.url`;
+
+    if ($example)
+    {
+      my ($from) = $fromcheckout?"--fromcheckout":"";
+      $example = "Example: gits update-remote-url $fromcheckout origin $example\n"
+    }
+
+    die "gits update-remote-url requires two arguments\nusage: gits update-remote-url <remote-name> <new-super-url>\n$example";
+  }
 
   foreach my $group (@list)
   {
@@ -951,7 +1029,7 @@ elsif ($ARGV[0] eq 'update-remote-url')
     my ($thisurl) = $url;
     if ($slave ne ".")
     {
-      $thisurl = resolve_repository($group->[0]);
+      $thisurl = resolve_repository($group->[0],$group->[1]);
     }
 
     my ($ret, $msg) = getcmd(qq^cd $slave; git config "remote.$name.url" "$thisurl"^);
@@ -990,6 +1068,7 @@ elsif ($ARGV[0] eq 'update-remote-url')
     $msg =~ s/^/  /mg if (length($msg));
     print $msg;
   }
+  set_fromcheckout($fromcheckout);
 }
 elsif ($ARGV[0] eq 'status')
 {
@@ -1386,10 +1465,13 @@ qualified path.  We will show both in operation in the example.
 
 =head3 Check out any new slave modules which someone else might have added
 
-  gits populate
+  gits [--fromcheckout] populate
 
 Go through the list of configured slaves and check out (clone) any which have
 not already been retrieved.
+
+With --fromcheckout, assume that the remote repository is a gits checkout
+instead of in standard repository layout.
 
   --------------------------------------------------
   gits populate
@@ -1425,25 +1507,32 @@ cd to the root of the project directory and execute the listed command.
 
 =head3 Print out URLs for arbitrary repositories like those used by attach
 
-  gits resolve <repository>...
+  gits resolve [--[no-]fromcheckout] <repository> <local_relpath>
 
 Go through the same process that gits uses for resolving relative
 repository URLs into absolute URLs, for debugging and certain porting
 efforts.
 
+With --fromcheckout, pretend that the repository is a clone of another gits
+checkout.  With --no-fromcheckout, pretend it is not a clone of another gits
+checkout.  By default it uses the current cloning status.
+
   --------------------------------------------------
-  gits resolve ../otherpos
+  gits resolve ../otherpos otherpos
   --------------------------------------------------
 
 
 
 =head3 Update the URL a remote repository points at
 
-  gits update-remote-url <remote-name> <url>
+  gits update-remote-url [--fromcheckout] <remote-name> <url>
 
 Update the super-project's remote.name.url using the url and remote
 name listed above.  Then go though each slave repository and update
 its url using the normal relative url mechanism.
+
+--clone supports using a gits checkout as the upstream repository
+adjusting the repository paths from their default.
 
 Very useful when making another copy of a local repository mirroring a
 remote repository which you wish to have the copy also point to the
@@ -1452,6 +1541,8 @@ remote repository.
   --------------------------------------------------
   gits update-remote-url origin ssh://git/src/git
   --------------------------------------------------
+
+
 
 
 
