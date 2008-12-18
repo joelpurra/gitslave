@@ -617,7 +617,7 @@ elsif ($ARGV[0] eq 'populate')
     @ARGV = grep(!/^--no-fromcheckout$/,@ARGV);
   }
 
-  die "gits populate takes no arguments except possibly --fromcheckout\n" if ($#ARGV != 0);
+  die "gits populate only accepts --(no-)fromcheckout option argument\n" if ($#ARGV != 0);
 
   do_populate();
 }
@@ -635,7 +635,7 @@ elsif ($ARGV[0] eq 'resolve')
     @ARGV = grep(!/^--no-fromcheckout$/,@ARGV);
   }
 
-  die "gits resolve requires exactly two arguments\n" if ($#ARGV ne 2);
+  die "gits resolve requires two non-option arguments\n" if ($#ARGV != 2 || !$ARGV[1] || !$ARGV[2]);
 
   print resolve_repository($ARGV[1], $ARGV[2])."\n";
 }
@@ -1000,14 +1000,7 @@ elsif ($ARGV[0] eq 'update-remote-url')
     @ARGV = grep(!/^--no-fromcheckout$/,@ARGV);
   }
 
-  my ($cmd,$name,$url) = @ARGV;
-  my ($ok,$okcnt);
-  my (@list) = @slaves;
-  unshift(@list,[undef,"."]) unless ($OPTIONS{'no-master'});
-  my (%msg);
-  my ($warngitslavesync) = 0;
-
-  unless ($name && $url)
+  if ($#ARGV != 2 || !$ARGV[1] || !$ARGV[2])
   {
     my $example = `git config remote.origin.url`;
 
@@ -1017,8 +1010,15 @@ elsif ($ARGV[0] eq 'update-remote-url')
       $example = "Example: gits update-remote-url $fromcheckout origin $example\n"
     }
 
-    die "gits update-remote-url requires two arguments\nusage: gits update-remote-url <remote-name> <new-super-url>\n$example";
+    die "gits update-remote-url requires two non-option arguments\nusage: gits update-remote-url <remote-name> <new-super-url>\n$example";
   }
+
+  my ($cmd,$name,$url) = @ARGV;
+  my ($ok,$okcnt);
+  my (@list) = @slaves;
+  unshift(@list,[undef,"."]) unless ($OPTIONS{'no-master'});
+  my (%msg);
+  my ($warngitslavesync) = 0;
 
   foreach my $group (@list)
   {
@@ -1424,6 +1424,7 @@ is:
   ..../super/lib2
 
 
+
 =head3 Initialize a gits project
 
 gits prepare
@@ -1463,19 +1464,24 @@ qualified path.  We will show both in operation in the example.
  --------------------------------------------------
 
 
+
 =head3 Check out any new slave modules which someone else might have added
 
-  gits [--fromcheckout] populate
+  gits [--[no-]fromcheckout] populate
 
 Go through the list of configured slaves and check out (clone) any which have
 not already been retrieved.
 
 With --fromcheckout, assume that the remote repository is a gits checkout
-instead of in standard repository layout.
+instead of in standard repository layout.  With --no-fromcheckout, assume
+that the remote repository has the standard layout.  If either option is
+given, sets the default repository layout, which is used when no explicit
+option is provided.
 
   --------------------------------------------------
   gits populate
   --------------------------------------------------
+
 
 
 =head3 Perform a pull operation for all tracked branches
@@ -1513,9 +1519,12 @@ Go through the same process that gits uses for resolving relative
 repository URLs into absolute URLs, for debugging and certain porting
 efforts.
 
-With --fromcheckout, pretend that the repository is a clone of another gits
-checkout.  With --no-fromcheckout, pretend it is not a clone of another gits
-checkout.  By default it uses the current cloning status.
+With --fromcheckout, resolve URLs as if the repository were a clone of
+another gits checkout.  With --no-fromcheckout, resolve URLs as if it were
+not a clone of another gits checkout.  By default it uses the saved
+repository layout from gits populate or update-remote-url; however gits
+resolve does not change the saved default even if --fromcheckout or
+--no-fromcheckout is given.
 
   --------------------------------------------------
   gits resolve ../otherpos otherpos
@@ -1525,24 +1534,32 @@ checkout.  By default it uses the current cloning status.
 
 =head3 Update the URL a remote repository points at
 
-  gits update-remote-url [--fromcheckout] <remote-name> <url>
+  gits update-remote-url [--[no-]fromcheckout] <remote-name> <url>
 
 Update the super-project's remote.name.url using the url and remote
 name listed above.  Then go though each slave repository and update
 its url using the normal relative url mechanism.
 
---clone supports using a gits checkout as the upstream repository
-adjusting the repository paths from their default.
+The --fromcheckout option supports using a gits checkout as the remote
+repository, adjusting the repository paths from their default.  The
+--no-fromcheckout option assumes a normal repository layout for the
+remote. If neither option is given, the saved repository layout from the
+most recent gits populate or update-remote-url command is used; however,
+this is not generally correct, as the repository layout of the new remote
+need not be the same as the old one.  If either --fromcheckout or
+--no-fromcheckout is given, sets the default repository layout accordingly.
 
-Very useful when making another copy of a local repository mirroring a
-remote repository which you wish to have the copy also point to the
-remote repository.
+You can use this command after a clone of a local repository (or local gits
+checkout, using gits populate --fromcheckout) so that the new repository
+uses the same remote origin as the first one.  (The local clone/populate is
+much faster than performing a remote clone/populate.)
 
   --------------------------------------------------
-  gits update-remote-url origin ssh://git/src/git
+  git clone /home/user/work/awb /home/user/work/newawb
+  cd /home/user/work/newawb
+  gits populate --fromcheckout
+  gits update-remote-url --no-fromcheckout origin ssh://git/src/git/awb
   --------------------------------------------------
-
-
 
 
 

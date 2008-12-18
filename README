@@ -80,13 +80,16 @@ OVERVIEW
      --------------------------------------------------
 
    Check out any new slave modules which someone else might have added
-      gits [--fromcheckout] populate
+      gits [--[no-]fromcheckout] populate
 
     Go through the list of configured slaves and check out (clone) any which
     have not already been retrieved.
 
     With --fromcheckout, assume that the remote repository is a gits
-    checkout instead of in standard repository layout.
+    checkout instead of in standard repository layout. With
+    --no-fromcheckout, assume that the remote repository has the standard
+    layout. If either option is given, sets the default repository layout,
+    which is used when no explicit option is provided.
 
       --------------------------------------------------
       gits populate
@@ -121,30 +124,44 @@ OVERVIEW
     repository URLs into absolute URLs, for debugging and certain porting
     efforts.
 
-    With --fromcheckout, pretend that the repository is a clone of another
-    gits checkout. With --no-fromcheckout, pretend it is not a clone of
-    another gits checkout. By default it uses the current cloning status.
+    With --fromcheckout, resolve URLs as if the repository were a clone of
+    another gits checkout. With --no-fromcheckout, resolve URLs as if it
+    were not a clone of another gits checkout. By default it uses the saved
+    repository layout from gits populate or update-remote-url; however gits
+    resolve does not change the saved default even if --fromcheckout or
+    --no-fromcheckout is given.
 
       --------------------------------------------------
       gits resolve ../otherpos otherpos
       --------------------------------------------------
 
    Update the URL a remote repository points at
-      gits update-remote-url [--clone] <remote-name> <url>
+      gits update-remote-url [--[no-]fromcheckout] <remote-name> <url>
 
     Update the super-project's remote.name.url using the url and remote name
     listed above. Then go though each slave repository and update its url
     using the normal relative url mechanism.
 
-    --clone supports using a gits checkout as the upstream repository
-    adjusting the repository paths from their default.
+    The --fromcheckout option supports using a gits checkout as the remote
+    repository, adjusting the repository paths from their default. The
+    --no-fromcheckout option assumes a normal repository layout for the
+    remote. If neither option is given, the saved repository layout from the
+    most recent gits populate or update-remote-url command is used; however,
+    this is not generally correct, as the repository layout of the new
+    remote need not be the same as the old one. If either --fromcheckout or
+    --no-fromcheckout is given, sets the default repository layout
+    accordingly.
 
-    Very useful when making another copy of a local repository mirroring a
-    remote repository which you wish to have the copy also point to the
-    remote repository.
+    You can use this command after a clone of a local repository (or local
+    gits checkout, using gits populate --fromcheckout) so that the new
+    repository uses the same remote origin as the first one. (The local
+    clone/populate is much faster than performing a remote clone/populate.)
 
       --------------------------------------------------
-      gits update-remote-url origin ssh://git/src/git
+      git clone /home/user/work/awb /home/user/work/newawb
+      cd /home/user/work/newawb
+      gits populate --fromcheckout
+      gits update-remote-url --no-fromcheckout origin ssh://git/src/git/awb
       --------------------------------------------------
 
    Push a change to a remote repository
