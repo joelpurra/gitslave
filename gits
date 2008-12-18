@@ -713,14 +713,18 @@ elsif ($ARGV[0] eq 'pulls')
       $ok .= " $slave";
       $okcnt++;
       $msg = $newmsg{$slave}.$msg;
-      # replace slave module name with %MODULE% to collapse redundant messages
-      if ($slave ne '.')
+      # replace module name with %MODULE% to collapse redundant messages
+      my $mod = $slave;
+      if ($mod eq '.')
       {
-	$msg =~ s/\b$slave\b/%MODULE%/g;
-	my $subslave = $slave;
-	$subslave =~ s=.*/==;
-	$msg =~ s/\b$subslave\b/%MODULE%/g if ($slave ne $subslave);
+	$mod = `git config remote.origin.url`;
+	chomp $mod;
+	$mod =~ s=.*/==;
       }
+      $msg =~ s/\b$mod\b/%MODULE%/g;
+      my $submod = $mod;
+      $submod =~ s=.*/==;
+      $msg =~ s/\b$submod\b/%MODULE%/g if ($mod ne $submod);
       # remove hash ids in various places to collapse redundant messages
       $msg =~ s/\n {3}[0-9a-fA-F]{7}\.\.[0-9a-fA-F]{7} /\n /g;
       $msg =~ s/\nUpdating [0-9a-fA-F]{7}\.\.[0-9a-fA-F]{7}\n/\n/g;
