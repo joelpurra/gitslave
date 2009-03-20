@@ -340,7 +340,7 @@ sub do_checkout($@)
   if (!$OPTIONS{'no-master'})
   {
     my ($cmd) = qq^cd $slave && git checkout ^.quoteit(@args);
-    $cmd .= " >&/dev/null" if ($pushprocessing == 2);
+    $cmd .= " >/dev/null 2>&1" if ($pushprocessing == 2);
     ($ret, $msg) = getcmd($cmd);
 
     if ($ret == 0)
@@ -406,7 +406,7 @@ sub do_checkout($@)
       $slave = $group->[1];
 
       my ($cmd) = qq^cd $slave && git checkout ^.quoteit(@args);
-      $cmd .= " >&/dev/null" if ($pushprocessing == 2);
+      $cmd .= " >/dev/null 2>&1" if ($pushprocessing == 2);
       ($ret, $msg) = getcmd($cmd);
     }
 
