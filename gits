@@ -189,6 +189,7 @@ sub git_slave_list($)
 {
   my ($cmd) = @_;
   my (@gits);
+  my (%seen);
 
   # Discover the current fromcheckout status
   my $thisfromcheckout = `git config gits.fromcheckout`;
@@ -210,7 +211,12 @@ sub git_slave_list($)
       next if ($OPTIONS{'exclude'} && /$OPTIONS{'exclude'}/);
       die "Bad line $lineno in $slavefile\n" unless (/^\"(.*)\" \"(.*)\"( ifpresent)?$/);
       my ($baserel,$ckoutrel,$flags) = ($1,$2,$3);
-      push(@gits,[$baserel, $ckoutrel]) if ($flags !~ /ifpresent/ || -d "$GITS_DIR/$ckoutrel/.");
+
+      if ($flags !~ /ifpresent/ || -d "$GITS_DIR/$ckoutrel/.")
+      {
+	push(@gits,[$baserel, $ckoutrel]) if (!$seen{$ckoutrel});
+	$seen{$ckoutrel} = 1;
+      }
       $lineno++;
     }
     close(R);
