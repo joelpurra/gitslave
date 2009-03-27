@@ -1708,6 +1708,14 @@ The file containing the list of slave repositories (possibly in
 relative form) and the directories relative to the master root where
 they should be checked out.
 
+The format of this file is:
+
+"possibly-relative-repository-path" "top-level-checkout-relative-path"[ flags]
+
+The flags, which are optional, currently can be the value "ifpresent"
+which indicates that gits will only process those modules if the
+top-level-checkout-relative-path is already present.
+
 =head1 ENVIRONMENT
 
 =head2 $GITSLAVE
