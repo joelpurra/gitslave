@@ -208,8 +208,10 @@ sub git_slave_list($)
     {
       next if (/^\s*(?:\#.*)$/);
       next if ($OPTIONS{'exclude'} && /$OPTIONS{'exclude'}/);
-      die "Bad line $lineno in $slavefile\n" unless (/^\"(.*)\" \"(.*)\"$/);
-      push(@gits,[$1, $2]);
+      die "Bad line $lineno in $slavefile\n" unless (/^\"(.*)\" \"(.*)\"( ifpresent)?$/);
+      my ($baserel,$ckoutrel,$flags) = ($1,$2,$3);
+      push(@gits,[$baserel, $ckoutrel]) if ($flags !~ /ifpresent/ || -d "$GITS_DIR/$ckoutrel/.");
+      $lineno++;
     }
     close(R);
   }
