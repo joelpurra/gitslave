@@ -1023,10 +1023,10 @@ elsif ($ARGV[0] eq 'update-remote-url')
     if ($example)
     {
       my ($from) = $fromcheckout?"--fromcheckout":"";
-      $example = "Example: gits update-remote-url $fromcheckout origin $example\n"
+      $example = "Example: gits update-remote-url $from origin $example\n"
     }
 
-    die "gits update-remote-url requires two non-option arguments\nusage: gits update-remote-url <remote-name> <new-super-url>\n$example";
+    die "gits update-remote-url requires two non-option arguments\nusage: gits update-remote-url [--fromcheckout] [--no-fromcheckout] <remote-name> <new-super-url>\n$example";
   }
 
   my ($cmd,$name,$url) = @ARGV;
