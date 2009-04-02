@@ -11,8 +11,8 @@ install: gits gits.1 gits-checkup.1 README
 	 sed "s/{UNTAGGED}/$${VERSION}/" gits > /usr/local/bin/gits
 	chmod 755 /usr/local/bin/gits
 	install -m 755 gits-checkup /usr/local/bin
-	@perl -MTerm::ProgressBar -e 1 &>/dev/null || echo Warning: Missing optional Term::ProgressBar
-	@perl -MParallel::Iterator -e 1 &>/dev/null || echo Warning: Missing optional Parallel::Iterator package
+	@perl -MTerm::ProgressBar -e 1 >/dev/null 2>&1 || echo Warning: Missing optional Term::ProgressBar
+	@perl -MParallel::Iterator -e 1 >/dev/null 2>&1 || echo Warning: Missing optional Parallel::Iterator package
 
 README: gits
 	pod2text < gits > README
