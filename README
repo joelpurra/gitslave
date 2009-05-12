@@ -106,6 +106,19 @@ OVERVIEW
       gits pulls --rebase
       --------------------------------------------------
 
+   Provided unified logging in a fixed output format
+      gits logs <args>
+
+    For each branch being tracked by the superproject, generate a list of
+    the "log" messages as specified by the <args>, and output them in a
+    fixed format (do NOT provide git-log output-modifying arguments) ordered
+    by time with ``related'' commits groups (related by time (8 hour sliding
+    window), identical author, and identical commit message).
+
+      --------------------------------------------------
+      gits logs HEAD...Product-3.1.1
+      --------------------------------------------------
+
    Perform an arbitrary command for all tracked branches
       gits exec <command> [args]
 
@@ -263,8 +276,9 @@ DESCRIPTION
     Run the specified git command (with associated arguments) on the
     repository and all slave repositories. Typically they are git commands
     run over each slave, but there are gits specific commands such as:
-    prepare, attach, populate, resolve, exec, and update-remote-url. See
-    OVERVIEW for more information on specific subcommands.
+    pulls, prepare, attach, populate, resolve, exec, logs, and
+    update-remote-url. See OVERVIEW for more information on specific
+    subcommands.
 
 BUGS
     gits changes directory to the directory where .gitslave exists.

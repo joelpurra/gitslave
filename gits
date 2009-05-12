@@ -1320,6 +1320,80 @@ elsif ($ARGV[0] eq 'clean')
     print $msg;
   }
 }
+elsif ($ARGV[0] eq 'logs')
+{
+  shift(@ARGV);
+  my ($ok,$okcnt);
+  my (@list) = @slaves;
+  unshift(@list,[undef,"."]) unless ($OPTIONS{'no-master'});
+  my (%group,%groupc,@msg,$out);
+  my ($window) = 28800;				# 8 hours
+
+  foreach my $group (@list)
+  {
+    my $slave = $group->[1];
+
+    next if missing_slave($slave);
+
+    my ($ret, $msg) = getcmd(qq^cd $slave && git log --pretty='tformat: %at %h %aE %ar:: %s' ^.quoteit(@ARGV));
+    if ($ret != 0)
+    {
+      chomp($msg);
+      my $warn = "gits exec log, failed for: '$slave': " . exitcode($ret);
+
+      if ($OPTIONS{'keep-going'})
+      {
+	warn "Error in $warn (continuing)\n $msg\n";
+	$returncode = 2;
+	next;
+      }
+
+      my $diemsg = "Aborting $warn\n ";
+      if ($ok)
+      {
+	$diemsg .= "(ran fine on: $ok, did not run on @{[$#list-$okcnt]} other(s); no rollbacks)";
+      }
+      else
+      {
+	$diemsg .= "(first entry, no other successfully executed)";
+      }
+      die "$diemsg\n  $msg\n";
+    }
+    $ok .= " $slave";
+    $okcnt++;
+
+    foreach my $line (split(/\n/,$msg))
+    {
+      chomp($slave);
+      chomp($line);
+      warn "Bad entry on $slave" unless ($line =~ /^\s*(\d+)\s+([[:xdigit:]]+)\s+(\S+)\s+(.*)/);
+      push(@msg, [$1,$2,$slave,$3,$4]);
+    }
+  }
+
+  @msg = sort { my $x; return($x) if ($x = $b->[0] <=> $a->[0]); $b->[2] cmp $a->[2]; } @msg;
+
+  while (my $line = shift(@msg))
+  {
+    $out = "$line->[4] <$line->[3]>\n\t$line->[1] $line->[2]\n";
+    my $i = 0;
+    my $lower = $line->[0] - $window;
+
+    for(;$i <= $#msg && $msg[$i]->[0] > $lower;$i++)
+    {
+      # Require matching committer
+      next if ($line->[4] ne $msg[$i]->[4]);
+
+      # Require matching commit message
+      next if ($line->[5] ne $msg[$i]->[5]);
+
+      $out .= "\t$msg[$i]->[1] $msg[$i]->[2]\n";
+      $lower = $msg[$i]->[0] - $window;
+      splice(@msg,$i--,1);			# Get rid of item we already matched
+    }
+    print "$out\n";
+  }
+}
 else
 {
   my ($ok,$okcnt);
@@ -1514,6 +1588,22 @@ then switch back to the branch you were on.
 
 
 
+=head3 Provided unified logging in a fixed output format
+
+  gits logs <args>
+
+For each branch being tracked by the superproject, generate a list
+of the "log" messages as specified by the <args>, and output them in
+a fixed format (do NOT provide git-log output-modifying arguments)
+ordered by time with ``related'' commits groups (related by time (8 hour
+sliding window), identical author, and identical commit message).
+
+  --------------------------------------------------
+  gits logs HEAD...Product-3.1.1
+  --------------------------------------------------
+
+
+
 =head3 Perform an arbitrary command for all tracked branches
 
   gits exec <command> [args]
@@ -1692,7 +1782,7 @@ of some of the administrative git commands which are executed.
 Run the specified git command (with associated arguments) on the
 repository and all slave repositories.  Typically they are git
 commands run over each slave, but there are gits specific commands
-such as: prepare, attach, populate, resolve, exec, and
+such as: pulls, prepare, attach, populate, resolve, exec, logs, and
 update-remote-url.  See OVERVIEW for more information on specific
 subcommands.
 
