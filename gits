@@ -509,7 +509,7 @@ if ($OPTIONS{'parallel'})
 }
 
 
-if ($OPTIONS{'version'})
+if ($ARGV[0] eq 'version' or $OPTIONS{'version'})
 {
   my $version = "{UNTAGGED}";
 
