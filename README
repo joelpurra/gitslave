@@ -106,14 +106,19 @@ OVERVIEW
       gits pulls --rebase
       --------------------------------------------------
 
-   Provided unified logging in a fixed output format
+   Show unified commit logs in a fixed output format
       gits logs <args>
 
     For each branch being tracked by the superproject, generate a list of
     the "log" messages as specified by the <args>, and output them in a
-    fixed format (do NOT provide git-log output-modifying arguments) ordered
-    by time with ``related'' commits groups (related by time (8 hour sliding
-    window), identical author, and identical commit message).
+    fixed format, with related commits grouped together and ordered by time.
+    Do *not* provide git log options that modify the output format, as they
+    will break the ordering and grouping functionality; only arguments that
+    control the selection of commits should be used.
+
+    The related commit grouping will group together all commits (in any
+    sub-project) within an 8-hour period that have the same author e-mail
+    and commit message.
 
       --------------------------------------------------
       gits logs HEAD...Product-3.1.1
