@@ -18,7 +18,7 @@ README: gits
 	pod2text < gits > README
 
 clean nuke:
-	rm -rf gits.1 checkdir *~ core* \#*
+	rm -rf gits.1 gits-checkup.1 *~ core* \#*
 
 check test:
 	./prep_gitscheck
