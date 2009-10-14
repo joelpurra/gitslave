@@ -48,11 +48,12 @@ my ($progress);
 our($GITSLAVE) = $ENV{'GITSLAVE'}||GITSLAVE;
 our($GITS_DIR);
 our(@slaves);
-my($USAGE) = "usage: gits [--exclude /slave-regexp/] [--version] [--no-master] [--no-commit] [--keep-going] [--no-progress] [-p|--parallel <count>][-v|--verbose]+ [--quiet] [--help] <subcommand> [args]...\n";
+my($USAGE) = "usage: gits [--exclude /slave-regexp/] [--version] [--no-master] [--no-commit] [--keep-going] [--no-progress] [-p|--parallel <count>][-v|--verbose]+ [--quiet] [--help] [-- <git-options>...] <subcommand> [args]...\n";
 our(%OPTIONS);
 my ($returncode) = 0;
 delete($ENV{'GIT_DIR'});
 our($fromcheckout);
+our($git) = 'git';
 
 # Some people are stupid enough to set CDPATH and that screws up the formatting
 delete($ENV{'CDPATH'});
@@ -129,7 +130,7 @@ sub resolve_repository($$)
   ($prefix, $suffix) = ($1, $2) if ($repos =~ m-^(\w+:)(.*)-);
 
   # Find upstream origin URL
-  my ($ret, $master_repo) = getcmd("git config remote.origin.url");
+  my ($ret, $master_repo) = getcmd("$git config remote.origin.url");
   chomp($master_repo);
   die "Could not find git upstream clone which this is relative to\n" unless ($ret == 0 && $master_repo);
 
@@ -192,7 +193,7 @@ sub git_slave_list($)
   my (%seen);
 
   # Discover the current fromcheckout status
-  my $thisfromcheckout = `git config gits.fromcheckout`;
+  my $thisfromcheckout = `$git config gits.fromcheckout`;
   $fromcheckout = 1 if ($thisfromcheckout && $thisfromcheckout ne "false");
 
   foreach my $slavefile (split(/, /,$GITSLAVE))
@@ -234,12 +235,12 @@ sub set_fromcheckout($)
 {
   if ($_[0])
   {
-    `git config gits.fromcheckout 1`;
+    `$git config gits.fromcheckout 1`;
     $fromcheckout = 1;
   }
   else
   {
-    `git config --unset gits.fromcheckout`;
+    `$git config --unset gits.fromcheckout`;
     $fromcheckout = 0;
   }
   $? == 0;
@@ -305,13 +306,13 @@ sub do_populate(;$)
     {
       print "gits: Cloning $slave\n" if ($OPTIONS{'verbose'});
       my ($repos) = resolve_repository($group->[0],$group->[1]);
-      docmd(qq^git clone $nocheckout "$repos" "$slave"^) || die "Could not clone $repos onto $slave\n";
+      docmd(qq^$git clone $nocheckout "$repos" "$slave"^) || die "Could not clone $repos onto $slave\n";
 
-      $curbranch = (grep(s/\s*\*\s+//, split(/\n/,getcmd("git branch"))))[0] unless ($curbranch);
+      $curbranch = (grep(s/\s*\*\s+//, split(/\n/,getcmd("$git branch"))))[0] unless ($curbranch);
       if ($curbranch ne "master" && $curbranch !~ /no branch/)
       {
 	print qq^Switching "$ARGV[2]" to branch "$curbranch"\n^;
-	docmd(qq^cd "$slave"; git checkout -b $curbranch origin/$curbranch^) || die "Branch inconsistency, branch $curbranch does not exist for $slave\n";
+	docmd(qq^cd "$slave"; $git checkout -b $curbranch origin/$curbranch^) || die "Branch inconsistency, branch $curbranch does not exist for $slave\n";
       }
     }
     else
@@ -347,7 +348,7 @@ sub do_checkout($@)
 
   if (!$OPTIONS{'no-master'})
   {
-    my ($cmd) = qq^cd $slave && git checkout ^.quoteit(@args);
+    my ($cmd) = qq^cd $slave && $git checkout ^.quoteit(@args);
     $cmd .= " >/dev/null 2>&1" if ($pushprocessing == 2);
     ($ret, $msg) = getcmd($cmd);
 
@@ -413,7 +414,7 @@ sub do_checkout($@)
       $group = $slaves[$slavecnt];
       $slave = $group->[1];
 
-      my ($cmd) = qq^cd $slave && git checkout ^.quoteit(@args);
+      my ($cmd) = qq^cd $slave && $git checkout ^.quoteit(@args);
       $cmd .= " >/dev/null 2>&1" if ($pushprocessing == 2);
       ($ret, $msg) = getcmd($cmd);
     }
@@ -434,6 +435,10 @@ sub do_checkout($@)
 Getopt::Long::Configure("bundling", "no_ignore_case", "no_auto_abbrev", "no_getopt_compat", "require_order");
 GetOptions(\%OPTIONS, 'no-progress', 'exclude=s', 'version', 'no-master', 'no-commit', 'keep-going', 'parallel|p=i', 'press-on', 'verbose|v+', 'quiet', 'help') || die $USAGE;
 
+while ($ARGV[0] =~ /^--/)
+{
+  $git .= " " . shift @ARGV;
+}
 # provide baka terminology compatibility
 my $BAKANAMES = { 'inits' => 'prepare', 'clones' => 'attach',
 		  'checkouts' => 'populate', 'execs' => 'exec',
@@ -521,10 +526,10 @@ if ($ARGV[0] eq 'version' or $OPTIONS{'version'})
 
   if ($version eq "{" . "UNTAGGED" . "}")
   {
-    my ($ret,$hash) = getcmd("git log --pretty=format:%H -n 1");
+    my ($ret,$hash) = getcmd("$git log --pretty=format:%H -n 1");
     chomp($hash);
 
-    my ($dret,$desc) = getcmd("git describe --candidates=1 --tags $hash 2>/dev/null");
+    my ($dret,$desc) = getcmd("$git describe --candidates=1 --tags $hash 2>/dev/null");
     if ($dret)
     {
       $desc = "Untagged ($hash)\n";
@@ -540,10 +545,10 @@ if ($ARGV[0] eq 'version' or $OPTIONS{'version'})
   else
   {
     print "gits version $version\n";
-    my ($vret,$vers) = getcmd("git --version");
+    my ($vret,$vers) = getcmd("$git --version");
     if ($vret || ($vers !~ /version ([2-9]|1\.[6-9])/))
     {
-      print STDERR "git version >= 1.6 required!\n";
+      print STDERR "$git version >= 1.6 required!\n";
       $returncode = 1;
     }
     print $vers;
@@ -571,8 +576,8 @@ elsif ($ARGV[0] eq 'prepare')
   die "Refusing to prepare, $GITS_DIR/@{[$GITSLAVE]} already exists\n" if (-f $GITS_DIR."/".$GITSLAVE);
   open(W, ">", $GITS_DIR."/".$GITSLAVE) || die "Could not create $GITS_DIR/@{[$GITSLAVE]}\n";
   close(W);
-  docmd("git add @{[$GITSLAVE]}");
-  docmd(qq^git commit -m "gits creating @{[$GITSLAVE]}" @{[$GITSLAVE]}^) unless ($OPTIONS{'no-commit'});
+  docmd("$git add @{[$GITSLAVE]}");
+  docmd(qq^$git commit -m "gits creating @{[$GITSLAVE]}" @{[$GITSLAVE]}^) unless ($OPTIONS{'no-commit'});
 }
 elsif ($ARGV[0] eq 'attach')
 {
@@ -586,7 +591,7 @@ elsif ($ARGV[0] eq 'attach')
     die "Destination parent ($1) does not exist\n" if (!-d $1);
   }
   my $files = $GITS_DIR."/".$GITSLAVE;
-  docmd(qq^git clone "$repos" "$ARGV[2]"^ || die "Could not clone $repos onto $ARGV[2]\n");
+  docmd(qq^$git clone "$repos" "$ARGV[2]"^ || die "Could not clone $repos onto $ARGV[2]\n");
 
   open(W, ">>", $files);
   print W qq^"$ARGV[1]" "$ARGV[2]"\n^;
@@ -600,15 +605,15 @@ elsif ($ARGV[0] eq 'attach')
     print W qq^$ARGV[2]\n^;
     close(W);
     $files .= " .gitignore";
-    docmd(qq^git add .gitignore^) if ($needadd);
+    docmd(qq^$git add .gitignore^) if ($needadd);
   }
-  docmd(qq^git commit -m 'gits adding "$ARGV[1]" "$ARGV[2]"' $files^) unless ($OPTIONS{'no-commit'});
+  docmd(qq^$git commit -m 'gits adding "$ARGV[1]" "$ARGV[2]"' $files^) unless ($OPTIONS{'no-commit'});
 
-  my $curbranch = (grep(s/\s*\*\s+//, split(/\n/,getcmd("git branch"))))[0];
+  my $curbranch = (grep(s/\s*\*\s+//, split(/\n/,getcmd("$git branch"))))[0];
   if ($curbranch ne "master")
   {
     print qq^Switching "$ARGV[2]" to branch "$curbranch"\n^;
-    docmd(qq^cd "$ARGV[2]"; git checkout $curbranch^) || die "Branch inconsistency, branch $curbranch does not exist\n";
+    docmd(qq^cd "$ARGV[2]"; $git checkout $curbranch^) || die "Branch inconsistency, branch $curbranch does not exist\n";
   }
 }
 elsif ($ARGV[0] eq 'populate')
@@ -653,8 +658,8 @@ elsif ($ARGV[0] eq 'pulls')
   my ($ok,$okcnt,%msg);
   my (@list) = @slaves;
   unshift(@list,[undef,"."]) unless ($OPTIONS{'no-master'});
-  my $oldbranch = (grep(s/\s*\*\s+//, split(/\n/,getcmd("git branch"))))[0];
-  my @branches = grep(s/branch\.(.*)\.remote=.*/$1/,split(/\n/,getcmd(qq%git config -l%)));
+  my $oldbranch = (grep(s/\s*\*\s+//, split(/\n/,getcmd("$git branch"))))[0];
+  my @branches = grep(s/branch\.(.*)\.remote=.*/$1/,split(/\n/,getcmd(qq%$git config -l%)));
 
   $progress = Term::ProgressBar->new({remove=>1, ETA => 'linear', count=>(($#branches + 1)*($#list+1))}) if ($want_progress);
   $progress->max_update_rate(1) if ($progress);
@@ -670,7 +675,7 @@ elsif ($ARGV[0] eq 'pulls')
       my $slave = $group->[1];
       next if missing_slave($slave);
 
-      $results{$group} = qq^cd $slave && git pull ^.quoteit(@ARGV);
+      $results{$group} = qq^cd $slave && $git pull ^.quoteit(@ARGV);
     }
     if ($want_parallel)
     {
@@ -725,7 +730,7 @@ elsif ($ARGV[0] eq 'pulls')
       my $mod = $slave;
       if ($mod eq '.')
       {
-	$mod = `git config remote.origin.url`;
+	$mod = `$git config remote.origin.url`;
 	chomp $mod;
 	$mod =~ s=.*/==;
       }
@@ -768,7 +773,7 @@ elsif ($ARGV[0] eq 'pull')
 
     next if missing_slave($slave);
 
-    $worklist{$group} = qq^cd $slave && git ^.quoteit(@ARGV);
+    $worklist{$group} = qq^cd $slave && $git ^.quoteit(@ARGV);
   }
 
   if ($want_parallel)
@@ -819,7 +824,7 @@ elsif ($ARGV[0] eq 'pull')
     my $mod = $slave;
     if ($mod eq '.')
     {
-      $mod = `git config remote.origin.url`;
+      $mod = `$git config remote.origin.url`;
       chomp $mod;
       $mod =~ s=.*/==;
     }
@@ -868,7 +873,7 @@ elsif ($ARGV[0] eq 'push')
 
     if ($quick)
     {
-      my ($ret, $msg) = getcmd(qq^cd $slave && git status^);
+      my ($ret, $msg) = getcmd(qq^cd $slave && $git status^);
       if (!($msg =~ /Your branch is /))
       {
 	$results{$group} = [0, "Skipping push, this branch is up to date.\n"];
@@ -876,7 +881,7 @@ elsif ($ARGV[0] eq 'push')
       }
     }
 
-    $worklist{$group} = qq^cd $slave && git ^.quoteit(@ARGV);
+    $worklist{$group} = qq^cd $slave && $git ^.quoteit(@ARGV);
   }
 
   if ($want_parallel)
@@ -1018,7 +1023,7 @@ elsif ($ARGV[0] eq 'update-remote-url')
 
   if ($#ARGV != 2 || !$ARGV[1] || !$ARGV[2])
   {
-    my $example = `git config remote.origin.url`;
+    my $example = `$git config remote.origin.url`;
 
     if ($example)
     {
@@ -1048,7 +1053,7 @@ elsif ($ARGV[0] eq 'update-remote-url')
       $thisurl = resolve_repository($group->[0],$group->[1]);
     }
 
-    my ($ret, $msg) = getcmd(qq^cd $slave; git config "remote.$name.url" "$thisurl"^);
+    my ($ret, $msg) = getcmd(qq^cd $slave; $git config "remote.$name.url" "$thisurl"^);
     if ($ret != 0)
     {
       chomp($msg);
@@ -1101,7 +1106,7 @@ elsif ($ARGV[0] eq 'status')
 
     next if missing_slave($slave);
 
-    my ($ret, $msg) = getcmd(qq^cd $slave && git ^.quoteit(@ARGV));
+    my ($ret, $msg) = getcmd(qq^cd $slave && $git ^.quoteit(@ARGV));
     if ($ret != 0 && $ret != 256)
     {
       chomp($msg);
@@ -1235,7 +1240,7 @@ elsif ($ARGV[0] eq 'clean')
       next;
     }
 
-    my ($cmd) = qq^cd $slave && git clean -n^;
+    my ($cmd) = qq^cd $slave && $git clean -n^;
     $cmd .= " -d" if ($COPTIONS{'d'});
     $cmd .= " -f" if ($COPTIONS{'f'});
     $cmd .= " -X" if ($COPTIONS{'X'});
@@ -1338,7 +1343,7 @@ elsif ($ARGV[0] eq 'logs')
 
     next if missing_slave($slave);
 
-    my ($ret, $msg) = getcmd(qq^cd $slave && git log --pretty='tformat: %at %h %ae %ar:: %s' ^.quoteit(@ARGV));
+    my ($ret, $msg) = getcmd(qq^cd $slave && $git log --pretty='tformat: %at %h %ae %ar:: %s' ^.quoteit(@ARGV));
     if ($ret != 0)
     {
       chomp($msg);
@@ -1419,7 +1424,7 @@ else
 
     next if missing_slave($slave);
 
-    my ($ret, $msg) = getcmd(qq^cd $slave && git ^.quoteit(@ARGV));
+    my ($ret, $msg) = getcmd(qq^cd $slave && $git ^.quoteit(@ARGV));
     if ($ret != 0 &&
 	!($ARGV[0] eq "commit" && $msg =~ /nothing to commit/) &&
 	!($ARGV[0] eq "stash" && $ARGV[1] eq "apply" && $msg =~ /no valid stashed state found/))
