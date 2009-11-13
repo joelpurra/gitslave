@@ -855,6 +855,8 @@ elsif ($ARGV[0] eq 'push')
   unshift(@list,[undef,"."]) unless ($OPTIONS{'no-master'});
   my ($quick) = 0;
 
+  die "push should not be performed as root\n" if (!$>);
+
   if (grep(/^--quick$/,@ARGV))
   {
     $quick = 1;
