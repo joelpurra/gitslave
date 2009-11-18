@@ -855,7 +855,15 @@ elsif ($ARGV[0] eq 'push')
   unshift(@list,[undef,"."]) unless ($OPTIONS{'no-master'});
   my ($quick) = 0;
 
-  die "push should not be performed as root\n" if (!$>);
+  if (!$>)
+  {
+    my ($name,$passwd,$uid,$gid, $quota,$comment,$gcos,$dir,$shell,$expire) = getpwuid $>;
+
+    my @statinfo = stat("$dir/.gitconfig");
+
+    # If ~/.gitconfig exists and is owned by root, root push is allowed
+    die "push should not be performed as root\n" unless (exists($statinfo[4]) && $statinfo[4] == $>);
+  }
 
   if (grep(/^--quick$/,@ARGV))
   {
