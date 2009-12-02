@@ -1156,9 +1156,15 @@ elsif ($ARGV[0] eq 'status')
       $premove .= $1;
     }
 
-    die "gits unexpected status output (missing branch): $msg" unless ($msg =~ s/^\# On branch (.*)\n//);
-    $branch = $1 unless ($branch);
-    die "Branch ($branch != $1) not identical between @{[$list[0]->[1]]} and $slave\n" unless ($branch eq $1);
+    die "gits unexpected status output (missing branch): $msg" unless ($msg =~ s/^\# (?:On branch |Not currently on any branch.)(.+)?\n//);
+    my $localbranch = $1 ? $1 : "(no branch)";
+    $branch = $localbranch unless ($branch);
+    unless ($branch eq $localbranch)
+    {
+      my $warning = "Branch $branch of @{[$list[0]->[1]]} and $localbranch of $slave are different!\n";
+      warn $warning;
+      $msg = $warning . $msg;
+    }
 
     if ($msg =~ /^\# Your branch/)
     {
