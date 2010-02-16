@@ -1483,6 +1483,12 @@ else
   unshift(@list,[undef,"."]) unless ($OPTIONS{'no-master'});
   my ($warngitslavesync) = 0;
 
+  if ($ARGV[0] eq 'gc' || $ARGV[0] eq 'fsck')
+  {
+    $progress = Term::ProgressBar->new({remove=>1, ETA => 'linear', count=>(($#list+1))}) if ($want_progress);
+    $progress->max_update_rate(1) if ($progress);
+  }
+
   foreach my $group (@list)
   {
     my $slave = $group->[1];
@@ -1518,6 +1524,8 @@ else
     $ok .= " $slave";
     $okcnt++;
     push(@{$msg{$msg}}, $slave);
+
+    $progress->update(++$progress_count) if ($progress);
   }
 
   foreach my $msg (sort { $#{$msg{$a}} <=> $#{$msg{$b}} } keys %msg)
