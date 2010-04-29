@@ -80,7 +80,7 @@ OVERVIEW
      --------------------------------------------------
 
    Check out any new slave modules which someone else might have added
-      gits [--[no-]fromcheckout] populate
+      gits populate [--[no-]fromcheckout]
 
     Go through the list of configured slaves and check out (clone) any which
     have not already been retrieved.
