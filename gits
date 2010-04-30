@@ -721,11 +721,11 @@ elsif ($ARGV[0] eq 'pulls')
 	do_checkout(2, $oldbranch);
 	die "$diemsg\n  $msg\n";
       }
+      $msg = $newmsg{$slave}.$msg;
       $msg =~ s/Switched to branch.*\n//;
       $msg =~ s/Already on \".*\n//;
       $ok .= " $slave";
       $okcnt++;
-      $msg = $newmsg{$slave}.$msg;
       # replace module name with %MODULE% to collapse redundant messages
       my $mod = $slave;
       if ($mod eq '.')
@@ -970,8 +970,7 @@ elsif ($ARGV[0] eq 'exec')
   my (@list) = @slaves;
   unshift(@list,[undef,"."]) unless ($OPTIONS{'no-master'});
   my ($branch);
-  my (%group,%groupc,%msg);
-  my ($warngitslavesync) = 0;
+  my (%group,%msg);
 
   foreach my $group (@list)
   {
@@ -1049,7 +1048,6 @@ elsif ($ARGV[0] eq 'update-remote-url')
   my (@list) = @slaves;
   unshift(@list,[undef,"."]) unless ($OPTIONS{'no-master'});
   my (%msg);
-  my ($warngitslavesync) = 0;
 
   foreach my $group (@list)
   {
@@ -1108,7 +1106,6 @@ elsif ($ARGV[0] eq 'status')
   unshift(@list,[undef,"."]) unless ($OPTIONS{'no-master'});
   my ($branch);
   my (%group,%groupc,%msg);
-  my ($warngitslavesync) = 0;
 
   foreach my $group (@list)
   {
@@ -1285,7 +1282,6 @@ elsif ($ARGV[0] eq 'clean')
   unshift(@list,[undef,"."]) unless ($OPTIONS{'no-master'});
   my (@unlinkers);
   my (%msg);
-  my ($warngitslavesync) = 0;
   my ($commonout);
 
   my $CLEAN_USAGE = "usage: gits clean -f|-n [-dqxX] [--] [path]...\n";
@@ -1298,12 +1294,7 @@ elsif ($ARGV[0] eq 'clean')
   {
     my $slave = $group->[1];
 
-    if (!-d $slave)
-    {
-      warn "Missing one or more git slaves including $slave, consider gits populate.  Skipping.\n" unless ($warngitslavesync);
-      $warngitslavesync++;
-      next;
-    }
+    next if missing_slave($slave);
 
     my ($cmd) = qq^cd $slave && $git clean -n^;
     $cmd .= " -d" if ($COPTIONS{'d'});
@@ -1399,7 +1390,7 @@ elsif ($ARGV[0] eq 'logs')
   my ($ok,$okcnt);
   my (@list) = @slaves;
   unshift(@list,[undef,"."]) unless ($OPTIONS{'no-master'});
-  my (%group,%groupc,@msg,$out);
+  my (%group,@msg,$out);
   my ($window) = 28800;				# 8 hours
 
   foreach my $group (@list)
@@ -1481,7 +1472,6 @@ else
   # Run the command for each module
   my (@list) = @slaves;
   unshift(@list,[undef,"."]) unless ($OPTIONS{'no-master'});
-  my ($warngitslavesync) = 0;
 
   if ($ARGV[0] eq 'gc' || $ARGV[0] eq 'fsck')
   {
