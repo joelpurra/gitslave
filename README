@@ -210,6 +210,18 @@ OVERVIEW
       gits push --quick
       --------------------------------------------------
 
+   Get status on all branches
+      gits statuses [standard args]
+
+    For each branch being tracked by the superproject, go through the list
+    of configured slaves, check yourself out to the branch, get the git
+    status, then switch back to the branch you were on. The output is
+    summarized for each branch to merge the lists of files in each section.
+
+      --------------------------------------------------
+      gits statuses
+      --------------------------------------------------
+
    Everything else
     All other commands are passed directly though to git, with one command
     being run per repository. Output summarizing is performed so that

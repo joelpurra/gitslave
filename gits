@@ -442,7 +442,7 @@ while ($ARGV[0] =~ /^--/)
 # provide baka terminology compatibility
 my $BAKANAMES = { 'inits' => 'prepare', 'clones' => 'attach',
 		  'checkouts' => 'populate', 'execs' => 'exec',
-		  'resolves' => 'resolve' };
+		  'resolves' => 'resolve', 'stati' => 'statuses' };
 $ARGV[0] = $BAKANAMES->{$ARGV[0]} if $BAKANAMES->{$ARGV[0]};
 $OPTIONS{'keep-going'} = 1 if $OPTIONS{'press-on'};
 
@@ -1172,6 +1172,8 @@ elsif ($ARGV[0] eq 'status')
       $msg =~ s/^\#\s*\n//;
     }
 
+    $msg =~ s/^no(thing| changes)( added)? to commit .*\n//m;
+
     while ($msg =~ s/^(\# \S.*\n)//)
     {
       my ($group) = $1;
@@ -1220,10 +1222,165 @@ elsif ($ARGV[0] eq 'status')
 
   foreach my $msg (sort { $#{$msg{$a}} <=> $#{$msg{$b}} } keys %msg)
   {
+    next unless $msg;
     print "On: ", join(', ',@{$msg{$msg}}), ":\n";
     $msg =~ s/^/  /mg if (length($msg));
     print $msg;
   }
+}
+elsif ($ARGV[0] eq 'statuses')
+{
+  shift(@ARGV);
+  my ($ok,$okcnt);
+  my (@list) = @slaves;
+  unshift(@list,[undef,"."]) unless ($OPTIONS{'no-master'});
+  my $oldbranch = (grep(s/\s*\*\s+//, split(/\n/,getcmd("$git branch"))))[0];
+  my @branches = grep(s/branch\.(.*)\.remote=.*/$1/,split(/\n/,getcmd(qq%$git config -l%)));
+
+  my $firstbranch = 1;
+
+  foreach my $branch (@branches)
+  {
+    my (%newmsg) = do_checkout(1, $oldbranch, $branch);
+
+    my (%group,%groupc,%msg);
+
+    foreach my $group (@list)
+    {
+      my $slave = $group->[1];
+
+      next if missing_slave($slave);
+
+      my ($ret, $msg) = getcmd(qq^cd $slave && $git status ^.quoteit(@ARGV));
+      if ($ret != 0 && $ret != 256)
+      {
+	chomp($msg);
+	my $warn = "gits statuses, failed on branch $branch for: '$slave': " . exitcode($ret);
+
+	if ($OPTIONS{'keep-going'})
+	{
+	  warn "Error in $warn\n $msg\n";
+	  $returncode = 2;
+	  next;
+	}
+
+	my $diemsg = "Aborting $warn\n ";
+	if ($ok)
+	{
+	  $diemsg .= "(ran fine on: $ok, did not run on @{[$#list-$okcnt]} other(s); no rollbacks)";
+	}
+	else
+	{
+	  $diemsg .= "(first entry, no other successfully executed)";
+	}
+	# <TODO>some way for do_checkout to only operate on some slaves</TODO>
+	do_checkout(2, $oldbranch);
+	die "$diemsg\n  $msg\n";
+      }
+      elsif ($ret == 256)
+      {
+	# git status seems to return 1 (nee wait 256) under all circumstances, so do
+	# not even propagate this condition.
+	#$returncode = 1;
+	1;
+      }
+      $msg = $newmsg{$slave}.$msg;
+      $msg =~ s/Switched to branch.*\n//;
+      $msg =~ s/Already on \".*\n//;
+      $ok .= " $slave";
+      $okcnt++;
+
+      my ($premove);
+      while ($msg =~ s/(^[^\#].*\n)//)
+      {
+	$premove .= $1;
+      }
+
+      unless ($msg =~ s/^\# (?:On branch |Not currently on any branch.)(.+)?\n//)
+      {
+	# <TODO>some way for do_checkout to only operate on some slaves</TODO>
+	do_checkout(2, $oldbranch);
+        die "gits unexpected status output (missing branch): $msg" 
+      }
+
+      if ($msg =~ /^\# Your branch/)
+      {
+	while ($msg =~ s/^(\# \S.*\n)//)
+	{
+	  $premove .= $1;
+	}
+	$msg =~ s/^\#\s*\n//;
+      }
+
+      $msg =~ s/^no(thing| changes)( added)? to commit .*\n//m;
+
+      while ($msg =~ s/^(\# \S.*\n)//)
+      {
+	my ($group) = $1;
+
+	while ($msg =~ s/^(\#\s{2,}\S.*\n)//)
+	{
+	  $groupc{$group}->{$1} = 1 if ($firstbranch);
+	}
+
+	unless ($msg =~ s/^(\#\s*\n)//)
+	{
+	  # <TODO>some way for do_checkout to only operate on some slaves</TODO>
+	  do_checkout(2, $oldbranch);
+	  die "Could not parse git status output for $slave <$group> <$msg>\n"
+	}
+	while ($msg =~ s/^(\#(?:\s*|(\s{2,}|\t)\S.*)\n)//)
+	{
+	  next unless ($firstbranch);
+
+	  my ($line) = $1;
+
+	  if ($line =~ /([^:]+:\s+)(.*)/s)
+	  {
+	    $line = "$1$slave/$2";
+	  }
+	  elsif ($line =~ /(\#\s+)(.+)/)
+	  {
+	    $line = "$1$slave/$2 # Do not git(s) add this path\n";
+	  }
+	  else
+	  {
+	    next if ($line =~ /\#\s*\n/);
+	  }
+
+	  $group{$group} .= $line;
+	}
+      }
+
+      push(@{$msg{$premove.$msg}}, $slave);
+    }
+
+    if ($firstbranch)
+    {
+      $firstbranch = 0;
+      foreach my $group (sort keys %group)
+      {
+	print $group;
+	foreach my $msg (sort keys %{$groupc{$group}})
+	{
+	  print $msg;
+	}
+	print "#\n";
+	print $group{$group};
+	print "#\n";
+      }
+    }
+
+    print "# On branch $branch\n";
+    foreach my $msg (sort { $#{$msg{$a}} <=> $#{$msg{$b}} } keys %msg)
+    {
+      next unless $msg;
+      print "On: ", join(', ',@{$msg{$msg}}), ":\n";
+      $msg =~ s/^/  /mg if (length($msg));
+      print $msg;
+    }
+  }
+  do_checkout(2, $oldbranch);
 }
 elsif ($ARGV[0] eq 'grep')
 {
@@ -1775,6 +1932,21 @@ your standard origin.
 
   --------------------------------------------------
   gits push --quick
+  --------------------------------------------------
+
+
+
+=head3 Get status on all branches
+
+  gits statuses [standard args]
+
+For each branch being tracked by the superproject, go through the list
+of configured slaves, check yourself out to the branch, get the git
+status, then switch back to the branch you were on.  The output is
+summarized for each branch to merge the lists of files in each section.
+
+  --------------------------------------------------
+  gits statuses
   --------------------------------------------------
 
 
