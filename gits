@@ -1669,6 +1669,20 @@ then switch back to the branch you were on.
 
 
 
+=head3 Perform a pull operation for the current branch only
+
+  gits pull <args>
+
+Go through the list of configured slaves and perform a pull,  Note that
+even though only the current branch HEAD will be advanced, the commits
+on other branches will still be fetched.
+
+  --------------------------------------------------
+  gits pull --rebase
+  --------------------------------------------------
+
+
+
 =head3 Show unified commit logs in a fixed output format
 
   gits logs <args>
