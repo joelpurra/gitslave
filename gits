@@ -319,7 +319,11 @@ sub do_populate(;$)
     {
       print "gits: $slave already exists\n" if ($OPTIONS{'verbose'});
     }
+    # Update hooks from master
+    docmd(qq^cd $slave/.git/hooks; find . -lname '../../../git-hooks/*' -exec rm -f '{}' ';'; find ../../../git-hooks/ -exec ln -s '{}' . ';'^);
   }
+  # Update master's hooks as well
+  docmd(qq^cd .git/hooks; find . -lname '../../git-hooks/*' -exec rm -f '{}' ';' ; find ../../git-hooks/ -exec ln -s '{}' . ';'^);
 }
 
 
