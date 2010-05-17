@@ -1234,18 +1234,29 @@ elsif ($ARGV[0] eq 'status')
 }
 elsif ($ARGV[0] eq 'statuses')
 {
-  shift(@ARGV);
   my ($ok,$okcnt);
   my (@list) = @slaves;
   unshift(@list,[undef,"."]) unless ($OPTIONS{'no-master'});
   my $oldbranch = (grep(s/\s*\*\s+//, split(/\n/,getcmd("$git branch"))))[0];
   my @branches = grep(s/branch\.(.*)\.remote=.*/$1/,split(/\n/,getcmd(qq%$git config -l%)));
+  my @oldbranch = ($oldbranch);
+
+  shift(@ARGV);
+  my $move;
+  if ($ARGV[0] eq '-m')
+  {
+    shift(@ARGV);
+    unshift(@oldbranch, '-m');
+    $move = '-m';
+  }
 
   my $firstbranch = 1;
 
   foreach my $branch (@branches)
   {
-    my (%newmsg) = do_checkout(1, $oldbranch, $branch);
+    my %newmsg = $move
+      ? do_checkout(1, $oldbranch, $move, $branch)
+	: do_checkout(1, $oldbranch, $branch);
 
     my (%group,%groupc,%msg);
 
@@ -1278,7 +1289,7 @@ elsif ($ARGV[0] eq 'statuses')
 	  $diemsg .= "(first entry, no other successfully executed)";
 	}
 	# <TODO>some way for do_checkout to only operate on some slaves</TODO>
-	do_checkout(2, $oldbranch);
+	do_checkout(2, @oldbranch);
 	die "$diemsg\n  $msg\n";
       }
       elsif ($ret == 256)
@@ -1303,7 +1314,7 @@ elsif ($ARGV[0] eq 'statuses')
       unless ($msg =~ s/^\# (?:On branch |Not currently on any branch.)(.+)?\n//)
       {
 	# <TODO>some way for do_checkout to only operate on some slaves</TODO>
-	do_checkout(2, $oldbranch);
+	do_checkout(2, @oldbranch);
         die "gits unexpected status output (missing branch): $msg" 
       }
 
@@ -1330,7 +1341,7 @@ elsif ($ARGV[0] eq 'statuses')
 	unless ($msg =~ s/^(\#\s*\n)//)
 	{
 	  # <TODO>some way for do_checkout to only operate on some slaves</TODO>
-	  do_checkout(2, $oldbranch);
+	  do_checkout(2, @oldbranch);
 	  die "Could not parse git status output for $slave <$group> <$msg>\n"
 	}
 	while ($msg =~ s/^(\#(?:\s*|(\s{2,}|\t)\S.*)\n)//)
@@ -1384,7 +1395,7 @@ elsif ($ARGV[0] eq 'statuses')
       print $msg;
     }
   }
-  do_checkout(2, $oldbranch);
+  do_checkout(2, @oldbranch);
 }
 elsif ($ARGV[0] eq 'grep')
 {
@@ -1942,12 +1953,15 @@ your standard origin.
 
 =head3 Get status on all branches
 
-  gits statuses [standard args]
+  gits statuses [-m] [standard args]
 
 For each branch being tracked by the superproject, go through the list
 of configured slaves, check yourself out to the branch, get the git
 status, then switch back to the branch you were on.  The output is
 summarized for each branch to merge the lists of files in each section.
+The -m option will attempt to "move" any uncommitted changes, which
+may prevent failures checking out other branches, at the risk of
+creating conflicts, which are then moved as well
 
   --------------------------------------------------
   gits statuses

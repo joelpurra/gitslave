@@ -211,12 +211,15 @@ OVERVIEW
       --------------------------------------------------
 
    Get status on all branches
-      gits statuses [standard args]
+      gits statuses [-m] [standard args]
 
     For each branch being tracked by the superproject, go through the list
     of configured slaves, check yourself out to the branch, get the git
     status, then switch back to the branch you were on. The output is
     summarized for each branch to merge the lists of files in each section.
+    The -m option will attempt to "move" any uncommitted changes, which may
+    prevent failures checking out other branches, at the risk of creating
+    conflicts, which are then moved as well
 
       --------------------------------------------------
       gits statuses
