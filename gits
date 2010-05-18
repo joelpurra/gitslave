@@ -865,9 +865,9 @@ elsif ($ARGV[0] eq 'push')
 
   if (!$>)
   {
-    my ($name,$passwd,$uid,$gid, $quota,$comment,$gcos,$dir,$shell,$expire) = getpwuid $>;
-
-    my @statinfo = stat("$dir/.gitconfig");
+    # git uses $HOME only for configuration search, not ~user
+    my $dir = $ENV{'HOME'};
+    my @statinfo = stat("$dir/.gitconfig") if ($dir);
 
     # If ~/.gitconfig exists and is owned by root, root push is allowed
     die "push should not be performed as root\n" unless (exists($statinfo[4]) && $statinfo[4] == $>);
