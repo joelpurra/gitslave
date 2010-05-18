@@ -679,7 +679,9 @@ elsif ($ARGV[0] eq 'pulls')
       my $slave = $group->[1];
       next if missing_slave($slave);
 
-      $results{$group} = qq^cd $slave && $git pull ^.quoteit(@ARGV);
+      my $args = quoteit(@ARGV);
+      $args =~ s/\%/$slave/g;
+      $results{$group} = qq^cd $slave && $git pull $args^;
     }
     if ($want_parallel)
     {
@@ -777,7 +779,9 @@ elsif ($ARGV[0] eq 'pull')
 
     next if missing_slave($slave);
 
-    $worklist{$group} = qq^cd $slave && $git ^.quoteit(@ARGV);
+    my $args = quoteit(@ARGV);
+    $args =~ s/\%/$slave/g;
+    $worklist{$group} = qq^cd $slave && $git $args^;
   }
 
   if ($want_parallel)
@@ -895,7 +899,9 @@ elsif ($ARGV[0] eq 'push')
       }
     }
 
-    $worklist{$group} = qq^cd $slave && $git ^.quoteit(@ARGV);
+    my $args = quoteit(@ARGV);
+    $args =~ s/\%/$slave/g;
+    $worklist{$group} = qq^cd $slave && $git $args^;
   }
 
   if ($want_parallel)
@@ -982,7 +988,10 @@ elsif ($ARGV[0] eq 'exec')
 
     next if missing_slave($slave);
 
-    my ($ret, $msg) = getcmd(qq^cd $slave && ^.quoteit(@ARGV));
+    my $args = quoteit(@ARGV);
+    $args =~ s/\%/$slave/g;
+
+    my ($ret, $msg) = getcmd(qq^cd $slave && $args^);
     if ($ret != 0)
     {
       chomp($msg);
@@ -1819,11 +1828,15 @@ option is provided.
 
 =head3 Perform a pull operation for all tracked branches
 
-  gits pulls <args>
+  gits pulls [pull args]
 
 For each branch being tracked by the superproject, go through the list
 of configured slaves, check yourself out to the branch, perform a pull,
 then switch back to the branch you were on.
+
+If you are pulling from a non-default (origin) repository, and the
+arguments to pulls contain the character % it will be replaced by
+the slave module name for each pull.
 
   --------------------------------------------------
   gits pulls --rebase
@@ -1833,24 +1846,28 @@ then switch back to the branch you were on.
 
 =head3 Perform a pull operation for the current branch only
 
-  gits pull <args>
+  gits pull [pull args]
 
 Go through the list of configured slaves and perform a pull,  Note that
 even though only the current branch HEAD will be advanced, the commits
 on other branches will still be fetched.
 
+If you are pulling from a non-default (origin) repository, and the
+arguments to pull contain the character % it will be replaced by
+the slave module name for each pull.
+
   --------------------------------------------------
-  gits pull --rebase
+  gits pull otherhost:/src/work/awb/%
   --------------------------------------------------
 
 
 
 =head3 Show unified commit logs in a fixed output format
 
-  gits logs <args>
+  gits logs [log args]
 
 For each branch being tracked by the superproject, generate a list
-of the "log" messages as specified by the <args>, and output them in
+of the "log" messages as specified by the log args, and output them in
 a fixed format, with related commits grouped together and ordered by
 time. Do I<not> provide git log options that modify the output format,
 as they will break the ordering and grouping functionality; only
@@ -1871,10 +1888,15 @@ e-mail and commit message.
   gits exec <command> [args]
 
 For each slave being tracked by the superproject and the superproject itself,
-cd to the root of the project directory and execute the listed command.
+cd to the root of the slave project directory and execute the listed command.
+
+If the arguments to pull contain the character % it will be replaced by
+the slave module name for each executed command.
 
   --------------------------------------------------
   gits exec gitk
+  --------------------------------------------------
+  gits exec git diff
   --------------------------------------------------
 
 
@@ -1933,35 +1955,44 @@ much faster than performing a remote clone/populate.)
 
 =head3 Push a change to a remote repository
 
-  gits push [--quick] [standard args]
+  gits push [--quick] [push args]
 
 This is the standard git push command--with the addition of a --quick
 option which will only attempt to push for branches which have
 outstanding changes.  For slow connections to large number of slave
 repositories, the overhead of an empty push can be large.
 
-However, --quick only checks to see if the CURRENT branch needs to
+However, --quick only checks to see if the I<current> branch needs to
 push data.  If you have changes on other branches, a slow push is
-still required, as it is if you are pushing to someplace other than
-your standard origin.
+still required, as it is if you are pushing to a repository other than
+the standard origin.
+
+If you are pushing to another repository, the character % will be replaced
+by the slave module name.
 
   --------------------------------------------------
   gits push --quick
+  --------------------------------------------------
+  gits push otherhost:/src/work/awb/%
   --------------------------------------------------
 
 
 
 =head3 Get status on all branches
 
-  gits statuses [-m] [standard args]
+  gits statuses [-m] [status args]
 
 For each branch being tracked by the superproject, go through the list
 of configured slaves, check yourself out to the branch, get the git
 status, then switch back to the branch you were on.  The output is
 summarized for each branch to merge the lists of files in each section.
+
 The -m option will attempt to "move" any uncommitted changes, which
 may prevent failures checking out other branches, at the risk of
 creating conflicts, which are then moved as well
+
+Other args supported by `git status` are also supported; these are
+the same options supported by `git commit`.
 
   --------------------------------------------------
   gits statuses
@@ -2010,13 +2041,13 @@ consideration from gits commands which it matches.
 
 This flag requests that gits NOT print a progress bar, which it does
 by default for slow operations if Term::ProgressBar is loaded.  Slow
-operations are defined as: checkout, pulls, push.  You may use this
+operations are the checkout, pull(s), and push subcommands.  You may use this
 flag for all operations.
 
 =head2 --parallel COUNT
 
 Specify the number of parallel git operations you wish to execute.
-Parallelism is only activated for "push" and "pulls" subcommands.
+Parallelism is only activated for push and pull(s) subcommands.
 This can speed up your processing significantly for large
 numbers of submodules.
 
