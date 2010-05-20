@@ -319,11 +319,11 @@ sub do_populate(;$)
     {
       print "gits: $slave already exists\n" if ($OPTIONS{'verbose'});
     }
-    # Update hooks from master
-    docmd(qq^cd $slave/.git/hooks; find . -lname '../../../git-hooks/*' -exec rm -f '{}' ';'; find ../../../git-hooks/ 3>&2 2>/dev/null -exec ln -s '{}' . '2>&3' ';'^);
+    # Update hooks from master (-regex '.*\\*\$' matches bogus symlink '*')
+    docmd(qq^cd $slave/.git/hooks; find . -type l -a '(' -lname '../../../git-hooks*' -o -regex '.*\\*\$' ')' -exec rm -f '{}' ';'; find ../../../git-hooks/ -type f 8>&2 2>/dev/null -exec sh -c 'ln -s \$0 . 2>&8' '{}' ';'^);
   }
   # Update master's hooks as well
-  docmd(qq^cd .git/hooks; find . -lname '../../git-hooks/*' -exec rm -f '{}' ';' ; find ../../git-hooks/ 3>&2 2>/dev/null -exec ln -s '{}' . '2>&3' ';'^);
+  docmd(qq^cd .git/hooks; find . -type l -a '(' -lname '../../git-hooks*' -o -regex '.*\\*\$' ')' -exec rm -f '{}' ';'; find ../../git-hooks/ -type f 8>&2 2>/dev/null -exec sh -c 'ln -s \$0 . 2>&8' '{}' ';'^);
 }
 
 
