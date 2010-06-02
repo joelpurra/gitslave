@@ -353,6 +353,7 @@ sub do_checkout($@)
   if (!$OPTIONS{'no-master'})
   {
     my ($cmd) = qq^cd $slave && $git checkout ^.quoteit(@args);
+    $cmd .= " --" if ($pushprocessing);
     $cmd .= " >/dev/null 2>&1" if ($pushprocessing == 2);
     ($ret, $msg) = getcmd($cmd);
 
@@ -419,6 +420,7 @@ sub do_checkout($@)
       $slave = $group->[1];
 
       my ($cmd) = qq^cd $slave && $git checkout ^.quoteit(@args);
+      $cmd .= " --" if ($pushprocessing);
       $cmd .= " >/dev/null 2>&1" if ($pushprocessing == 2);
       ($ret, $msg) = getcmd($cmd);
     }
@@ -617,7 +619,7 @@ elsif ($ARGV[0] eq 'attach')
   if ($curbranch ne "master")
   {
     print qq^Switching "$ARGV[2]" to branch "$curbranch"\n^;
-    docmd(qq^cd "$ARGV[2]"; $git checkout $curbranch^) || die "Branch inconsistency, branch $curbranch does not exist\n";
+    docmd(qq^cd "$ARGV[2]"; $git checkout $curbranch --^) || die "Branch inconsistency, branch $curbranch does not exist\n";
   }
 }
 elsif ($ARGV[0] eq 'populate')
