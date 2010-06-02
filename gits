@@ -365,7 +365,7 @@ sub do_checkout($@)
       do_populate(1);
     }
   }
-  my ($totcnt) = $#slaves + $OPTIONS{'no-master'}?1:2;
+  my ($totcnt) = $#slaves + ($OPTIONS{'no-master'} ? 1 : 2);
   my ($progress) = Term::ProgressBar->new({remove=>1, count=>($#slaves+1)}) if ($want_progress && !$pushprocessing);
   $progress->max_update_rate(1) if ($progress);
 
