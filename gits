@@ -335,7 +335,7 @@ sub do_populate(;$)
 # pushprocessing: 0 -- want progress bar
 # pushprocessing: 1 -- print informational messages, revert to oldbranch on die
 #			(oldbranch is first argument, popped from @args)
-# pushprocessing: 2 -- do not complain on errors
+# pushprocessing: 2 -- do not abort on errors - return warning
 #
 sub do_checkout($@);
 sub do_checkout($@)
@@ -371,13 +371,18 @@ sub do_checkout($@)
   $progress->max_update_rate(1) if ($progress);
 
   # Tricky: This backwards loop is designed so that the return code processing can be shared between superproject and slaves
+  my $failed;
   do
   {
     if ($ret != 0)
     {
       chomp($msg);
       my $warn = "gits checkout (@{[join(' ',@args)]}), failed for: '$slave': " . exitcode($ret);
-      if ($OPTIONS{'keep-going'})
+      if ($pushprocessing > 1)
+      {
+	$failed .= " $slave";
+      }
+      elsif ($OPTIONS{'keep-going'})
       {
 	warn "Error in $warn (continuing)\n $msg\n";
       }
@@ -393,7 +398,7 @@ sub do_checkout($@)
 	  $diemsg .= "(first entry, no other successfully executed)";
 	}
 	# <TODO>try to restore old branch, if desirable/possible</TODO>
-	do_checkout(2, $oldbranch) if ($pushprocessing == 1);
+	$msg .= do_checkout(2, $oldbranch) if ($pushprocessing == 1);
 	die "$diemsg\n  $msg\n";
       }
     }
@@ -427,6 +432,13 @@ sub do_checkout($@)
 
     $progress->update($slavecnt) if ($progress);
   } while ($slavecnt <= $#slaves);
+
+  if ($pushprocessing > 1)
+  {
+    my $msg = "\nUnable to checkout original $args[0] for$failed" if ($failed);
+    $msg .= " (successful for $okcnt other(s))" if ($failed);
+    return $msg;
+  }
 
   %msg;
 }
@@ -726,7 +738,7 @@ elsif ($ARGV[0] eq 'pulls')
 	  $diemsg .= "(first entry, no other successfully executed)";
 	}
 	# <TODO>some way for do_checkout to only operate on some slaves</TODO>
-	do_checkout(2, $oldbranch);
+	$msg .= do_checkout(2, $oldbranch);
 	die "$diemsg\n  $msg\n";
       }
       $msg = $newmsg{$slave}.$msg;
@@ -755,7 +767,6 @@ elsif ($ARGV[0] eq 'pulls')
       $progress->update(++$progress_count) if ($progress);
     }
   }
-  do_checkout(2, $oldbranch);
 
   foreach my $msg (sort { $#{$msg{$a}} <=> $#{$msg{$b}} } keys %msg)
   {
@@ -764,6 +775,7 @@ elsif ($ARGV[0] eq 'pulls')
     print $msg;
   }
 
+  print do_checkout(2, $oldbranch) . "\n";
 }
 elsif ($ARGV[0] eq 'pull')
 {
@@ -1300,7 +1312,7 @@ elsif ($ARGV[0] eq 'statuses')
 	  $diemsg .= "(first entry, no other successfully executed)";
 	}
 	# <TODO>some way for do_checkout to only operate on some slaves</TODO>
-	do_checkout(2, @oldbranch);
+	$msg .= do_checkout(2, @oldbranch);
 	die "$diemsg\n  $msg\n";
       }
       elsif ($ret == 256)
@@ -1325,8 +1337,8 @@ elsif ($ARGV[0] eq 'statuses')
       unless ($msg =~ s/^\# (?:On branch |Not currently on any branch.)(.+)?\n//)
       {
 	# <TODO>some way for do_checkout to only operate on some slaves</TODO>
-	do_checkout(2, @oldbranch);
-        die "gits unexpected status output (missing branch): $msg" 
+	$msg .= do_checkout(2, @oldbranch);
+        die "gits unexpected status output (missing branch): $msg";
       }
 
       if ($msg =~ /^\# Your branch/)
@@ -1352,8 +1364,8 @@ elsif ($ARGV[0] eq 'statuses')
 	unless ($msg =~ s/^(\#\s*\n)//)
 	{
 	  # <TODO>some way for do_checkout to only operate on some slaves</TODO>
-	  do_checkout(2, @oldbranch);
-	  die "Could not parse git status output for $slave <$group> <$msg>\n"
+	  my $c = do_checkout(2, @oldbranch);
+	  die "Could not parse git status output for $slave <$group> <$msg>$c\n"
 	}
 	while ($msg =~ s/^(\#(?:\s*|(\s{2,}|\t)\S.*)\n)//)
 	{
@@ -1406,7 +1418,7 @@ elsif ($ARGV[0] eq 'statuses')
       print $msg;
     }
   }
-  do_checkout(2, @oldbranch);
+  print do_checkout(2, @oldbranch) . "\n";
 }
 elsif ($ARGV[0] eq 'grep')
 {
