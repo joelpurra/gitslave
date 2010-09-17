@@ -1,16 +1,25 @@
-gits.1: gits 
+prefix=/usr/local
+bindir=${prefix}/bin
+mandir=${prefix}/share/man
+man1dir=${mandir}/man1
+
+TARGETS=gits.1 README gits
+JUNK=gits.1
+
+all: $(TARGETS)
+
+gits.1: gits
 	pod2man < $^ > $@
 
 gits-checkup.1: gits-checkup
 	pod2man < $^ > $@
 
-install: gits gits.1 gits-checkup.1 README
-	mkdir -p /usr/local/share/man/man1
-	install -m 444 gits.1 gits-checkup.1 /usr/local/share/man/man1
+install: $(TARGETS)
+	mkdir -p $(DESTDIR)/$(man1dir) $(DESTDIR)/$(bindir)
+	install -m 444 gits.1 $(DESTDIR)/$(man1dir)
 	VERSION=`./gits --version`; \
-	 sed "s/{UNTAGGED}/$${VERSION}/" gits > /usr/local/bin/gits
-	chmod 755 /usr/local/bin/gits
-	install -m 755 gits-checkup /usr/local/bin
+	 sed "s/{UNTAGGED}/$${VERSION}/" gits > $(DESTDIR)/$(bindir)/gits
+	chmod 755 $(DESTDIR)/$(bindir)/gits
 	@perl -MTerm::ProgressBar -e 1 >/dev/null 2>&1 || echo Warning: Missing optional Term::ProgressBar
 	@perl -MParallel::Iterator -e 1 >/dev/null 2>&1 || echo Warning: Missing optional Parallel::Iterator package
 
@@ -18,7 +27,8 @@ README: gits
 	pod2text < gits > README
 
 clean nuke:
-	rm -rf gits.1 gits-checkup.1 *~ core* \#*
+	rm -rf $(JUNK) *~ core* \#*
+	(cd contrib; make $@)
 
 check test:
 	./prep_gitscheck

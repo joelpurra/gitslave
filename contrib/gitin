@@ -1,0 +1,130 @@
+#!/bin/bash
+#
+# Find changes you have made or you need to merge
+#
+# ++Copyright LIBBK++
+#
+# Copyright (c) 2003 The Authors. All rights reserved.
+#
+# This source code is licensed to you under the terms of the file
+# LICENSE.TXT in this release for further details.
+#
+# Mail <projectbaka@baka.org> for further information
+#
+# --Copyright LIBBK--
+#
+USAGE="$0: [-dfnl] args...
+
+-d Show actual differences not what files changed
+-f Fetch the latest (for gitin) -- By default only if >15 min old
+-n Do not fetch the latest (see above)
+-l Use local git and not gits"
+
+cmd="log -M -C --name-status --pretty='format: %h %s'"
+while getopts dfnl i
+  do
+       case $i in
+       d) cmd=diff;;
+       f) fetch=1;;
+       n) fetch=0;;
+       l) GIT=git; USERGIT=1;;
+       \?) echo "$USAGE"; exit 2;;
+       esac
+  done
+  shift `expr $OPTIND - 1`
+
+PROG=`echo $0 | sed 's:.*/::'`
+
+cur=$(pwd)
+while [ $(pwd) != "/" ]; do
+    if [ -d .git ]; then GITDIR=$(pwd)/.git; fi
+    if [ -z "$USERGIT" ]; then
+	if [ -f .gitslave ]; then
+	    GIT=gits
+	    break
+	elif [ -d .git ]; then
+	    GIT=git
+	fi
+    else
+	if [ -n "$USERGIT" ]; then break; fi
+    fi
+
+    cd ..
+
+	# If we found something and our parent is not .git, assume git
+    if [ -n "$GIT" -a ! -d .git ]; then
+	break;
+    fi
+done
+cd $cur
+
+if [ -z "$GIT" ]; then
+    echo "No .git or .gitslave located in this directory tree"
+    return;
+fi
+
+ME=HEAD
+BNAME="$(git branch | awk '$1=="*" { print $2;}')"
+RMT="`git config "branch.$BNAME.merge" | sed "s:/heads/:/remotes/$(git config "branch.$BNAME.remote")/:"`"
+
+if [ "$PROG" = "gitout" ]
+ then
+  LARGS="^$RMT $ME"
+  DARGS="$RMT...$ME"
+ else
+  if [ -z "$fetch" ]; then NEEDFETCH=`find $GITDIR/FETCH_HEAD -mmin +15`; fi
+  if [ ${fetch:-0} -gt 0 ]; then NEEDFETCH=1; fi
+  if [ -n "$NEEDFETCH" ]; then echo "...fetching"; $GIT fetch; echo; fi
+  LARGS="^$ME $RMT"
+  DARGS="$ME...$RMT"
+ fi
+if [ "$cmd" = "diff" ]
+ then
+  ARGS="$DARGS"
+ else
+  ARGS="$LARGS"
+ fi
+eval $GIT $cmd $ARGS
+
+=pod
+
+=head1 NAME
+
+gitin/gitout - Check for changes scheduled for next push or pull
+
+=head1 SYNOPSIS
+
+gitin|gitout [-dfnl]
+
+=head1 OVERVIEW
+
+gitin (and the similar gitout) are programs that assist in
+understanding what changes will be pushed out (gitout) on the next
+`git push` and what changes will be pulled in (gitin) on the next `git
+pull`.
+
+By default, if called as gitin, it will fetch the latest changes from
+upstream assuming they have not been gotten in the past 15 minutes.
+You can override this by saying -n to prevent a fetch, or -f to force
+a fetch.
+
+If you give the -d argument, it will provide diffs, otherwise it will
+provide logs.
+
+=head1 AUTHOR
+
+Seth Robertson
+
+=head1 REPORTING BUGS
+
+Report bugs to http://sourceforge.net/projects/gitslave
+
+=head1 COPYRIGHT
+
+Copyright (c) 2008 Seth Robertson.  License is similar to the GNU
+Lesser General Public License version 2.1, see LICENSE.TXT for more
+details.
+
+=head1 SEE ALSO
+
+git(1)
