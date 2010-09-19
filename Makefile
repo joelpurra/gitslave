@@ -26,6 +26,9 @@ install: $(TARGETS)
 README: gits
 	pod2text < gits > README
 
+release:
+	VERSION=`git describe --match 'v[0-9]*' | sed 's/^v//'`; git checkout-index -a -f --prefix=/tmp/gitslave-$$VERSION/; cd /tmp; tar czf gitslave-$$VERSION.tar.gz gitslave-$$VERSION; rm -rf /tmp/gitslave-$$VERSION; echo /tmp/gitslave-$$VERSION.tar.gz
+
 clean nuke:
 	rm -rf $(JUNK) *~ core* \#*
 	(cd contrib; make $@)
