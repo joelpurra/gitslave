@@ -4,7 +4,7 @@ mandir=${prefix}/share/man
 man1dir=${mandir}/man1
 
 TARGETS=gits.1 README gits
-JUNK=gits.1
+JUNK=gits.1 checkdir
 
 all: $(TARGETS)
 
@@ -33,5 +33,5 @@ clean nuke:
 	rm -rf $(JUNK) *~ core* \#*
 	(cd contrib; make $@)
 
-check test:
+check test: clean
 	./prep_gitscheck

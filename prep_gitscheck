@@ -17,7 +17,8 @@ BASE=`pwd`
     date > datelist
     echo $f > packagename
     git add *
-    git commit -a -m "Initial files")
+    git commit -a -m "Initial files"
+    git config receive.denyCurrentBranch ignore)
   done)
 
 git clone $BASE/checkdir/master/top $BASE/checkdir/slave
@@ -55,11 +56,11 @@ gits pull
 gits populate
 : Create a private branch and do work on it
 cd ../slave
-gits branch privateb
-gits checkout privateb
+gits pull
+gits checkout -b privateb master
 date >> sub2/datelist
 gits commit -a -m "Updating date in sub2 on branch privateb"
-gits push
+#gits push # Cannot push a non-tracking branch any more
 : "Person2 checks, but no changes (and no new branch), makes a change, commits"
 cd ../slave2
 gits pull
