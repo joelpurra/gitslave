@@ -53,35 +53,35 @@ When running gits populate on a non-master branch, the checkout fails
 because the local branch doesn't exist:
 
 $ gits branch
-On: ., admincmd, alarmer, antura-dist, arpd, awb-ids, binary-plug, bkmk, conn-plug, constfile-plug, copy-plug, csv-plug, dbtools, exec-plug, genup, libbk, libclc, libdnet, libevent, libpcap, meta-accum-plug, middleearth, miscfeatures-plug, netpcap_tool, network-plug, pcap-plug, pcap-ringdir, perlbk, perlmods, pg-proto-plug, pg-tagset-plug, postgres-plug, postgres, sd2004-plug, ssltools, st-plug, sysd-licensing, sysd-php, tcpdump, tcpslice, upad-plug:
-  * HADIT-1
+On: ., foo, bar, baz, biff, bard:
+  * HATID-1
 
 $ gits populate
-Initialized empty Git repository in /proj/udell/dupuy/awb/rh-dist/.git/
+Initialized empty Git repository in /proj/ell/dup/wb/foo/.git/
 Checking out files: 100% (152/152), done.
-Switching "" to branch "HADIT-1"
-error: pathspec 'HADIT-1' did not match any file(s) known to git.
-Branch inconsistency, branch HADIT-1 does not exist for rh-dist
+Switching "" to branch "HATID-1"
+error: pathspec 'HATID-1' did not match any file(s) known to git.
+Branch inconsistency, branch HATID-1 does not exist for foo
 
 This might be aggravated by fact that I have deleted the master branch for
 this checkout - I don't need it, and it speeds up pulls, but I suspect the
 problem would still exist.
 
-    The problem seems to be if master has a local branch (HADIT-1) and
+    The problem seems to be if master has a local branch (HATID-1) and
     you perhaps adjust the GITSLAVE or .gitslave (or failed to create
     the local branch using gits), git populate fails because the new
-    children do not have the HADIT-1 branch.
+    children do not have the HATID-1 branch.
 
-    The fix did not handle this case, it created the HADIT-1 branch on the
+    The fix did not handle this case, it created the HATID-1 branch on the
     top level without the request of the user, but then failed to create
     the branch for any of the children.
 
     In any case, gits has no business creating branches without an
-    explicit request.  golden-build is attempting to check out a tag
-    (a perfectly valid way to operate) but this change made the top
-    level attempt to create a local branch from a tag, which really
-    cannot work. .  What I could see being legal would be, if the top
-    level repo had a local branch and the slave did not, perhaps
+    explicit request.  gbuild is attempting to check out a tag (a
+    perfectly valid way to operate) but this change made the top level
+    attempt to create a local branch from a tag, which really cannot
+    work. .  What I could see being legal would be, if the top level
+    repo had a local branch and the slave did not, perhaps
     automatically creating the local branch for the slave, but even
     this is fallable.  Branch and tag operations are really important
     to create correctly the first time instead of updating them
@@ -143,11 +143,11 @@ It can be added, but seemingly it is only going to make things more
 cluttered and confused.
 
 
-* awb/bkmk requires complete rebuild after pulls with multiple branches
+* wb/bkmk requires complete rebuild after pulls with multiple branches
 
 In a repository with multiple local tracking branches, `gits pulls` will
 perform a `git checkout` for each branch.  One undesirably side-effect of
-this is that awb/bkmk will detect a (timestamp?) change to the configure
+this is that wb/bkmk will detect a (timestamp?) change to the configure
 script or its results, and re-run the entire Baka configure script again.
 
 
@@ -161,6 +161,10 @@ One bad side-effect of this is that gitk does not have a global
 purview of what is happening.
 
 Alternately, we could have it pull all logs since the last checkpoint.
+
+The following gives you unifiedish history since the last tag.
+
+gits exec sh -c 'git log -n 10 --pretty=oneline  --abbrev-commit `git describe --match "*-20[01][0-9]*" --long  | sed "s/-[0-9][0-9]*-[a-z0-9][a-z0-9]*\$//"`..HEAD'
 
 
 * Interactive commit messages not available

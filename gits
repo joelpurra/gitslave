@@ -1871,7 +1871,7 @@ arguments to pull contain the character % it will be replaced by
 the slave module name for each pull.
 
   --------------------------------------------------
-  gits pull otherhost:/src/work/awb/%
+  gits pull otherhost:/src/work/wb/%
   --------------------------------------------------
 
 
@@ -1959,10 +1959,10 @@ uses the same remote origin as the first one.  (The local clone/populate is
 much faster than performing a remote clone/populate.)
 
   --------------------------------------------------
-  git clone /home/user/work/awb /home/user/work/newawb
-  cd /home/user/work/newawb
+  git clone /home/user/work/wb /home/user/work/newwb
+  cd /home/user/work/newwb
   gits populate --fromcheckout
-  gits update-remote-url --no-fromcheckout origin ssh://git/src/git/awb
+  gits update-remote-url --no-fromcheckout origin ssh://git/src/git/wb
   --------------------------------------------------
 
 
@@ -1987,7 +1987,7 @@ by the slave module name.
   --------------------------------------------------
   gits push --quick
   --------------------------------------------------
-  gits push otherhost:/src/work/awb/%
+  gits push otherhost:/src/work/wb/%
   --------------------------------------------------
 
 
