@@ -1,3 +1,14 @@
+* Add "gits remote add" support
+
+Currently there is no support for adding remote repositories with the
+correct relative URLs.  Likewise with gits remote set-url.
+
+* Add "gits branch --set-upstream" support
+
+Currently there is no support for changing upstream repositories via
+--set-upstream with the correct relative URLs.  See update-remote-url.
+
+
 * Add -n, --dry-run option to display, but not run, subcommands
 
 This is especially useful when trying to understand how this all works.

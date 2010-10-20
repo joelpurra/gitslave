@@ -2121,6 +2121,25 @@ pre-generate commit messages or something, you should NOT be passing
 files checked into git in a gits command--you will likely get the
 wrong result.
 
+No coding has been performed yet to handle `gits remote add` or `gits
+remote set-url` with the correct relative URLs.  This should not be
+too complicated.
+
+No coding has been performed yet to handle gits branch --set-upstream.
+See `gits update-remote-url` for a supported method to perform this
+operation.
+
+You can have partial success, failure, and repositories on which the
+operation was never tried and you must recover from such manually.
+This is usually not very complicated.  See --keep-going.
+
+Programs like gitk will not show the global system history.
+
+The behavior when different branches have different slave modules
+associated with them and you checkout back and forth is probably not
+ideal (nor are any of the options we have thought of completely
+ideal).
+
 =head1 FILES
 
 =head2 .gitslave
@@ -2170,4 +2189,4 @@ details.
 
 =head1 SEE ALSO
 
-git(1)
+git(1), git-submodule(1), git-subtree(google)

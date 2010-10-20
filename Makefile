@@ -31,7 +31,7 @@ install: $(TARGETS)
 README: gits
 	pod2text < gits > README
 
-release:
+release: README
 	@VERSION=`git describe --exact-match --match 'v[0-9]*' 2>/dev/null | sed 's/^v//'`;					\
 	  if [ $$? -ne 0 -o "$$VERSION" = "" ]; then echo "Not a tagged version, you may not release"; exit 3; fi;		\
 	  if [ `git status --porcelain | wc -l` -gt 0 ]; then echo "Uncommitted changes, you may not release"; exit 2; fi;	\
