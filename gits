@@ -1840,7 +1840,7 @@ elsif ($ARGV[0] eq 'clean')
       }
     }
 
-    push(@{$msg{$newmsg}}, $slave);
+    push(@{$msg{$newmsg}}, $slave) if ($newmsg);
   }
 
   print $commonout unless ($COPTIONS{'q'});
@@ -1987,7 +1987,7 @@ else
     }
     $ok .= " $slave";
     $okcnt++;
-    push(@{$msg{$msg}}, $slave);
+    push(@{$msg{$msg}}, $slave) if ($msg);
 
     $progress->update(++$progress_count) if ($progress);
   }
