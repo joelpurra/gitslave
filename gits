@@ -22,6 +22,8 @@ use File::Spec;
 use constant GITSLAVE => '.gitslave';
 use Getopt::Long;
 use File::Path;
+use File::Basename;
+
 my $eval_errs = '';
 my ($want_parallel) = (0);
 eval 'use Parallel::Iterator;';
@@ -76,6 +78,37 @@ sub exitcode(;$)
 
 ######################################################################
 #
+# Perform substitution of path and directory components
+#
+sub gitsubst($$)
+{
+  my ($data,$slave) = @_;
+
+  my ($pattern) = quotemeta('%%dir%%');
+  if ($data =~ /$pattern/)
+  {
+    $data =~ s/$pattern/$slave/g;
+  }
+
+  $pattern = quotemeta('%%path%%');
+  if ($data =~ /$pattern/)
+  {
+    my $subst = Cwd::realpath($GITS_DIR."/".$slave);
+    $data =~ s/$pattern/$subst/g;
+  }
+
+  $pattern = quotemeta('%%basename%%');
+  if ($data =~ /$pattern/)
+  {
+    my $subst = basename(Cwd::realpath($GITS_DIR."/".$slave));
+    $data =~ s/$pattern/$subst/g;
+  }
+
+  $data;
+}
+
+######################################################################
+#
 # Run a command where we don't care about the output
 #
 sub docmd($)
@@ -95,9 +128,11 @@ sub docmd($)
 #
 # Run a command, retrieving the output
 #
-sub getcmd($)
+sub getcmd($;$)
 {
-  my ($cmd) = @_;
+  my ($cmd,$slave) = @_;
+
+  $cmd = gitsubst($cmd,$slave) if ($slave);
 
   $cmd = "($cmd) 2>&1";
   print STDERR "Running command: `$cmd`\n" if ($OPTIONS{'verbose'} > 0);
@@ -352,10 +387,10 @@ sub do_checkout($@)
 
   if (!$OPTIONS{'no-master'})
   {
-    my ($cmd) = qq^cd $slave && $git checkout ^.quoteit(@args);
+    my ($cmd) = qq^cd %%dir%% && $git checkout ^.quoteit(@args);
     $cmd .= " --" if ($pushprocessing);
     $cmd .= " >/dev/null 2>&1" if ($pushprocessing == 2);
-    ($ret, $msg) = getcmd($cmd);
+    ($ret, $msg) = getcmd($cmd,$slave);
 
     if ($ret == 0)
     {
@@ -424,10 +459,10 @@ sub do_checkout($@)
       $group = $slaves[$slavecnt];
       $slave = $group->[1];
 
-      my ($cmd) = qq^cd $slave && $git checkout ^.quoteit(@args);
+      my ($cmd) = qq^cd %%dir%% && $git checkout ^.quoteit(@args);
       $cmd .= " --" if ($pushprocessing);
       $cmd .= " >/dev/null 2>&1" if ($pushprocessing == 2);
-      ($ret, $msg) = getcmd($cmd);
+      ($ret, $msg) = getcmd($cmd,$slave);
     }
 
     $progress->update($slavecnt) if ($progress);
@@ -693,9 +728,7 @@ elsif ($ARGV[0] eq 'pulls')
       my $slave = $group->[1];
       next if missing_slave($slave);
 
-      my $args = quoteit(@ARGV);
-      $args =~ s/\%/$slave/g;
-      $results{$group} = qq^cd $slave && $git pull $args^;
+      $results{$group} = gitsubst("cd %%dir%% && $git pull ".quoteit(@ARGV),$slave);
     }
     if ($want_parallel)
     {
@@ -793,9 +826,7 @@ elsif ($ARGV[0] eq 'pull')
 
     next if missing_slave($slave);
 
-    my $args = quoteit(@ARGV);
-    $args =~ s/\%/$slave/g;
-    $worklist{$group} = qq^cd $slave && $git $args^;
+    $worklist{$group} = gitsubst(qq^cd %%dir%% && $git ^.quoteit(@ARGV),$slave);
   }
 
   if ($want_parallel)
@@ -905,7 +936,7 @@ elsif ($ARGV[0] eq 'push')
 
     if ($quick)
     {
-      my ($ret, $msg) = getcmd(qq^cd $slave && $git status^);
+      my ($ret, $msg) = getcmd(qq^cd %%dir%% && $git status^, $slave);
       if (!($msg =~ /Your branch is /))
       {
 	$results{$group} = [0, "Skipping push, this branch is up to date.\n"];
@@ -913,9 +944,7 @@ elsif ($ARGV[0] eq 'push')
       }
     }
 
-    my $args = quoteit(@ARGV);
-    $args =~ s/\%/$slave/g;
-    $worklist{$group} = qq^cd $slave && $git $args^;
+    $worklist{$group} = gitsubst("cd %%dir%% && $git ".quoteit(@ARGV),$slave);
   }
 
   if ($want_parallel)
@@ -987,6 +1016,180 @@ elsif ($ARGV[0] eq 'checkout')
   }
 
 }
+elsif ($ARGV[0] eq 'archive')
+{
+  shift(@ARGV);
+  my $format;
+  my $outfile;
+  my (@list) = @slaves;
+  unshift(@list,[undef,"."]) unless ($OPTIONS{'no-master'});
+  my ($ok,$okcnt);
+  my (%group,%msg);
+
+  for(my $i=0; $i <= $#ARGV; $i++)
+  {
+    # OK, not the sanest options parse in the world, but it should be
+    # close enough for sane developers to use.
+    if ($ARGV[$i] eq "-l" || $ARGV[$i] eq "--list")
+    {
+      print "gits-tar\n";
+      print `git archive -l`;
+      exit(0);
+    }
+    if ($ARGV[$i] eq "--format" && $i < $#ARGV)
+    {
+      $format = $ARGV[$i+1];
+      $ARGV[$i+1] = "tar" if ($format eq "gits-tar");
+    }
+    if ($ARGV[$i] =~ /^--format=(.*)/)
+    {
+      $format = $1;
+      $ARGV[$i] =~ s/gits-tar/tar/ if ($format eq "gits-tar");
+    }
+    if (($ARGV[$i] eq "-o" || $ARGV[$i] eq "--output") && $i < $#ARGV)
+    {
+      $outfile = $ARGV[$i+1];
+    }
+    if ($ARGV[$i] =~ /^--output=(.*)/)
+    {
+      $outfile = $1;
+    }
+  }
+
+  if ($format eq "gits-tar" && !$outfile)
+  {
+    print STDERR "Must provide a --output file with gits-tar archive format\n";
+    exit(1);
+  }
+  if ($format eq "gits-tar" && $outfile)
+  {
+    my $prefix;
+    my $cmdargs;
+
+    for(my $i=0; $i <= $#ARGV; $i++)
+    {
+      if ($ARGV[$i] eq "--prefix" && $i < $#ARGV)
+      {
+	$prefix=$ARGV[++$i];
+	next;
+      }
+      if ($ARGV[$i] =~ /--prefix=(.*)/)
+      {
+	$prefix=$1;
+	next;
+      }
+      if (($ARGV[$i] eq "--output" || $ARGV[$i] eq "-o") && $i < $#ARGV)
+      {
+	$i++;
+	next;
+      }
+      next if ($ARGV[$i] eq "--output=(.*)");
+      $cmdargs .= quoteit($ARGV[$i])." ";
+    }
+
+    $prefix .= "/" if ($prefix && $prefix !~ m:/$:);
+    my $first = 1;
+    my $curout = $outfile;
+    foreach my $group (@list)
+    {
+      my $slave = $group->[1];
+      next if missing_slave($slave);
+
+      my ($ret, $msg) = getcmd(qq^cd %%dir%% && git archive $cmdargs --prefix ${prefix}$slave/ --output $curout^,$slave);
+      if ($ret == 0)
+      {
+	if ($first)
+	{
+	  undef($first);
+	  $curout = ($ENV{'TMPDIR'}||'/tmp')."/gitslave-archive-tmp.$$";
+	}
+	else
+	{
+	  my($ret1, $msg1) = getcmd("tar -Af $outfile $curout");
+	  unlink($curout) if ($ret1 == 0);
+	  $ret = $ret1;
+	  $msg .= $msg1;
+	}
+      }
+
+      if ($ret != 0)
+      {
+	chomp($msg);
+	my $warn = "gits archive failed for: '$slave': " . exitcode($ret);
+
+	if ($OPTIONS{'keep-going'})
+	{
+	  warn "Error in $warn (continuing)\n $msg\n";
+	  $returncode = 2;
+	  next;
+	}
+
+	my $diemsg = "Aborting $warn\n ";
+	if ($ok)
+	{
+	  $diemsg .= "(ran fine on: $ok, did not run on @{[$#list-$okcnt]} other(s); no rollbacks)";
+	}
+	else
+	{
+	  $diemsg .= "(first entry, no other successfully executed)";
+	}
+	die "$diemsg\n  $msg\n";
+      }
+      $ok .= " $slave";
+      $okcnt++;
+
+
+      push(@{$msg{$msg}}, $slave);
+    }
+  }
+  else
+  {
+    foreach my $group (@list)
+    {
+      my $slave = $group->[1];
+
+      next if missing_slave($slave);
+
+      my ($ret, $msg) = getcmd(qq^cd %%dir%% && git archive ^.quoteit(@ARGV),$slave);
+      if ($ret != 0)
+      {
+	chomp($msg);
+	my $warn = "gits archive failed for: '$slave': " . exitcode($ret);
+
+	if ($OPTIONS{'keep-going'})
+	{
+	  warn "Error in $warn (continuing)\n $msg\n";
+	  $returncode = 2;
+	  next;
+	}
+
+	my $diemsg = "Aborting $warn\n ";
+	if ($ok)
+	{
+	  $diemsg .= "(ran fine on: $ok, did not run on @{[$#list-$okcnt]} other(s); no rollbacks)";
+	}
+	else
+	{
+	  $diemsg .= "(first entry, no other successfully executed)";
+	}
+	die "$diemsg\n  $msg\n";
+      }
+      $ok .= " $slave";
+      $okcnt++;
+
+      push(@{$msg{$msg}}, $slave);
+    }
+
+  }
+
+  foreach my $msg (sort { $#{$msg{$a}} <=> $#{$msg{$b}} } keys %msg)
+  {
+    print "On: ", join(', ',@{$msg{$msg}}), ":\n";
+    $msg =~ s/^/  /mg if (length($msg));
+    print $msg;
+  }
+
+}
 elsif ($ARGV[0] eq 'exec')
 {
   shift(@ARGV);
@@ -1002,10 +1205,7 @@ elsif ($ARGV[0] eq 'exec')
 
     next if missing_slave($slave);
 
-    my $args = quoteit(@ARGV);
-    $args =~ s/\%/$slave/g;
-
-    my ($ret, $msg) = getcmd(qq^cd $slave && $args^);
+    my ($ret, $msg) = getcmd(qq^cd %%dir%% && ^.quoteit(@ARGV),$slave);
     if ($ret != 0)
     {
       chomp($msg);
@@ -1088,7 +1288,7 @@ elsif ($ARGV[0] eq 'update-remote-url')
       $thisurl = resolve_repository($group->[0],$group->[1]);
     }
 
-    my ($ret, $msg) = getcmd(qq^cd $slave; $git config "remote.$name.url" "$thisurl"^);
+    my ($ret, $msg) = getcmd(qq^cd %%dir%% && $git config "remote.$name.url" "$thisurl"^,$slave);
     if ($ret != 0)
     {
       chomp($msg);
@@ -1140,7 +1340,7 @@ elsif ($ARGV[0] eq 'status')
 
     next if missing_slave($slave);
 
-    my ($ret, $msg) = getcmd(qq^cd $slave && $git ^.quoteit(@ARGV));
+    my ($ret, $msg) = getcmd(qq^cd $slave && $git ^.quoteit(@ARGV),$slave);
     if ($ret != 0 && $ret != 256)
     {
       chomp($msg);
@@ -1289,7 +1489,7 @@ elsif ($ARGV[0] eq 'statuses')
 
       next if missing_slave($slave);
 
-      my ($ret, $msg) = getcmd(qq^cd $slave && $git status ^.quoteit(@ARGV));
+      my ($ret, $msg) = getcmd(qq^cd %%dir%% && $git status ^.quoteit(@ARGV),$slave);
       if ($ret != 0 && $ret != 256)
       {
 	chomp($msg);
@@ -1433,7 +1633,7 @@ elsif ($ARGV[0] eq 'grep')
 
     next if missing_slave($slave);
 
-    my ($ret, $msg) = getcmd(qq^cd $slave && git ^.quoteit(@ARGV));
+    my ($ret, $msg) = getcmd(qq^cd %%dir%% && git ^.quoteit(@ARGV),$slave);
     next if ($ret == 256);
     if ($ret != 0)
     {
@@ -1491,14 +1691,14 @@ elsif ($ARGV[0] eq 'clean')
 
     next if missing_slave($slave);
 
-    my ($cmd) = qq^cd $slave && $git clean -n^;
+    my ($cmd) = qq^cd %%dir%% && $git clean -n^;
     $cmd .= " -d" if ($COPTIONS{'d'});
     $cmd .= " -f" if ($COPTIONS{'f'});
     $cmd .= " -X" if ($COPTIONS{'X'});
     $cmd .= " -x" if ($COPTIONS{'x'});
     $cmd .= " -- ".quoteit(@ARGV) if ($#ARGV >= 0);
 
-    my ($ret, $msg) = getcmd($cmd);
+    my ($ret, $msg) = getcmd($cmd,$slave);
     if ($ret != 0)
     {
       chomp($msg);
@@ -1594,7 +1794,7 @@ elsif ($ARGV[0] eq 'logs')
 
     next if missing_slave($slave);
 
-    my ($ret, $msg) = getcmd(qq^cd $slave && $git log --pretty='tformat: %at %h %ae %ar:: %s' ^.quoteit(@ARGV));
+    my ($ret, $msg) = getcmd(qq^cd %%dir%% && $git log --pretty='tformat: %at %h %ae %ar:: %s' ^.quoteit(@ARGV),$slave);
     if ($ret != 0)
     {
       chomp($msg);
@@ -1680,7 +1880,7 @@ else
 
     next if missing_slave($slave);
 
-    my ($ret, $msg) = getcmd(qq^cd $slave && $git ^.quoteit(@ARGV));
+    my ($ret, $msg) = getcmd(qq^cd %%dir%% && $git ^.quoteit(@ARGV),$slave);
     if ($ret != 0 &&
 	!($ARGV[0] eq "commit" && $msg =~ /nothing to commit/) &&
 	!($ARGV[0] eq "stash" && $ARGV[1] eq "apply" && $msg =~ /no valid stashed state found/))
@@ -1904,8 +2104,8 @@ e-mail and commit message.
 For each slave being tracked by the superproject and the superproject itself,
 cd to the root of the slave project directory and execute the listed command.
 
-If the arguments to pull contain the character % it will be replaced by
-the slave module name for each executed command.
+Please see SUBSTITUTION for information on how to replace part of the
+command with the slave module name for each executed command.
 
   --------------------------------------------------
   gits exec gitk
@@ -2014,6 +2214,29 @@ the same options supported by `git commit`.
 
 
 
+=head3 Make an archive of the repositories
+
+  gits archive <standard git-archive arguments>
+
+This is the standard git archive command--with the addition of a new
+--format option of "gits-tar".  When you select the gits-tar option,
+you must supply a on-disk --output file and you cannot use any tar
+compression options.  With gits-tar, the output tar archive will be a
+unified archive of the entire project, superproject and slaves.  Any
+existing prefix will be treated as a directory prefix (e.g. --prefix
+foo and --prefix foo/ are the same) and all slave repositories will be
+unpacked in their corresponding superproject locations.
+
+Remember the %%type%% substitutions if you choose to not use gits-tar.
+
+  --------------------------------------------------
+  gits archive --format gits-tar -o /tmp/foo.tar master
+  --------------------------------------------------
+  gits archive --format tar -o /tmp/foo-%%basename%%.tar master
+  --------------------------------------------------
+
+
+
 =head3 Everything else
 
 All other commands are passed directly though to git, with one command
@@ -2110,6 +2333,26 @@ commands run over each slave, but there are gits specific commands
 such as: pulls, prepare, attach, populate, resolve, exec, logs, and
 update-remote-url.  See OVERVIEW for more information on specific
 subcommands.
+
+=head1 SUBSTITUTION
+
+Before execution, essentially all commands running over all of the
+repositories will go through a substitution phase where certain magic
+tokens will be replaced with information about the repository in
+question.  These are most often used with `gits exec` and `gits
+archive`.
+
+%%dir%% represents the on-disk .gitslave-relative of the repository
+(e.g. the second field in .gitslave) with the superproject getting the
+value of ".".
+
+%%path%% represents the fully qualified path to the repository in
+question.
+
+%%basename%% represents the basename of the %%path%%, which is
+typically the last component of %%dir%% except for the superproject
+for which it is whatever the last directory name of the path to the
+superproject.
 
 =head1 BUGS
 

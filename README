@@ -150,8 +150,8 @@ OVERVIEW
     itself, cd to the root of the slave project directory and execute the
     listed command.
 
-    If the arguments to pull contain the character % it will be replaced by
-    the slave module name for each executed command.
+    Please see SUBSTITUTION for information on how to replace part of the
+    command with the slave module name for each executed command.
 
       --------------------------------------------------
       gits exec gitk
@@ -247,6 +247,26 @@ OVERVIEW
       gits statuses
       --------------------------------------------------
 
+   Make an archive of the repositories
+      gits archive <standard git-archive arguments>
+
+    This is the standard git archive command--with the addition of a new
+    --format option of "gits-tar". When you select the gits-tar option, you
+    must supply a on-disk --output file and you cannot use any tar
+    compression options. With gits-tar, the output tar archive will be a
+    unified archive of the entire project, superproject and slaves. Any
+    existing prefix will be treated as a directory prefix (e.g. --prefix foo
+    and --prefix foo/ are the same) and all slave repositories will be
+    unpacked in their corresponding superproject locations.
+
+    Remember the %%type%% substitutions if you choose to not use gits-tar.
+
+      --------------------------------------------------
+      gits archive --format gits-tar -o /tmp/foo.tar master
+      --------------------------------------------------
+      gits archive --format tar -o /tmp/foo-%%basename%%.tar master
+      --------------------------------------------------
+
    Everything else
     All other commands are passed directly though to git, with one command
     being run per repository. Output summarizing is performed so that
@@ -331,6 +351,23 @@ DESCRIPTION
     pulls, prepare, attach, populate, resolve, exec, logs, and
     update-remote-url. See OVERVIEW for more information on specific
     subcommands.
+
+SUBSTITUTION
+    Before execution, essentially all commands running over all of the
+    repositories will go through a substitution phase where certain magic
+    tokens will be replaced with information about the repository in
+    question. These are most often used with `gits exec` and `gits archive`.
+
+    %%dir%% represents the on-disk .gitslave-relative of the repository
+    (e.g. the second field in .gitslave) with the superproject getting the
+    value of ".".
+
+    %%path%% represents the fully qualified path to the repository in
+    question.
+
+    %%basename%% represents the basename of the %%path%%, which is typically
+    the last component of %%dir%% except for the superproject for which it
+    is whatever the last directory name of the path to the superproject.
 
 BUGS
     gits changes directory to the directory where .gitslave exists.
