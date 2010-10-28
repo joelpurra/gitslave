@@ -153,36 +153,40 @@ sub getcmd($;$)
 #
 # Find the absolute path to repository (relatives are relative to upstream repository)
 #
-sub resolve_repository($$)
+sub resolve_repository($$;$)
 {
-  my ($repos,$relative) = @_;
+  my ($relrepos,$relative,$absrepos) = @_;
 
   # Check for already absolute
-  return $repos if ($repos =~ m-^(/|\w+:/)-);
+  return $relrepos if ($relrepos =~ m-^(/|\w+:/)-);
 
   # Break into method and path sections
-  my ($prefix, $suffix) = ("", $repos);
-  ($prefix, $suffix) = ($1, $2) if ($repos =~ m-^(\w+:)(.*)-);
+  my ($prefix, $suffix) = ("", $relrepos);
+  ($prefix, $suffix) = ($1, $2) if ($relrepos =~ m-^(\w+:)(.*)-);
 
   # Find upstream origin URL
-  my ($ret, $master_repo) = getcmd("$git config remote.origin.url");
-  chomp($master_repo);
-  die "Could not find git upstream clone which this is relative to\n" unless ($ret == 0 && $master_repo);
+  if (!$absrepos)
+  {
+    my ($ret, $master_repo) = getcmd("$git config remote.origin.url");
+    chomp($master_repo);
+    die "Could not find git upstream clone which this is relative to\n" unless ($ret == 0 && $master_repo);
+    $absrepos = $master_repo;
+  }
 
   # Nuke trailing .git, if necessary
-  $master_repo =~ s:/.git$::;
+  $absrepos =~ s:/.git$::;
 
   if ($fromcheckout)
   {
-    $repos = "$master_repo/$relative";
+    $relrepos = "$absrepos/$relative";
   }
   else
   {
-    my ($mprefix, $msuffix) = ("", $master_repo);
-    ($mprefix, $msuffix) = ($1, $2) if ($repos =~ m-^(\w+:(?://[^/]*|))(.*)-);
+    my ($mprefix, $msuffix) = ("", $absrepos);
+    ($mprefix, $msuffix) = ($1, $2) if ($relrepos =~ m-^(\w+:(?://[^/]*|))(.*)-);
 
     # Is this repository-relative? (keep method://host from master)
-    if ($repos =~ m:^\^(/.*):)
+    if ($relrepos =~ m:^\^(/.*):)
     {
       return "$mprefix$1";
     }
@@ -190,17 +194,18 @@ sub resolve_repository($$)
     # Do we have a replacement method://?  (Seems like an unlikely case)
     if ($prefix)
     {
-      $master_repo = $prefix.$msuffix;
+      $absrepos = $prefix.$msuffix;
     }
 
     # Handle smushing together, relative paths, etc
-    $repos = "$master_repo/$suffix";
-    while ($repos =~ s:/\./:/:) {;}
-    while ($repos =~ s:/[^/]+?/\.\./:/:) {;}
-    while ($repos =~ s-(^\w+://.*)//-$1-g) {;}
-    while ($repos !~ m-^\w+://- && $repos =~ s://:/:g) {;}
+    $relrepos = "$absrepos/$suffix";
+    while ($relrepos =~ s:/\./:/:) {;}
+    while ($relrepos =~ s:/[^/]+?/\.\./:/:) {;}
+    while ($relrepos =~ s-(^\w+://.*)//-$1-g) {;}
+    while ($relrepos !~ m-^\w+://- && $relrepos =~ s://:/:g) {;}
   }
-  $repos;
+  $relrepos =~ s:/\.$::;
+  $relrepos;
 }
 
 
@@ -1095,7 +1100,7 @@ elsif ($ARGV[0] eq 'archive')
       my $slave = $group->[1];
       next if missing_slave($slave);
 
-      my ($ret, $msg) = getcmd(qq^cd %%dir%% && git archive $cmdargs --prefix ${prefix}$slave/ --output $curout^,$slave);
+      my ($ret, $msg) = getcmd(qq^cd %%dir%% && $git archive $cmdargs --prefix ${prefix}$slave/ --output $curout^,$slave);
       if ($ret == 0)
       {
 	if ($first)
@@ -1150,7 +1155,7 @@ elsif ($ARGV[0] eq 'archive')
 
       next if missing_slave($slave);
 
-      my ($ret, $msg) = getcmd(qq^cd %%dir%% && git archive ^.quoteit(@ARGV),$slave);
+      my ($ret, $msg) = getcmd(qq^cd %%dir%% && $git archive ^.quoteit(@ARGV),$slave);
       if ($ret != 0)
       {
 	chomp($msg);
@@ -1210,6 +1215,80 @@ elsif ($ARGV[0] eq 'exec')
     {
       chomp($msg);
       my $warn = "gits exec $ARGV[0], failed for: '$slave': " . exitcode($ret);
+
+      if ($OPTIONS{'keep-going'})
+      {
+	warn "Error in $warn (continuing)\n $msg\n";
+	$returncode = 2;
+	next;
+      }
+
+      my $diemsg = "Aborting $warn\n ";
+      if ($ok)
+      {
+	$diemsg .= "(ran fine on: $ok, did not run on @{[$#list-$okcnt]} other(s); no rollbacks)";
+      }
+      else
+      {
+	$diemsg .= "(first entry, no other successfully executed)";
+      }
+      die "$diemsg\n  $msg\n";
+    }
+    $ok .= " $slave";
+    $okcnt++;
+
+    push(@{$msg{$msg}}, $slave);
+  }
+
+  foreach my $msg (sort { $#{$msg{$a}} <=> $#{$msg{$b}} } keys %msg)
+  {
+    print "On: ", join(', ',@{$msg{$msg}}), ":\n";
+    $msg =~ s/^/  /mg if (length($msg));
+    print $msg;
+  }
+}
+elsif ($ARGV[0] eq 'remote')
+{
+  my ($ok,$okcnt);
+  my (@list) = @slaves;
+  unshift(@list,[undef,"."]) unless ($OPTIONS{'no-master'});
+  my ($branch);
+  my (%group,%msg);
+  my ($realurl);
+
+  if ($ARGV[1] eq "add")
+  {
+    $fromcheckout = 0;
+    if (grep(/^--fromcheckout$/,@ARGV))
+    {
+      $fromcheckout = 1;
+      @ARGV = grep(!/^--fromcheckout$/,@ARGV);
+    }
+
+    if (grep(/^--no-fromcheckout$/,@ARGV))
+    {
+      $fromcheckout = 0;
+      @ARGV = grep(!/^--no-fromcheckout$/,@ARGV);
+    }
+
+    $realurl = $ARGV[$#ARGV];
+  }
+
+  foreach my $group (@list)
+  {
+    my $slave = $group->[1];
+    next if missing_slave($slave);
+
+    if ($ARGV[1] eq "add")
+    {
+      $ARGV[$#ARGV] = resolve_repository($group->[0],$group->[1],$realurl);
+    }
+
+    my ($ret, $msg) = getcmd(qq^cd %%dir%% && $git ^.quoteit(@ARGV),$slave);
+    if ($ret != 0)
+    {
+      chomp($msg);
+      my $warn = "gits remote $ARGV[1], failed for: '$slave': " . exitcode($ret);
 
       if ($OPTIONS{'keep-going'})
       {
@@ -1633,7 +1712,7 @@ elsif ($ARGV[0] eq 'grep')
 
     next if missing_slave($slave);
 
-    my ($ret, $msg) = getcmd(qq^cd %%dir%% && git ^.quoteit(@ARGV),$slave);
+    my ($ret, $msg) = getcmd(qq^cd %%dir%% && $git ^.quoteit(@ARGV),$slave);
     next if ($ret == 256);
     if ($ret != 0)
     {
