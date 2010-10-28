@@ -2007,7 +2007,7 @@ exit($returncode);
 
 =head1 NAME
 
-gits - The git slave repository tool
+gits - The git slave repository tool for super-project multi-repository management
 
 =head1 SYNOPSIS
 
@@ -2016,11 +2016,11 @@ gits [--version] [--no-master] [--no-commit] [--keep-going] [--no-progress] [-p|
 =head1 OVERVIEW
 
 gits is a program that assists in assembling a meta-project from a
-number of individual git repositories which operate as if they were
-one git repository instead of many, similar to the way that CVS works
-by default and svn (v1.5) can be coerced to work.  Some of these
-individual git repositories may be part of other meta-projects as
-well.
+number of individual git repositories which operate (when using gits)
+as if they were one git repository instead of many, similar to the way
+that CVS works by default and svn (v1.5) can be coerced to work.  Some
+of these individual git repositories may be part of other
+meta-projects as well.
 
 Unfortunately, the functionality provided by git-submodule is not
 sufficient for this mode of operation.  Most git commands, like

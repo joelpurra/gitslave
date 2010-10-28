@@ -1,5 +1,6 @@
 NAME
-    gits - The git slave repository tool
+    gits - The git slave repository tool for super-project multi-repository
+    management
 
 SYNOPSIS
     gits [--version] [--no-master] [--no-commit] [--keep-going]
@@ -8,10 +9,11 @@ SYNOPSIS
 
 OVERVIEW
     gits is a program that assists in assembling a meta-project from a
-    number of individual git repositories which operate as if they were one
-    git repository instead of many, similar to the way that CVS works by
-    default and svn (v1.5) can be coerced to work. Some of these individual
-    git repositories may be part of other meta-projects as well.
+    number of individual git repositories which operate (when using gits) as
+    if they were one git repository instead of many, similar to the way that
+    CVS works by default and svn (v1.5) can be coerced to work. Some of
+    these individual git repositories may be part of other meta-projects as
+    well.
 
     Unfortunately, the functionality provided by git-submodule is not
     sufficient for this mode of operation. Most git commands, like checkout
@@ -69,10 +71,11 @@ OVERVIEW
     directory, for example, a subdirectory in the top level.
 
     <repository> can also be relative (relative to the URL the top level
-    master checkout was cloned from). It may also be an absolute URL. If the
-    URL starts with ^, it will use only the method and hostname from the
-    master's URL. Otherwise, it will be relative to the fully qualified
-    path. We will show both in operation in the example.
+    master checkout was cloned from). It may also be an absolute URL but if
+    so, `gits remote add` is not going to be happy. If the URL starts with
+    ^, it will use only the method and hostname from the master's URL.
+    Otherwise, it will be relative to the fully qualified path. We will show
+    both in operation in the example.
 
      --------------------------------------------------
      gits attach ../lib1.git lib1
@@ -205,6 +208,27 @@ OVERVIEW
       gits populate --fromcheckout
       gits update-remote-url --no-fromcheckout origin ssh://git/src/git/wb
       --------------------------------------------------
+
+   Add a new remote to all repositories
+      gits remote add [--[no-]fromcheckout] <git-remote-add options> <repositoryname> <url>
+
+    Adds a remote named <name> for the repository at <url> (as modified by
+    the relative URL rules from `gits attach` and `gits update-remote-url`
+    and the --fromcheckout argument). The command gits fetch <name> can then
+    be used to create and update remote-tracking branches <name>/<branch>.
+
+    The <url> would be the absolute url for the superproject and each slave
+    repository would have a modified version of that path.
+
+    Please note that we do not currently support `gits remote set-url` in a
+    useful way. See `gits update-remote-url` for an alternate method which
+    will satisfy most use cases.
+
+     --------------------------------------------------
+     gits remote add fred --fromcheckout /home/fred/src/foo
+     --------------------------------------------------
+     gits remote add backup ssh://backups/src/git/foo
+     --------------------------------------------------
 
    Push a change to a remote repository
       gits push [--quick] [push args]
@@ -378,13 +402,10 @@ BUGS
     files checked into git in a gits command--you will likely get the wrong
     result.
 
-    No coding has been performed yet to handle `gits remote add` or `gits
-    remote set-url` with the correct relative URLs. This should not be too
-    complicated.
-
-    No coding has been performed yet to handle gits branch --set-upstream.
-    See `gits update-remote-url` for a supported method to perform this
-    operation.
+    No coding has been performed yet to handle `gits remote set-url` or
+    `gits branch --set-upstream`. See `gits update-remote-url` for a
+    supported method to perform this operation. Support could be added if
+    necessary.
 
     You can have partial success, failure, and repositories on which the
     operation was never tried and you must recover from such manually. This

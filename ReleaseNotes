@@ -1,0 +1,11 @@
+2010-10-27  Seth Robertson  <projectbaka@baka.org>
+
+	* Add support for `gits remote add` to add new remotes for all
+	slaves with the correct relative remote URLs.
+
+	* Add support for `gits archive` to generate a unified tarball
+	with slave-relative paths.
+
+2010-09-20  Seth Robertson  <projectbaka@baka.org>
+
+	* Public 1.0 release
