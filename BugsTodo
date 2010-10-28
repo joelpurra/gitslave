@@ -1,8 +1,3 @@
-* Add "gits remote add" support
-
-Currently there is no support for adding remote repositories with the
-correct relative URLs.  Likewise with gits remote set-url.
-
 * Add "gits branch --set-upstream" support
 
 Currently there is no support for changing upstream repositories via
@@ -21,14 +16,15 @@ in -n mode.
 
 * Gits clean -fdx should provide more warning about deleting unlisted slaves
 
-While gits clean checks for slave directories (that would otherwise get
-removed by git clean -fdx) it should double check for .git directories
-inside any other subdirectories that are not listed as slaves.  Especially
-in a case where GITSLAVE environment variable is used to select different
-sub- and super-sets of slaves, there may be slaves present that aren't in
-the currently active set, and you probably (although not always) don't want
-to remove them.  Another -f argument (or maybe -F?) should be necessary to
-force their removal.
+While gits clean checks for slave directories (that would otherwise
+get removed by git clean -fdx) it should double check for .git
+directories inside any other subdirectories that are not listed as
+slaves.  Especially in a case where GITSLAVE environment variable is
+used to select different sub- and super-sets of slaves or you check
+out alternate .gitslave files with a different set of slaves, there
+may be slaves present that aren't in the currently active set, and you
+probably (although not always) don't want to remove them.  Another -f
+argument (or maybe -F?) should be necessary to force their removal.
 
 
 * Git coloring and paging are ineffective for gits
