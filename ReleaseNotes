@@ -6,6 +6,10 @@
 	* Add support for `gits archive` to generate a unified tarball
 	with slave-relative paths.
 
+	* Full (and documented) support for command substitution
+	to allow gits-archive, gits-exec, gits-bundle and friends to
+	have output files contain repository specific tokens.
+
 2010-09-20  Seth Robertson  <projectbaka@baka.org>
 
 	* Public 1.0 release
