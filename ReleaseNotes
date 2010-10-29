@@ -1,9 +1,13 @@
 2010-10-28  Seth Robertson  <projectbaka@baka.org>
 
+	* Version 1.1.1 released
+
 	* Deduplicate output summarizing code.  Provide standard
           mechanism to suppress (and show) empty command output.
 
 2010-10-27  Seth Robertson  <projectbaka@baka.org>
+
+	* Version 1.1.0 released
 
 	* Add support for `gits remote add` to add new remotes for all
 	slaves with the correct relative remote URLs.
