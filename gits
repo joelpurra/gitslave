@@ -485,6 +485,27 @@ sub do_checkout($@)
 
 
 
+######################################################################
+#
+# Standard gits output summmarization routine
+#
+sub stdout($;$)
+{
+  my ($msgp,$suppressempty) = @_;
+
+  # Skip output if all commands returned empty output strings unless we are in verbose mode
+  return if (!$OPTIONS{'verbose'} && scalar(keys(%{$msgp})) == 1 && defined($msgp->{""}));
+
+  foreach my $msg (sort { $#{$msgp->{$a}} <=> $#{$msgp->{$b}} } keys %{$msgp})
+  {
+    next if ($suppressempty && $msg eq "");
+    print "On: ", join(', ',@{$msgp->{$msg}}), ":\n";
+    $msg =~ s/^/  /mg if (length($msg));
+    print $msg;
+  }
+}
+
+
 
 ######################################################################
 #
@@ -806,12 +827,7 @@ elsif ($ARGV[0] eq 'pulls')
     }
   }
 
-  foreach my $msg (sort { $#{$msg{$a}} <=> $#{$msg{$b}} } keys %msg)
-  {
-    print "On: ", join(', ',@{$msg{$msg}}), ":\n";
-    $msg =~ s/^/  /mg if (length($msg));
-    print $msg;
-  }
+  stdout(\%msg);
 
   print do_checkout(2, $oldbranch) . "\n";
 }
@@ -899,12 +915,7 @@ elsif ($ARGV[0] eq 'pull')
     $progress->update(++$progress_count) if ($progress);
   }
 
-  foreach my $msg (sort { $#{$msg{$a}} <=> $#{$msg{$b}} } keys %msg)
-  {
-    print "On: ", join(', ',@{$msg{$msg}}), ":\n";
-    $msg =~ s/^/  /mg if (length($msg));
-    print $msg;
-  }
+  stdout(\%msg);
 }
 elsif ($ARGV[0] eq 'push')
 {
@@ -1001,25 +1012,14 @@ elsif ($ARGV[0] eq 'push')
     $progress->update(++$progress_count) if ($progress);
   }
 
-  foreach my $msg (sort { $#{$msg{$a}} <=> $#{$msg{$b}} } keys %msg)
-  {
-    print "On: ", join(', ',@{$msg{$msg}}), ":\n";
-    $msg =~ s/^/  /mg if (length($msg));
-    print $msg;
-  }
+  stdout(\%msg);
 }
 elsif ($ARGV[0] eq 'checkout')
 {
   shift(@ARGV);
   my (%msg) = do_checkout(0, @ARGV);
 
-  foreach my $msg (sort { $#{$msg{$a}} <=> $#{$msg{$b}} } keys %msg)
-  {
-    print "On: ", join(', ',@{$msg{$msg}}), ":\n";
-    $msg =~ s/^/  /mg if (length($msg));
-    print $msg;
-  }
-
+  stdout(\%msg);
 }
 elsif ($ARGV[0] eq 'archive')
 {
@@ -1187,13 +1187,7 @@ elsif ($ARGV[0] eq 'archive')
 
   }
 
-  foreach my $msg (sort { $#{$msg{$a}} <=> $#{$msg{$b}} } keys %msg)
-  {
-    print "On: ", join(', ',@{$msg{$msg}}), ":\n";
-    $msg =~ s/^/  /mg if (length($msg));
-    print $msg;
-  }
-
+  stdout(\%msg);
 }
 elsif ($ARGV[0] eq 'exec')
 {
@@ -1240,12 +1234,7 @@ elsif ($ARGV[0] eq 'exec')
     push(@{$msg{$msg}}, $slave);
   }
 
-  foreach my $msg (sort { $#{$msg{$a}} <=> $#{$msg{$b}} } keys %msg)
-  {
-    print "On: ", join(', ',@{$msg{$msg}}), ":\n";
-    $msg =~ s/^/  /mg if (length($msg));
-    print $msg;
-  }
+  stdout(\%msg);
 }
 elsif ($ARGV[0] eq 'remote')
 {
@@ -1314,12 +1303,7 @@ elsif ($ARGV[0] eq 'remote')
     push(@{$msg{$msg}}, $slave);
   }
 
-  foreach my $msg (sort { $#{$msg{$a}} <=> $#{$msg{$b}} } keys %msg)
-  {
-    print "On: ", join(', ',@{$msg{$msg}}), ":\n";
-    $msg =~ s/^/  /mg if (length($msg));
-    print $msg;
-  }
+  stdout(\%msg);
 }
 elsif ($ARGV[0] eq 'update-remote-url')
 {
@@ -1397,12 +1381,7 @@ elsif ($ARGV[0] eq 'update-remote-url')
     push(@{$msg{$msg}}, $slave);
   }
 
-  foreach my $msg (sort { $#{$msg{$a}} <=> $#{$msg{$b}} } keys %msg)
-  {
-    print "On: ", join(', ',@{$msg{$msg}}), ":\n";
-    $msg =~ s/^/  /mg if (length($msg));
-    print $msg;
-  }
+  stdout(\%msg);
   set_fromcheckout($fromcheckout);
 }
 elsif ($ARGV[0] eq 'status')
@@ -1526,13 +1505,7 @@ elsif ($ARGV[0] eq 'status')
     print "#\n";
   }
 
-  foreach my $msg (sort { $#{$msg{$a}} <=> $#{$msg{$b}} } keys %msg)
-  {
-    next unless $msg;
-    print "On: ", join(', ',@{$msg{$msg}}), ":\n";
-    $msg =~ s/^/  /mg if (length($msg));
-    print $msg;
-  }
+  stdout(\%msg,1);
 }
 elsif ($ARGV[0] eq 'statuses')
 {
@@ -1689,13 +1662,7 @@ elsif ($ARGV[0] eq 'statuses')
     }
 
     print "# On branch $branch\n";
-    foreach my $msg (sort { $#{$msg{$a}} <=> $#{$msg{$b}} } keys %msg)
-    {
-      next unless $msg;
-      print "On: ", join(', ',@{$msg{$msg}}), ":\n";
-      $msg =~ s/^/  /mg if (length($msg));
-      print $msg;
-    }
+    stdout(\%msg,1);
   }
   print do_checkout(2, @oldbranch) . "\n";
 }
@@ -1840,7 +1807,7 @@ elsif ($ARGV[0] eq 'clean')
       }
     }
 
-    push(@{$msg{$newmsg}}, $slave) if ($newmsg);
+    push(@{$msg{$newmsg}}, $slave);
   }
 
   print $commonout unless ($COPTIONS{'q'});
@@ -1850,13 +1817,7 @@ elsif ($ARGV[0] eq 'clean')
     rmtree(\@unlinkers, $OPTIONS{'verbose'}) || die "Cannot unlink";
   }
 
-  foreach my $msg (sort { $#{$msg{$a}} <=> $#{$msg{$b}} } keys %msg)
-  {
-    next if ($msg eq "" && $COPTIONS{'q'});
-    print "On: ", join(', ',@{$msg{$msg}}), ":\n";
-    $msg =~ s/^/  /mg if (length($msg));
-    print $msg;
-  }
+  stdout(\%msg);
 }
 elsif ($ARGV[0] eq 'logs')
 {
@@ -1987,17 +1948,12 @@ else
     }
     $ok .= " $slave";
     $okcnt++;
-    push(@{$msg{$msg}}, $slave) if ($msg);
+    push(@{$msg{$msg}}, $slave);
 
     $progress->update(++$progress_count) if ($progress);
   }
 
-  foreach my $msg (sort { $#{$msg{$a}} <=> $#{$msg{$b}} } keys %msg)
-  {
-    print "On: ", join(', ',@{$msg{$msg}}), ":\n";
-    $msg =~ s/^/  /mg if (length($msg));
-    print $msg;
-  }
+  stdout(\%msg);
 }
 exit($returncode);
 
