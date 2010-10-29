@@ -2128,9 +2128,8 @@ For each branch being tracked by the superproject, go through the list
 of configured slaves, check yourself out to the branch, perform a pull,
 then switch back to the branch you were on.
 
-If you are pulling from a non-default (origin) repository, and the
-arguments to pulls contain the character % it will be replaced by
-the slave module name for each pull.
+Please see SUBSTITUTION for information on how to replace part of the
+command with the slave module name for each executed command.
 
   --------------------------------------------------
   gits pulls --rebase
@@ -2146,12 +2145,13 @@ Go through the list of configured slaves and perform a pull,  Note that
 even though only the current branch HEAD will be advanced, the commits
 on other branches will still be fetched.
 
-If you are pulling from a non-default (origin) repository, and the
-arguments to pull contain the character % it will be replaced by
-the slave module name for each pull.
+Please see SUBSTITUTION for information on how to replace part of the
+command with the slave module name for each executed command.
 
   --------------------------------------------------
-  gits pull otherhost:/src/work/wb/%
+  gits pull --rebase
+  --------------------------------------------------
+  gits pull otherhost:/src/work/wb/%%dir%%
   --------------------------------------------------
 
 
@@ -2286,13 +2286,13 @@ push data.  If you have changes on other branches, a slow push is
 still required, as it is if you are pushing to a repository other than
 the standard origin.
 
-If you are pushing to another repository, the character % will be replaced
-by the slave module name.
+Please see SUBSTITUTION for information on how to replace part of the
+command with the slave module name for each executed command.
 
   --------------------------------------------------
   gits push --quick
   --------------------------------------------------
-  gits push otherhost:/src/work/wb/%
+  gits push otherhost:/src/work/wb/%%dir%%
   --------------------------------------------------
 
 
