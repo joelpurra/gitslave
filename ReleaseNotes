@@ -1,3 +1,8 @@
+2010-10-28  Seth Robertson  <projectbaka@baka.org>
+
+	* Deduplicate output summarizing code.  Provide standard
+          mechanism to suppress (and show) empty command output.
+
 2010-10-27  Seth Robertson  <projectbaka@baka.org>
 
 	* Add support for `gits remote add` to add new remotes for all

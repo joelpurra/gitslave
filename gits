@@ -498,7 +498,7 @@ sub stdout($;$)
 
   foreach my $msg (sort { $#{$msgp->{$a}} <=> $#{$msgp->{$b}} } keys %{$msgp})
   {
-    next if ($suppressempty && $msg eq "");
+    next if ($suppressempty && !$OPTIONS{'verbose'} && $msg eq "");
     print "On: ", join(', ',@{$msgp->{$msg}}), ":\n";
     $msg =~ s/^/  /mg if (length($msg));
     print $msg;
