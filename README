@@ -4,8 +4,8 @@ NAME
 
 SYNOPSIS
     gits [--version] [--no-master] [--no-commit] [--keep-going]
-    [--no-progress] [-p|--parallel <count>] [-v|--verbose]+ [--quiet]
-    [--help] <subcommand> [args]...
+    [--with-ifpresent] [--no-progress] [-p|--parallel <count>]
+    [-v|--verbose]+ [--quiet] [--help] <subcommand> [args]...
 
 OVERVIEW
     gits is a program that assists in assembling a meta-project from a
@@ -93,6 +93,9 @@ OVERVIEW
     --no-fromcheckout, assume that the remote repository has the standard
     layout. If either option is given, sets the default repository layout,
     which is used when no explicit option is provided.
+
+    The gits flag --with-ifpresent is useful here as one way to populate
+    conditional repositories.
 
       --------------------------------------------------
       gits populate
@@ -357,6 +360,11 @@ DESCRIPTION
     Do not abort when any subsidiary git command fails - instead print a
     warning and continue processing. Some git command failures will still be
     considered fatal and cause gits to abort.
+
+  --with-ifpresent
+    Operate also on those slave repositories which are marked as "ifpresent"
+    even if they are not present. This is mostly useful for `gits populate`
+    and `gits checkout`.
 
   --verbose -v
     Ask for more information about what is happening. You may repeat the

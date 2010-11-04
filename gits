@@ -253,7 +253,7 @@ sub git_slave_list($)
       die "Bad line $lineno in $slavefile\n" unless (/^\"(.*)\" \"(.*)\"( ifpresent)?$/);
       my ($baserel,$ckoutrel,$flags) = ($1,$2,$3);
 
-      if ($flags !~ /ifpresent/ || -d "$GITS_DIR/$ckoutrel/.")
+      if ($flags !~ /ifpresent/ || $OPTIONS{'with-ifpresent'} || -d "$GITS_DIR/$ckoutrel/.")
       {
 	push(@gits,[$baserel, $ckoutrel]) if (!$seen{$ckoutrel});
 	$seen{$ckoutrel} = 1;
@@ -1967,7 +1967,7 @@ gits - The git slave repository tool for super-project multi-repository manageme
 
 =head1 SYNOPSIS
 
-gits [--version] [--no-master] [--no-commit] [--keep-going] [--no-progress] [-p|--parallel <count>] [-v|--verbose]+ [--quiet] [--help] <subcommand> [args]...
+gits [--version] [--no-master] [--no-commit] [--keep-going] [--with-ifpresent] [--no-progress] [-p|--parallel <count>] [-v|--verbose]+ [--quiet] [--help] <subcommand> [args]...
 
 =head1 OVERVIEW
 
@@ -2069,6 +2069,9 @@ instead of in standard repository layout.  With --no-fromcheckout, assume
 that the remote repository has the standard layout.  If either option is
 given, sets the default repository layout, which is used when no explicit
 option is provided.
+
+The gits flag --with-ifpresent is useful here as one way to populate
+conditional repositories.
 
   --------------------------------------------------
   gits populate
@@ -2373,6 +2376,12 @@ attach should not commit their changes after they made them.
 Do not abort when any subsidiary git command fails - instead print a
 warning and continue processing.  Some git command failures will still
 be considered fatal and cause gits to abort.
+
+=head2 --with-ifpresent
+
+Operate also on those slave repositories which are marked as
+"ifpresent" even if they are not present.  This is mostly useful for
+`gits populate` and `gits checkout`.
 
 =head2 --verbose -v
 
