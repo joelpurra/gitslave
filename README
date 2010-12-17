@@ -48,6 +48,21 @@ OVERVIEW
       ..../super/lib1
       ..../super/lib2
 
+   Clone a gits project
+    gits [--[no-]fromcheckout] clone <superproject-URL>
+
+    This command clones an existing superproject and all associated slave
+    repoistories. It runs `git clone` on the arguments you provide (allowing
+    you to change the name of the checked-out repository for example) and
+    then runs `gits populate` inside that newly checked out repository. If
+    you are cloning from an existing gitslave format slave instead of the
+    master layout, you would want to use the --fromcheckout argument.
+
+      --------------------------------------------------
+      gits clone ssh://sourcemaster/src/repos/super.git super2
+      cd super2
+      --------------------------------------------------
+
    Initialize a gits project
     gits prepare
 
@@ -80,7 +95,24 @@ OVERVIEW
      --------------------------------------------------
      gits attach ../lib1.git lib1
      gits attach ^/src/repos/lib2.git lib2
+     gits push
      --------------------------------------------------
+
+    The push is to share the attach with other users.
+
+   Remove a slave repository from top level master
+      gits detach <localpath>
+
+    Remove the named directory from both the local filesystem, the .gitslave
+    management file, and the .gitignore file so that it will not be used in
+    subsequent gits activities.
+
+     --------------------------------------------------
+     gits detach lib1
+     gits push
+     --------------------------------------------------
+
+    The push is to share the detach with other users.
 
    Check out any new slave modules which someone else might have added
       gits populate [--[no-]fromcheckout]
@@ -333,6 +365,14 @@ DESCRIPTION
     operations are the checkout, pull(s), and push subcommands. You may use
     this flag for all operations.
 
+  --eval-args
+    When quoting gits arguments, do not quote dollar '$' and backtick '`'
+    characters, to allow interpolation in the slave environment (but still
+    quote double-quote and backslash). This is mostly useful for exec, where
+    you might want something like the command below to do something useful.
+
+      gits --eval-args exec echo Directory is '`pwd`'
+
   --parallel COUNT
     Specify the number of parallel git operations you wish to execute.
     Parallelism is only activated for push and pull(s) subcommands. This can
@@ -400,6 +440,10 @@ SUBSTITUTION
     %%basename%% represents the basename of the %%path%%, which is typically
     the last component of %%dir%% except for the superproject for which it
     is whatever the last directory name of the path to the superproject.
+
+    Also see --eval-args for an options to support standard shell `cmd` and
+    $VARIABLE expansion where it might otherwise be quoted. Run the
+    following commmands to see the difference:
 
 BUGS
     gits changes directory to the directory where .gitslave exists.

@@ -50,7 +50,7 @@ my ($progress);
 our($GITSLAVE) = $ENV{'GITSLAVE'}||GITSLAVE;
 our($GITS_DIR);
 our(@slaves);
-my($USAGE) = "usage: gits [--exclude /slave-regexp/] [--version] [--no-master] [--no-commit] [--keep-going] [--no-progress] [-p|--parallel <count>][-v|--verbose]+ [--quiet] [--help] [-- <git-options>...] <subcommand> [args]...\n";
+my($USAGE) = "usage: gits [--exclude /slave-regexp/] [--version] [--eval-args] [--no-master] [--no-commit] [--keep-going] [--no-progress] [-p|--parallel <count>][-v|--verbose]+ [--quiet] [--help] [-- <git-options>...] <subcommand> [args]...\n";
 our(%OPTIONS);
 my ($returncode) = 0;
 delete($ENV{'GIT_DIR'});
@@ -217,7 +217,7 @@ sub resolve_repository($$;$)
 sub ephemeral_command($)
 {
   my ($cmd) = @_;
-  return ($cmd eq "prepare" or $cmd eq "resolve" or $cmd eq "help");
+  return ($cmd eq "prepare" or $cmd eq "resolve" or $cmd eq "clone" or $cmd eq "help");
 }
 
 
@@ -245,9 +245,10 @@ sub git_slave_list($)
 	unless (!defined($cmd) or ephemeral_command($cmd));
       next;
     }
-    my ($lineno) = 1;
+    my ($lineno) = 0;
     while (<R>)
     {
+      $lineno++;
       next if (/^\s*(?:\#.*)$/);
       next if ($OPTIONS{'exclude'} && /$OPTIONS{'exclude'}/);
       die "Bad line $lineno in $slavefile\n" unless (/^\"(.*)\" \"(.*)\"( ifpresent)?$/);
@@ -258,7 +259,6 @@ sub git_slave_list($)
 	push(@gits,[$baserel, $ckoutrel]) if (!$seen{$ckoutrel});
 	$seen{$ckoutrel} = 1;
       }
-      $lineno++;
     }
     close(R);
   }
@@ -317,9 +317,24 @@ sub quoteit(@)
   my $str;
   foreach my $item (@_)
   {
-    my $qitem = $item;
-    $qitem =~ s/([\\\"])/\\$1/;
-   $str .= '"'.$qitem.'" ';
+    my ($i) = $item;
+    my $o;
+    my $len = length($i);
+
+    foreach(my $x=0;$x<$len;$x++)
+    {
+      my $c = substr($i,$x,1);
+      if ($OPTIONS{'eval-args'})
+      {
+	$o .= '\\' if ($c =~ /[\\\"]/);
+      }
+      else
+      {
+	$o .= '\\' if ($c =~ /[\\\$\`\"]/);
+      }
+      $o .= $c;
+    }
+    $str .= '"'.$o.'" ';
   }
   chop($str);
   $str;
@@ -512,7 +527,7 @@ sub stdout($;$)
 # Main functionality
 #
 Getopt::Long::Configure("bundling", "no_ignore_case", "no_auto_abbrev", "no_getopt_compat", "require_order");
-GetOptions(\%OPTIONS, 'no-progress', 'exclude=s', 'version', 'no-master', 'no-commit', 'keep-going', 'parallel|p=i', 'press-on', 'verbose|v+', 'quiet', 'help') || die $USAGE;
+GetOptions(\%OPTIONS, 'no-progress', 'exclude=s', 'version', 'no-master', 'eval-args', 'no-commit', 'keep-going', 'parallel|p=i', 'press-on', 'verbose|v+', 'quiet', 'help') || die $USAGE;
 
 while ($ARGV[0] =~ /^--/)
 {
@@ -694,6 +709,82 @@ elsif ($ARGV[0] eq 'attach')
     print qq^Switching "$ARGV[2]" to branch "$curbranch"\n^;
     docmd(qq^cd "$ARGV[2]"; $git checkout $curbranch --^) || die "Branch inconsistency, branch $curbranch does not exist\n";
   }
+}
+elsif ($ARGV[0] eq 'detach')
+{
+  die "gits detach requires one directory (sub-module) argument which must exist\nusage: gits detach <directory>\n" if ($#ARGV != 1);
+
+  die "$ARGV[1] is not a git repository or does not exist\n" unless (-d "$ARGV[1]/.git");
+  my $files = $GITS_DIR."/".$GITSLAVE;
+
+  die "$files, the gitslave management file, does not exist\n" unless (-f $files);
+  open(R,"<",$files) || die "Cannot open $files";
+  my $save;
+  my ($lineno) = 0;
+  my $found = 0;
+  while (<R>)
+  {
+    $lineno++;
+    if (/^\s*(?:\#.*)$/)
+    {
+      $save .= $_;
+      next;
+    }
+    die "Bad line $lineno in $files\n" unless (/^\"(.*)\" \"(.*)\"( ifpresent)?$/);
+    if ($2 eq $ARGV[1])
+    {
+      $found++;
+      next;
+    }
+    $save .= $_;
+  }
+  close(R);
+  die "Could not requested repository $ARGV[1] in $files for detaching.  Aborting\n" unless ($found);
+  open(W,">",$files) || die "Cannot open $files for writing";
+  print W $save;
+  close(W) || die "Cannot write $files";
+
+  if (open(R,"<",".gitignore"))
+  {
+    my $save2;
+    while (<R>)
+    {
+      my ($c) = $_;
+      chomp($c);
+      next if ($c eq "$ARGV[1]");
+      $save2 .= $_;
+    }
+    close(R);
+    open(W,">",".gitignore") || die "Cannot open .gitignore for writing";
+    print W $save2;
+    close(W) || die "Cannot write .gitignore";
+  }
+
+  docmd(qq^rm -rf ^.quoteit($ARGV[1])) unless ($OPTIONS{'no-commit'});
+  docmd(qq^$git commit -m 'gits removing ^.quoteit($ARGV[1])."' ".quoteit($GITSLAVE)." .gitignore") unless ($OPTIONS{'no-commit'});
+}
+elsif ($ARGV[0] eq 'clone')
+{
+  if (grep(/^--fromcheckout$/,@ARGV))
+  {
+    set_fromcheckout(1);
+    @ARGV = grep(!/^--fromcheckout$/,@ARGV);
+  }
+
+  if (grep(/^--no-fromcheckout$/,@ARGV))
+  {
+    set_fromcheckout(0);
+    @ARGV = grep(!/^--no-fromcheckout$/,@ARGV);
+  }
+
+  my ($ret,$out) = getcmd(qq^git ^.quoteit(@ARGV));
+  print STDERR $out;
+  if ($ret != 0 || $out !~ /^Cloning into (.*)\.\.\.\n/)
+  {
+    die "Could not parse git clone output\n";
+  }
+  chdir($1);
+  docmd("$0 populate");
 }
 elsif ($ARGV[0] eq 'populate')
 {
@@ -2016,6 +2107,25 @@ is:
 
 
 
+=head3 Clone a gits project
+
+gits [--[no-]fromcheckout] clone <superproject-URL>
+
+This command clones an existing superproject and all associated slave
+repoistories.  It runs `git clone` on the arguments you provide
+(allowing you to change the name of the checked-out repository for
+example) and then runs `gits populate` inside that newly checked out
+repository.  If you are cloning from an existing gitslave format slave
+instead of the master layout, you would want to use the --fromcheckout
+argument.
+
+  --------------------------------------------------
+  gits clone ssh://sourcemaster/src/repos/super.git super2
+  cd super2
+  --------------------------------------------------
+
+
+
 =head3 Initialize a gits project
 
 gits prepare
@@ -2053,7 +2163,27 @@ will show both in operation in the example.
  --------------------------------------------------
  gits attach ../lib1.git lib1
  gits attach ^/src/repos/lib2.git lib2
+ gits push
  --------------------------------------------------
+
+The push is to share the attach with other users.
+
+
+
+=head3 Remove a slave repository from top level master
+
+  gits detach <localpath>
+
+Remove the named directory from both the local filesystem, the
+.gitslave management file, and the .gitignore file so that it will not
+be used in subsequent gits activities.
+
+ --------------------------------------------------
+ gits detach lib1
+ gits push
+ --------------------------------------------------
+
+The push is to share the detach with other users.
 
 
 
@@ -2345,6 +2475,16 @@ by default for slow operations if Term::ProgressBar is loaded.  Slow
 operations are the checkout, pull(s), and push subcommands.  You may use this
 flag for all operations.
 
+=head2 --eval-args
+
+When quoting gits arguments, do not quote dollar '$' and backtick '`'
+characters, to allow interpolation in the slave environment (but still
+quote double-quote and backslash).  This is mostly useful for exec,
+where you might want something like the command below to do something
+useful.
+
+  gits --eval-args exec echo Directory is '`pwd`'
+
 =head2 --parallel COUNT
 
 Specify the number of parallel git operations you wish to execute.
@@ -2404,6 +2544,8 @@ such as: pulls, prepare, attach, populate, resolve, exec, logs, and
 update-remote-url.  See OVERVIEW for more information on specific
 subcommands.
 
+
+
 =head1 SUBSTITUTION
 
 Before execution, essentially all commands running over all of the
@@ -2423,6 +2565,12 @@ question.
 typically the last component of %%dir%% except for the superproject
 for which it is whatever the last directory name of the path to the
 superproject.
+
+Also see --eval-args for an options to support standard shell `cmd`
+and $VARIABLE expansion where it might otherwise be quoted.  Run the
+following commmands to see the difference:
+
+
 
 =head1 BUGS
 
@@ -2449,6 +2597,8 @@ The behavior when different branches have different slave modules
 associated with them and you checkout back and forth is probably not
 ideal (nor are any of the options we have thought of completely
 ideal).
+
+
 
 =head1 FILES
 

@@ -34,10 +34,10 @@ gits attach ../sub2 sub2
 gits populate
 gits push
 : Someone else gets a copy of the package and git slave config
-git clone $BASE/checkdir/master/top $BASE/checkdir/slave2
+gits clone $BASE/checkdir/master/top $BASE/checkdir/slave2
 cd ../slave2
 :  Actually instantiate the slaves
-gits populate
+#gits populate
 gits pull
 :  Make some mods and commit
 date >> datelist
