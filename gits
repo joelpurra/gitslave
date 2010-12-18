@@ -50,7 +50,7 @@ my ($progress);
 our($GITSLAVE) = $ENV{'GITSLAVE'}||GITSLAVE;
 our($GITS_DIR);
 our(@slaves);
-my($USAGE) = "usage: gits [--exclude /slave-regexp/] [--version] [--eval-args] [--no-master] [--no-commit] [--keep-going] [--no-progress] [-p|--parallel <count>][-v|--verbose]+ [--quiet] [--help] [-- <git-options>...] <subcommand> [args]...\n";
+my($USAGE) = "usage: gits [--exclude /slave-regexp/] [--version] [--eval-args] [--with-ifpresent] [--no-master] [--no-commit] [--keep-going] [--no-progress] [-p|--parallel <count>][-v|--verbose]+ [--quiet] [--help] [-- <git-options>...] <subcommand> [args]...\n";
 our(%OPTIONS);
 my ($returncode) = 0;
 delete($ENV{'GIT_DIR'});
@@ -527,7 +527,7 @@ sub stdout($;$)
 # Main functionality
 #
 Getopt::Long::Configure("bundling", "no_ignore_case", "no_auto_abbrev", "no_getopt_compat", "require_order");
-GetOptions(\%OPTIONS, 'no-progress', 'exclude=s', 'version', 'no-master', 'eval-args', 'no-commit', 'keep-going', 'parallel|p=i', 'press-on', 'verbose|v+', 'quiet', 'help') || die $USAGE;
+GetOptions(\%OPTIONS, 'no-progress', 'exclude=s', 'version', 'no-master', 'eval-args', 'with-ifpresent', 'no-commit', 'keep-going', 'parallel|p=i', 'press-on', 'verbose|v+', 'quiet', 'help') || die $USAGE;
 
 while ($ARGV[0] =~ /^--/)
 {
@@ -675,8 +675,9 @@ elsif ($ARGV[0] eq 'prepare')
 }
 elsif ($ARGV[0] eq 'attach')
 {
-  die "gits attach requires two arguments\nusage: gits attach <repository> <directory>\n" if ($#ARGV != 2 || !$ARGV[1] || !$ARGV[2]);
+  die "gits attach requires two arguments\nusage: gits attach <repository> <directory> [flags]\n" if ($#ARGV < 2 || $#ARGV > 3 || !$ARGV[1] || !$ARGV[2]);
   my ($repos) = resolve_repository($ARGV[1],$ARGV[2]);
+  die "Unknown flag $ARGV[3]\n" if ($ARGV[3] && $ARGV[3] ne "ifpresent");
   die "Refusing to attach, \$GITSLAVE variable is multipath\n" if ($GITSLAVE =~ /, /);
   die "Destination ($ARGV[2]) already exists\n" if (-e $ARGV[2]);
   if ($ARGV[2] =~ m:(.*)/(.*):)
@@ -688,7 +689,9 @@ elsif ($ARGV[0] eq 'attach')
   docmd(qq^$git clone "$repos" "$ARGV[2]"^ || die "Could not clone $repos onto $ARGV[2]\n");
 
   open(W, ">>", $files);
-  print W qq^"$ARGV[1]" "$ARGV[2]"\n^;
+  print W qq^"$ARGV[1]" "$ARGV[2]"^;
+  print W " $ARGV[3]" if ($ARGV[3]);
+  print W "\n";
   close(W);
 
   if ($ARGV[2] !~ m:/:)
@@ -784,7 +787,20 @@ elsif ($ARGV[0] eq 'clone')
     die "Could not parse git clone output\n";
   }
   chdir($1);
-  docmd("$0 populate");
+  my $cmd = "$0 ";
+  foreach my $arg (keys %OPTIONS)
+  {
+    if ($arg eq "exclude" || $arg eq "parallel")
+    {
+      $cmd .= qq^'--$arg=$OPTIONS{"$arg"}' ^;
+    }
+    else
+    {
+      $cmd .= "--$arg ";
+    }
+  }
+  $cmd .= "populate";
+  docmd($cmd);
 }
 elsif ($ARGV[0] eq 'populate')
 {
@@ -2058,7 +2074,7 @@ gits - The git slave repository tool for super-project multi-repository manageme
 
 =head1 SYNOPSIS
 
-gits [--version] [--no-master] [--no-commit] [--keep-going] [--with-ifpresent] [--no-progress] [-p|--parallel <count>] [-v|--verbose]+ [--quiet] [--help] <subcommand> [args]...
+gits [--exclude /slave-regexp/] [--version] [--eval-args] [--no-master] [--no-commit] [--keep-going] [--no-progress] [-p|--parallel <count>][-v|--verbose]+ [--quiet] [--help] [-- <git-options>...] <subcommand> [args]...
 
 =head1 OVERVIEW
 
@@ -2124,6 +2140,9 @@ argument.
   cd super2
   --------------------------------------------------
 
+The gits flag --with-ifpresent is useful here as one way to populate
+conditional repositories.
+
 
 
 =head3 Initialize a gits project
@@ -2145,7 +2164,7 @@ projects.
 
 =head3 Add a slave repository to top level master
 
-  gits attach <repository> <localpath>
+  gits attach <repository> <localpath> [flags]
 
 Clone the named git repository into the named local directory, and set
 it up for further gits operations.
@@ -2160,13 +2179,19 @@ with ^, it will use only the method and hostname from the master's
 URL.  Otherwise, it will be relative to the fully qualified path.  We
 will show both in operation in the example.
 
+The only flag currently supported is "ifpresent" which will be set for
+this slave repository.  Other people cloning or populating the
+superproject will not check out this subrepository if this flag is
+set, unless they add --with-ifpresent or otherwise arrange for the
+<localpath> to be created.
+
  --------------------------------------------------
  gits attach ../lib1.git lib1
  gits attach ^/src/repos/lib2.git lib2
  gits push
  --------------------------------------------------
 
-The push is to share the attach with other users.
+The push in the example is to share the attach with other users.
 
 
 
@@ -2183,7 +2208,7 @@ be used in subsequent gits activities.
  gits push
  --------------------------------------------------
 
-The push is to share the detach with other users.
+The push in the example is to share the detach with other users.
 
 
 

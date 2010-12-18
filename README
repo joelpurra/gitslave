@@ -3,9 +3,10 @@ NAME
     management
 
 SYNOPSIS
-    gits [--version] [--no-master] [--no-commit] [--keep-going]
-    [--with-ifpresent] [--no-progress] [-p|--parallel <count>]
-    [-v|--verbose]+ [--quiet] [--help] <subcommand> [args]...
+    gits [--exclude /slave-regexp/] [--version] [--eval-args] [--no-master]
+    [--no-commit] [--keep-going] [--no-progress] [-p|--parallel
+    <count>][-v|--verbose]+ [--quiet] [--help] [-- <git-options>...]
+    <subcommand> [args]...
 
 OVERVIEW
     gits is a program that assists in assembling a meta-project from a
@@ -63,6 +64,9 @@ OVERVIEW
       cd super2
       --------------------------------------------------
 
+    The gits flag --with-ifpresent is useful here as one way to populate
+    conditional repositories.
+
    Initialize a gits project
     gits prepare
 
@@ -77,7 +81,7 @@ OVERVIEW
       --------------------------------------------------
 
    Add a slave repository to top level master
-      gits attach <repository> <localpath>
+      gits attach <repository> <localpath> [flags]
 
     Clone the named git repository into the named local directory, and set
     it up for further gits operations.
@@ -92,13 +96,19 @@ OVERVIEW
     Otherwise, it will be relative to the fully qualified path. We will show
     both in operation in the example.
 
+    The only flag currently supported is "ifpresent" which will be set for
+    this slave repository. Other people cloning or populating the
+    superproject will not check out this subrepository if this flag is set,
+    unless they add --with-ifpresent or otherwise arrange for the
+    <localpath> to be created.
+
      --------------------------------------------------
      gits attach ../lib1.git lib1
      gits attach ^/src/repos/lib2.git lib2
      gits push
      --------------------------------------------------
 
-    The push is to share the attach with other users.
+    The push in the example is to share the attach with other users.
 
    Remove a slave repository from top level master
       gits detach <localpath>
@@ -112,7 +122,7 @@ OVERVIEW
      gits push
      --------------------------------------------------
 
-    The push is to share the detach with other users.
+    The push in the example is to share the detach with other users.
 
    Check out any new slave modules which someone else might have added
       gits populate [--[no-]fromcheckout]

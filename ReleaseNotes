@@ -1,5 +1,13 @@
 2010-12-17  Seth Robertson  <projectbaka@baka.org>
 
+	* Support flags in gits attach (specifically ifpresent).
+
+	* Actually support documented --with-ifpresent argument.
+
+	* Update man page command line flags
+
+2010-12-17  Seth Robertson  <projectbaka@baka.org>
+
 	* Version 1.2 released
 
 	* Add `gits clone` support for easier project initialization.
