@@ -1,3 +1,15 @@
+* Add alternative URLs
+
+Allow multiple URLs to be specified for a particular resource and
+during populate, select the first one which is reachable.  Ideally,
+allow re-running populate to update the currently used URL for origin
+if the reachable URL might have changed.
+
+Use case might be for an on-laptop repo which might sometimes be
+directly attached and other times might need to go through an ssh
+tunnel or otherwise have various tricks.
+
+
 * Add "gits branch --set-upstream" support
 
 Currently there is no support for changing upstream repositories via
