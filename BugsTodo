@@ -1,3 +1,9 @@
+* Allow API to move submodules
+
+There is a workaround of removing it and re-adding it, but allowing
+direct movement might be useful.
+
+
 * Add alternative URLs
 
 Allow multiple URLs to be specified for a particular resource and
