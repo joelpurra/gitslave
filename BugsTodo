@@ -1,3 +1,11 @@
+* Shallow clone/sparse checkout support for subprojects
+
+Some people want to have shallow clones or sparse checkouts.  This
+cannot easily be done for submodules, but seems fairly reasonable for
+gitslave.  We would just need some magic to use the right arguments
+(presumably shallow would be a .git/config thing, and sparse would be
+a .gitslave config thing).
+
 * Allow API to move submodules
 
 There is a workaround of removing it and re-adding it, but allowing
