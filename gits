@@ -2658,6 +2658,12 @@ normal list.
 Alternately, you could play tricks where you only get a subset of the
 modules when you don't need to play with everything.
 
+=head1 REQUIREMENTS
+
+perl 5 (probably almost any version of perl 5)
+
+Optionally uses Parallel::Iterator and Term::ProgressBar if available
+
 =head1 AUTHOR
 
 Seth Robertson
