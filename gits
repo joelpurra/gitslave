@@ -50,7 +50,7 @@ my ($progress);
 our($GITSLAVE) = $ENV{'GITSLAVE'}||GITSLAVE;
 our($GITS_DIR);
 our(@slaves);
-my($USAGE) = "usage: gits [--exclude /slave-regexp/] [--version] [--eval-args] [--with-ifpresent] [--no-master] [--no-commit] [--keep-going] [--no-progress] [-p|--parallel <count>][-v|--verbose]+ [--quiet] [--help] [-- <git-options>...] <subcommand> [args]...\n";
+my($USAGE) = "usage: gits [--exclude /slave-regexp/] [--version] [--eval-args] [--with-ifpresent] [--no-master] [--no-hide] [--no-commit] [--keep-going] [--no-progress] [-p|--parallel <count>][-v|--verbose]+ [--quiet] [--help] [-- <git-options>...] <subcommand> [args]...\n";
 our(%OPTIONS);
 my ($returncode) = 0;
 delete($ENV{'GIT_DIR'});
@@ -527,7 +527,7 @@ sub stdout($;$)
 # Main functionality
 #
 Getopt::Long::Configure("bundling", "no_ignore_case", "no_auto_abbrev", "no_getopt_compat", "require_order");
-GetOptions(\%OPTIONS, 'no-progress', 'exclude=s', 'version', 'no-master', 'eval-args', 'with-ifpresent', 'no-commit', 'keep-going', 'parallel|p=i', 'press-on', 'verbose|v+', 'quiet', 'help') || die $USAGE;
+GetOptions(\%OPTIONS, 'no-progress', 'exclude=s', 'version', 'no-master', 'eval-args', 'with-ifpresent', 'no-hide', 'no-commit', 'keep-going', 'parallel|p=i', 'press-on', 'verbose|v+', 'quiet', 'help') || die $USAGE;
 
 while ($ARGV[0] =~ /^--/)
 {
@@ -925,9 +925,12 @@ elsif ($ARGV[0] eq 'pulls')
       $submod =~ s=.*/==;
       $msg =~ s/\b$submod\b/%MODULE%/g if ($mod ne $submod);
       # remove hash ids in various places to collapse redundant messages
-      $msg =~ s/\n {3}[0-9a-fA-F]{7}\.\.[0-9a-fA-F]{7} /\n /g;
-      $msg =~ s/\nUpdating [0-9a-fA-F]{7}\.\.[0-9a-fA-F]{7}\n/\n/g;
-      $msg =~ s/(Fast-forwarded \S+) to [0-9a-fA-F]*\./$1/g;
+      if (!$OPTIONS{'no-hide'})
+      {
+	$msg =~ s/\n {3}[0-9a-fA-F]{7}\.\.[0-9a-fA-F]{7} /\n /g;
+	$msg =~ s/\nUpdating [0-9a-fA-F]{7}\.\.[0-9a-fA-F]{7}\n/\n/g;
+	$msg =~ s/(Fast-forwarded \S+) to [0-9a-fA-F]*\./$1/g;
+      }
       push(@{$msg{$msg}}, "$branch\@$slave");
 
       $progress->update(++$progress_count) if ($progress);
@@ -1014,9 +1017,12 @@ elsif ($ARGV[0] eq 'pull')
     $submod =~ s=.*/==;
     $msg =~ s/\b$submod\b/%MODULE%/g if ($mod ne $submod);
     # remove hash ids in various places to collapse redundant messages
-    $msg =~ s/\n {3}[0-9a-fA-F]{7}\.\.[0-9a-fA-F]{7} /\n /g;
-    $msg =~ s/\nUpdating [0-9a-fA-F]{7}\.\.[0-9a-fA-F]{7}\n/\n/g;
-    $msg =~ s/(Fast-forwarded \S+) to [0-9a-fA-F]*\./$1/g;
+    if (!$OPTIONS{'no-hide'})
+    {
+      $msg =~ s/\n {3}[0-9a-fA-F]{7}\.\.[0-9a-fA-F]{7} /\n /g;
+      $msg =~ s/\nUpdating [0-9a-fA-F]{7}\.\.[0-9a-fA-F]{7}\n/\n/g;
+      $msg =~ s/(Fast-forwarded \S+) to [0-9a-fA-F]*\./$1/g;
+    }
     push(@{$msg{$msg}}, $slave);
 
     $progress->update(++$progress_count) if ($progress);
@@ -2074,7 +2080,7 @@ gits - The git slave repository tool for super-project multi-repository manageme
 
 =head1 SYNOPSIS
 
-gits [--exclude /slave-regexp/] [--version] [--eval-args] [--no-master] [--no-commit] [--keep-going] [--no-progress] [-p|--parallel <count>][-v|--verbose]+ [--quiet] [--help] [-- <git-options>...] <subcommand> [args]...
+gits [--exclude /slave-regexp/] [--version] [--eval-args] [--with-ifpresent] [--no-master] [--no-hide] [--no-commit] [--keep-going] [--no-progress] [-p|--parallel <count>][-v|--verbose]+ [--quiet] [--help] [-- <git-options>...] <subcommand> [args]...
 
 =head1 OVERVIEW
 
