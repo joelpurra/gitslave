@@ -6,6 +6,7 @@ gitslave.  We would just need some magic to use the right arguments
 (presumably shallow would be a .git/config thing, and sparse would be
 a .gitslave config thing).
 
+
 * Allow API to move submodules
 
 There is a workaround of removing it and re-adding it, but allowing
@@ -153,6 +154,18 @@ merge/rebase.  However, the manual page has tantalizing hints that pull
 has some magic interaction with merge/rebase which might make that
 a slightly different operation.
 
+I no longer believe there is any magic in merging (or rebasing) on
+other branches.  However, figuring out the tracking relationship
+externally is likely to fail.  While we can `git remote show <remote>`
+and parse to get the right bits, this requires figuring out what the
+remote of interest is.  Still, doing a full parse of the `gits pulls`
+command line, computing defaults, and then doing the correct merge is
+likely to be a little challenging.  At least we can restrict pulls to
+the simple case of "gits pulls [--rebase] [<remote>]" since the other
+cases don't seem interesting.  Still, computing the default repository
+is likely to be annoying since it can vary on a branch-by-branch
+basis.
+
 
 * Inconsistent state on an abort is bad
 
@@ -174,6 +187,9 @@ the push gets stalled/takes longer than expected, etc.
 
 It can be added, but seemingly it is only going to make things more
 cluttered and confused.
+
+Should we stick it in a tmp file somewhere to be cleaned up on the
+next gits operation?
 
 
 * wb/bkmk requires complete rebuild after pulls with multiple branches
