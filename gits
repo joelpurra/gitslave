@@ -237,7 +237,7 @@ sub git_slave_list_recursive($$$$$)
   {
     die "Could not find $file file\n"
       unless (!defined($cmd) or ephemeral_command($cmd));
-    next;
+    return;
   }
   my ($lineno) = 0;
   while (<$r>)
