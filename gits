@@ -243,6 +243,15 @@ sub git_slave_list_recursive($$$$$)
   while (<$r>)
   {
     $lineno++;
+    if (/^\#include\s+\"([^\"]+)\"\s*$/)
+    {
+      my $slavefile = $1;
+      $slavefile = "$base/$slavefile" unless ($slavefile =~ m:^/:);
+      my $newbase = $slavefile;
+      $newbase =~ s:^(.*)/.*:$1:;
+      git_slave_list_recursive($slavefile,$gitsp,$seenp,$cmd,$newbase);
+      next;
+    }
     next if (/^\s*(?:\#.*)$/);
     next if ($OPTIONS{'exclude'} && /$OPTIONS{'exclude'}/);
     die "Bad line $lineno in $file\n" unless (/^\"(.*)\" \"(.*)\"( ifpresent)?$/);
@@ -250,6 +259,13 @@ sub git_slave_list_recursive($$$$$)
 
     if ($flags !~ /ifpresent/ || $OPTIONS{'with-ifpresent'} || -d "$base/$ckoutrel/.")
     {
+      my ($relbase) = $base;
+      my ($qbase) = quotemeta($GITS_DIR);
+      $relbase =~ s:^$qbase/*::;
+      $relbase = "$relbase/" if ($relbase);
+
+      $ckoutrel = "$relbase$ckoutrel";
+
       push(@$gitsp,[$baserel, $ckoutrel]) if (!$seenp->{$ckoutrel});
       $seenp->{$ckoutrel} = 1;
     }

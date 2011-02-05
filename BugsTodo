@@ -1,3 +1,13 @@
+* Recursive project support
+
+It would be very nice if the #include syntax in .gitslave files
+could support recursive projects.  The main limiting factor right
+now is that relative URLs are being interpolated relative to the
+super-super-base, not the most local superproject's base (which in turn
+might be relative to the super-super-base, but that doesn't help
+the sub-sub-base determination).
+
+
 * Shallow clone/sparse checkout support for subprojects
 
 Some people want to have shallow clones or sparse checkouts.  This
