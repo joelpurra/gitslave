@@ -702,7 +702,7 @@ elsif ($ARGV[0] eq 'attach')
     die "Destination parent ($1) does not exist\n" if (!-d $1);
   }
   my $files = $GITS_DIR."/".$GITSLAVE;
-  docmd(qq^$git clone "$repos" "$ARGV[2]"^ || die "Could not clone $repos onto $ARGV[2]\n");
+  docmd(qq^$git clone "$repos" "$ARGV[2]"^) || die "Could not clone $repos onto $ARGV[2]\n";
 
   open(W, ">>", $files);
   print W qq^"$ARGV[1]" "$ARGV[2]"^;
