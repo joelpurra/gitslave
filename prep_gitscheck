@@ -6,9 +6,10 @@ PATH=$PWD:$PATH
 
 set -e
 
-mkdir -p checkdir/master
+rm -rf checkdir
+mkdir -p checkdir/master checkdir/masterprep
 BASE=`pwd`
-(cd checkdir/master
+(cd checkdir/masterprep
  for f in top sub1 sub2 sub3
   do
    mkdir $f
@@ -18,7 +19,7 @@ BASE=`pwd`
     echo $f > packagename
     git add *
     git commit -a -m "Initial files"
-    git config receive.denyCurrentBranch ignore)
+    cd ../../master; git clone --bare --mirror ../masterprep/$f $f)
   done)
 
 git clone $BASE/checkdir/master/top $BASE/checkdir/slave
@@ -60,7 +61,8 @@ gits pull
 gits checkout -b privateb master
 date >> sub2/datelist
 gits commit -a -m "Updating date in sub2 on branch privateb"
-#gits push # Cannot push a non-tracking branch any more
+# Now fails with error "not tracking anything" which is very true
+#gits push
 : "Person2 checks, but no changes (and no new branch), makes a change, commits"
 cd ../slave2
 gits pull
