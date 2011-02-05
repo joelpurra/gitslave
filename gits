@@ -224,6 +224,43 @@ sub ephemeral_command($)
 
 ######################################################################
 #
+# Recursive slave list population
+#
+sub git_slave_list_recursive($$$$$);
+sub git_slave_list_recursive($$$$$)
+{
+  my ($file,$gitsp,$seenp,$cmd,$base) = @_;
+
+  my ($r);
+
+  if (!open($r, "<", $file))
+  {
+    die "Could not find $file file\n"
+      unless (!defined($cmd) or ephemeral_command($cmd));
+    next;
+  }
+  my ($lineno) = 0;
+  while (<$r>)
+  {
+    $lineno++;
+    next if (/^\s*(?:\#.*)$/);
+    next if ($OPTIONS{'exclude'} && /$OPTIONS{'exclude'}/);
+    die "Bad line $lineno in $file\n" unless (/^\"(.*)\" \"(.*)\"( ifpresent)?$/);
+    my ($baserel,$ckoutrel,$flags) = ($1,$2,$3);
+
+    if ($flags !~ /ifpresent/ || $OPTIONS{'with-ifpresent'} || -d "$base/$ckoutrel/.")
+    {
+      push(@$gitsp,[$baserel, $ckoutrel]) if (!$seenp->{$ckoutrel});
+      $seenp->{$ckoutrel} = 1;
+    }
+  }
+  close($r);
+}
+
+
+
+######################################################################
+#
 # Get list of currently configured slaves
 #
 sub git_slave_list($)
@@ -238,29 +275,8 @@ sub git_slave_list($)
 
   foreach my $slavefile (split(/, /,$GITSLAVE))
   {
-    $slavefile = "$GITS_DIR/$slavefile";
-    if (!open(R, "<", $slavefile))
-    {
-      die "Could not find $slavefile file\n"
-	unless (!defined($cmd) or ephemeral_command($cmd));
-      next;
-    }
-    my ($lineno) = 0;
-    while (<R>)
-    {
-      $lineno++;
-      next if (/^\s*(?:\#.*)$/);
-      next if ($OPTIONS{'exclude'} && /$OPTIONS{'exclude'}/);
-      die "Bad line $lineno in $slavefile\n" unless (/^\"(.*)\" \"(.*)\"( ifpresent)?$/);
-      my ($baserel,$ckoutrel,$flags) = ($1,$2,$3);
-
-      if ($flags !~ /ifpresent/ || $OPTIONS{'with-ifpresent'} || -d "$GITS_DIR/$ckoutrel/.")
-      {
-	push(@gits,[$baserel, $ckoutrel]) if (!$seen{$ckoutrel});
-	$seen{$ckoutrel} = 1;
-      }
-    }
-    close(R);
+    $slavefile = "$GITS_DIR/$slavefile" unless ($slavefile =~ m:^/:);
+    git_slave_list_recursive($slavefile,\@gits,\%seen,$cmd,$GITS_DIR);
   }
   @gits;
 }
