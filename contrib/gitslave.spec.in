@@ -2,7 +2,7 @@
 Name:		gitslave
 Summary:	gitslave creates a group of related repositories
 Group:		Development/Other
-Version:	1.2
+Version:	{UNTAGGED}
 Release:	%mkrel 1
 License:	LGPL 2.1
 URL:		http://gitslave.sourceforge.net
