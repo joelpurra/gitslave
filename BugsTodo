@@ -1,3 +1,11 @@
+* Pager support on output
+
+Currently any commands which are supposed to run through a pager when
+using git are depagerized when sent through gits, and gits has no
+pager support.  It is not perfectly clear how this could be resolved
+cleanly.
+
+
 * Recursive project support
 
 It would be very nice if the #include syntax in .gitslave files
