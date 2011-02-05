@@ -49,6 +49,7 @@ release: README
 	  tar czf gitslave-$$VERSION.tar.gz gitslave-$$VERSION;									\
 	  rm -rf /tmp/gitslave-$$VERSION;											\
 	  echo /tmp/gitslave-$$VERSION.tar.gz
+	@echo "Did you update ReleaseNotes?"
 
 clean nuke:
 	rm -rf $(JUNK) *~ core* \#*
