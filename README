@@ -3,10 +3,10 @@ NAME
     management
 
 SYNOPSIS
-    gits [--exclude /slave-regexp/] [--version] [--eval-args] [--no-master]
-    [--no-commit] [--keep-going] [--no-progress] [-p|--parallel
-    <count>][-v|--verbose]+ [--quiet] [--help] [-- <git-options>...]
-    <subcommand> [args]...
+    gits [--exclude /slave-regexp/] [--version] [--eval-args]
+    [--with-ifpresent] [--no-master] [--no-hide] [--no-commit]
+    [--keep-going] [--no-progress] [-p|--parallel <count>][-v|--verbose]+
+    [--quiet] [--help] [-- <git-options>...] <subcommand> [args]...
 
 OVERVIEW
     gits is a program that assists in assembling a meta-project from a
@@ -507,6 +507,11 @@ ENVIRONMENT
 
     Alternately, you could play tricks where you only get a subset of the
     modules when you don't need to play with everything.
+
+REQUIREMENTS
+    perl 5 (probably almost any version of perl 5)
+
+    Optionally uses Parallel::Iterator and Term::ProgressBar if available
 
 AUTHOR
     Seth Robertson
