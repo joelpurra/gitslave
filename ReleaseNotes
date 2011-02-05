@@ -1,3 +1,13 @@
+2011-02-04  Seth Robertson  <seth@startide.baka.org>
+
+	* #include support in .gitslave files
+
+	* gits attach failure detection
+
+	* gits --no-hide to prevent hiding of SHAs
+
+	* Contributed .spec file
+
 2010-12-17  Seth Robertson  <projectbaka@baka.org>
 
 	* Support flags in gits attach (specifically ifpresent).
