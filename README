@@ -125,7 +125,7 @@ OVERVIEW
     The push in the example is to share the detach with other users.
 
    Check out any new slave modules which someone else might have added
-      gits populate [--[no-]fromcheckout]
+      gits populate [--[no-]fromcheckout] [ifpresent modules to check out]
 
     Go through the list of configured slaves and check out (clone) any which
     have not already been retrieved.
@@ -137,7 +137,9 @@ OVERVIEW
     which is used when no explicit option is provided.
 
     The gits flag --with-ifpresent is useful here as one way to populate
-    conditional repositories.
+    conditional repositories, which will check out all conditional
+    repositories. You could also specifically ask for certain conditional
+    modules by listing them on the command line.
 
       --------------------------------------------------
       gits populate

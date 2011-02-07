@@ -230,10 +230,10 @@ sub ephemeral_command($)
 #
 # Recursive slave list population
 #
-sub git_slave_list_recursive($$$$$);
-sub git_slave_list_recursive($$$$$)
+sub git_slave_list_recursive($$$$$$);
+sub git_slave_list_recursive($$$$$$)
 {
-  my ($file,$gitsp,$seenp,$cmd,$base) = @_;
+  my ($file,$gitsp,$seenp,$cmd,$base,$vpresentp) = @_;
 
   my ($r);
 
@@ -253,7 +253,7 @@ sub git_slave_list_recursive($$$$$)
       $slavefile = "$base/$slavefile" unless ($slavefile =~ m:^/:);
       my $newbase = $slavefile;
       $newbase =~ s:^(.*)/.*:$1:;
-      git_slave_list_recursive($slavefile,$gitsp,$seenp,$cmd,$newbase);
+      git_slave_list_recursive($slavefile,$gitsp,$seenp,$cmd,$newbase,$vpresentp);
       next;
     }
     next if (/^\s*(?:\#.*)$/);
@@ -261,7 +261,7 @@ sub git_slave_list_recursive($$$$$)
     die "Bad line $lineno in $file\n" unless (/^\"(.*)\" \"(.*)\"( ifpresent)?$/);
     my ($baserel,$ckoutrel,$flags) = ($1,$2,$3);
 
-    if ($flags !~ /ifpresent/ || $OPTIONS{'with-ifpresent'} || -d "$base/$ckoutrel/.")
+    if ($flags !~ /ifpresent/ || $OPTIONS{'with-ifpresent'} || -d "$base/$ckoutrel/." || $vpresentp->{$ckoutrel})
     {
       my ($relbase) = $base;
       my ($qbase) = quotemeta($GITS_DIR);
@@ -283,11 +283,13 @@ sub git_slave_list_recursive($$$$$)
 #
 # Get list of currently configured slaves
 #
-sub git_slave_list($)
+sub git_slave_list($;@)
 {
-  my ($cmd) = @_;
+  my ($cmd,@virtualpresent) = @_;
   my (@gits);
   my (%seen);
+  my (%vpresent);
+  grep($vpresent{$_}=1,@virtualpresent);
 
   # Discover the current fromcheckout status
   my $thisfromcheckout = `$git config gits.fromcheckout`;
@@ -296,7 +298,7 @@ sub git_slave_list($)
   foreach my $slavefile (split(/, /,$GITSLAVE))
   {
     $slavefile = "$GITS_DIR/$slavefile" unless ($slavefile =~ m:^/:);
-    git_slave_list_recursive($slavefile,\@gits,\%seen,$cmd,$GITS_DIR);
+    git_slave_list_recursive($slavefile,\@gits,\%seen,$cmd,$GITS_DIR,\%vpresent);
   }
   @gits;
 }
@@ -393,7 +395,7 @@ sub do_populate(;$)
   {
     my $slave = $group->[1];
 
-    if (! -d $slave)
+    if (! -d $slave || (!-f "$slave/config" && !-d "$slave/.git"))
     {
       print "gits: Cloning $slave\n" if ($OPTIONS{'verbose'});
       my ($repos) = resolve_repository($group->[0],$group->[1]);
@@ -873,7 +875,11 @@ elsif ($ARGV[0] eq 'populate')
     @ARGV = grep(!/^--no-fromcheckout$/,@ARGV);
   }
 
-  die "gits populate only accepts --(no-)fromcheckout option argument\n" if ($#ARGV != 0);
+  if ($#ARGV > 0)
+  {
+    my $cmd = shift(@ARGV);
+    @slaves = git_slave_list($cmd,@ARGV);
+  }
 
   do_populate();
 }
@@ -2280,7 +2286,7 @@ The push in the example is to share the detach with other users.
 
 =head3 Check out any new slave modules which someone else might have added
 
-  gits populate [--[no-]fromcheckout]
+  gits populate [--[no-]fromcheckout] [ifpresent modules to check out]
 
 Go through the list of configured slaves and check out (clone) any which have
 not already been retrieved.
@@ -2292,7 +2298,9 @@ given, sets the default repository layout, which is used when no explicit
 option is provided.
 
 The gits flag --with-ifpresent is useful here as one way to populate
-conditional repositories.
+conditional repositories, which will check out all conditional
+repositories.  You could also specifically ask for certain conditional
+modules by listing them on the command line.
 
   --------------------------------------------------
   gits populate
