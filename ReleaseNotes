@@ -1,3 +1,11 @@
+2011-02-07  Seth Robertson  <seth@startide.baka.org>
+
+	* Allow populate to accept arguments for ifpresent repositories
+	which should explicitly checked out (partial --with-ifpresent).
+
+	* Populate will now checkout if it sees an emptyish directories at
+	the location of where an ifpresent repository should go.
+
 2011-02-04  Seth Robertson  <seth@startide.baka.org>
 
 	* #include support in .gitslave files
