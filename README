@@ -3,10 +3,10 @@ NAME
     management
 
 SYNOPSIS
-    gits [--exclude /slave-regexp/] [--version] [--eval-args]
-    [--with-ifpresent] [--no-master] [--no-hide] [--no-commit]
-    [--keep-going] [--no-progress] [-p|--parallel <count>][-v|--verbose]+
-    [--quiet] [--help] [-- <git-options>...] <subcommand> [args]...
+    gits [-p|--parallel COUNT] [-v|--verbose]+ [--quiet] [--help]
+    [--version] [--eval-args] [--exclude SLAVE-REGEXP] [--keep-going]
+    [--no-commit] [--no-hide] [--no-master] [--no-progress]
+    [--with-ifpresent] [-- GIT-OPTIONS...] SUBCOMMAND [ARGS]...
 
 OVERVIEW
     gits is a program that assists in assembling a meta-project from a
@@ -360,30 +360,7 @@ OVERVIEW
     example is git-daemon.
 
 DESCRIPTION
-  --no-master
-    This flag requests that gits only run the listed command on the slave
-    repositories and NOT the super/master/top repository. This probably will
-    not be needed much.
-
-  --exclude regexp
-    Provide a regular expression which excludes those slaves from
-    consideration from gits commands which it matches.
-
-  --no-progress
-    This flag requests that gits NOT print a progress bar, which it does by
-    default for slow operations if Term::ProgressBar is loaded. Slow
-    operations are the checkout, pull(s), and push subcommands. You may use
-    this flag for all operations.
-
-  --eval-args
-    When quoting gits arguments, do not quote dollar '$' and backtick '`'
-    characters, to allow interpolation in the slave environment (but still
-    quote double-quote and backslash). This is mostly useful for exec, where
-    you might want something like the command below to do something useful.
-
-      gits --eval-args exec echo Directory is '`pwd`'
-
-  --parallel COUNT
+  --parallel=COUNT -p COUNT
     Specify the number of parallel git operations you wish to execute.
     Parallelism is only activated for push and pull(s) subcommands. This can
     speed up your processing significantly for large numbers of submodules.
@@ -402,20 +379,6 @@ DESCRIPTION
     of peers do not necessarily take advantage of the multiplexing and there
     have occasionally been spurious errors with this enabled.
 
-  --no-commit
-    This flag requests that gits-internal sub-commands, such as prepare or
-    attach should not commit their changes after they made them.
-
-  --keep-going
-    Do not abort when any subsidiary git command fails - instead print a
-    warning and continue processing. Some git command failures will still be
-    considered fatal and cause gits to abort.
-
-  --with-ifpresent
-    Operate also on those slave repositories which are marked as "ifpresent"
-    even if they are not present. This is mostly useful for `gits populate`
-    and `gits checkout`.
-
   --verbose -v
     Ask for more information about what is happening. You may repeat the
     flag multiple times to get more information. Two levels of verbosity
@@ -426,7 +389,56 @@ DESCRIPTION
     Ask for less information, which currently means discarding the STDERR of
     some of the administrative git commands which are executed.
 
-  subcommand args...
+  --help
+    Print gits usage summary and details of gits options and substitutions
+    from this documentation, then exit.
+
+  --version
+    Print version information for gits, git, and Perl.
+
+  --eval-args
+    When quoting gits arguments, do not quote dollar '$' and backtick '`'
+    characters, to allow interpolation in the slave environment (but still
+    quote double-quote and backslash). This is mostly useful for exec, where
+    you might want something like the command below to do something useful.
+
+      gits --eval-args exec echo Directory is '`pwd`'
+
+  --exclude=SLAVE-REGEXP
+    Provide a regular expression which excludes those slaves from
+    consideration from gits commands which it matches.
+
+  --keep-going
+    Do not abort when any subsidiary git command fails - instead print a
+    warning and continue processing. Some git command failures will still be
+    considered fatal and cause gits to abort.
+
+  --no-commit
+    This flag requests that gits-internal sub-commands, such as prepare or
+    attach should not commit their changes after they make them.
+
+  --no-hide
+    This flag requests that gits not hide information when similar (but not
+    identical) output such as commit hashes is output for slave
+    repositories.
+
+  --no-master
+    This flag requests that gits only run the listed command on the slave
+    repositories and NOT the super/master/top repository. This probably will
+    not be needed much.
+
+  --no-progress
+    This flag requests that gits NOT print a progress bar, which it does by
+    default for slow operations if Term::ProgressBar is loaded. Slow
+    operations are the checkout, pull(s), and push subcommands. You may use
+    this flag for all operations.
+
+  --with-ifpresent
+    Operate also on those slave repositories which are marked as "ifpresent"
+    even if they are not present. This is mostly useful for `gits populate`
+    and `gits checkout`.
+
+  SUBCOMMAND ARGS...
     Run the specified git command (with associated arguments) on the
     repository and all slave repositories. Typically they are git commands
     run over each slave, but there are gits specific commands such as:
@@ -451,9 +463,13 @@ SUBSTITUTION
     the last component of %%dir%% except for the superproject for which it
     is whatever the last directory name of the path to the superproject.
 
-    Also see --eval-args for an options to support standard shell `cmd` and
+    Also see --eval-args for an option to support standard shell `cmd` and
     $VARIABLE expansion where it might otherwise be quoted. Run the
     following commmands to see the difference:
+
+    gits exec echo '`ls -ld $PWD`'
+
+    gits --eval-args exec echo '`ls -ld $PWD`'
 
 BUGS
     gits changes directory to the directory where .gitslave exists.
