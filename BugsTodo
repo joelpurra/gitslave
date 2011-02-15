@@ -1,3 +1,12 @@
+* gits attach could allow existant destination under one condition
+
+Currently attach fails if the destination location exists.  This is a
+good double-check, but there is one case where this could be
+permissible.  If the destination location is a git repo and the git
+repo's remote origin URL is consistent with the (possibly relative)
+URL provided on the attach line.
+
+
 * Pager support on output
 
 Currently any commands which are supposed to run through a pager when
