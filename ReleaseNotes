@@ -1,4 +1,12 @@
-2011-02-07  Seth Robertson  <seth@startide.baka.org>
+2011-02-15  Alex Dupuy  <alex.dupuy@mac.com>
+
+	* -v to provide full (including suppressed) output, -vv to list
+	commands, -vvv to list command status and output.
+
+	* Summarize last message "On:" header if there are many many
+	entries.
+
+2011-02-07  Seth Robertson  <projectbaka@baka.org>
 
 	* Allow populate to accept arguments for ifpresent repositories
 	which should explicitly checked out (partial --with-ifpresent).
@@ -6,7 +14,7 @@
 	* Populate will now checkout if it sees an emptyish directories at
 	the location of where an ifpresent repository should go.
 
-2011-02-04  Seth Robertson  <seth@startide.baka.org>
+2011-02-04  Seth Robertson  <projectbaka@baka.org>
 
 	* #include support in .gitslave files
 
