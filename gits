@@ -119,9 +119,9 @@ sub docmd($)
   my ($cmd) = @_;
 
   $cmd .= " 2>/dev/null" if ($OPTIONS{'quiet'});
-  print STDERR "Running command: `$cmd`\n" if ($OPTIONS{'verbose'} > 0);
+  print STDERR "Running command: `$cmd`\n" if ($OPTIONS{'verbose'} > 1);
   system($cmd);
-  print STDERR "Command " . exitcode() . "\n" if ($OPTIONS{'verbose'} > 1);
+  print STDERR "Command " . exitcode() . "\n" if ($OPTIONS{'verbose'} > 2);
   $? == 0;
 }
 
@@ -138,13 +138,14 @@ sub getcmd($;$)
   $cmd = gitsubst($cmd,$slave) if ($slave);
 
   $cmd = "($cmd) 2>&1";
-  print STDERR "Running command: `$cmd`\n" if ($OPTIONS{'verbose'} > 0);
+  print STDERR "Running command: `$cmd`\n" if ($OPTIONS{'verbose'} > 1);
   my $out = `$cmd`;
-  if ($OPTIONS{'verbose'} > 1)
+  if ($OPTIONS{'verbose'} > 2)
   {
     my $tout = $out;
     chomp($tout);
-    print STDERR "Command " . exitcode() . "\n ($tout)\n";
+    $tout =~ s/\n/|\n |/g;
+    print STDERR "Command " . exitcode() . "\n |$tout|\n";
   }
 
   wantarray?($?, $out):$out;
@@ -632,7 +633,7 @@ if (!$OPTIONS{'no-progress'})
   {
     warn "Progress bar unavailable - install Term::ProgressBar\n" .
       " (perl-Term-ProgressBar RPM) (libterm-progressbar-perl dpkg)\n"
-      if ($OPTIONS{'verbose'} > 0);
+      if ($OPTIONS{'verbose'});
   }
 }
 
@@ -2553,9 +2554,11 @@ there have occasionally been spurious errors with this enabled.
 =head2 --verbose -v
 
 Ask for more information about what is happening.  You may repeat the
-flag multiple times to get more information.  Two levels of verbosity
-typically prints the underlying commands being executed and the data
-being returned from them.
+flag multiple times to get more information.  One level of verbosity
+(-v) will print some minor warnings and will specify every repository
+and its output explicitly.  Two levels of verbosity (-vv) will print
+the underlying commands being executed and three levels (-vvv) will
+print the data being returned from them.
 
 =head2 --quiet
 

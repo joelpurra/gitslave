@@ -381,9 +381,11 @@ DESCRIPTION
 
   --verbose -v
     Ask for more information about what is happening. You may repeat the
-    flag multiple times to get more information. Two levels of verbosity
-    typically prints the underlying commands being executed and the data
-    being returned from them.
+    flag multiple times to get more information. One level of verbosity (-v)
+    will print some minor warnings and will specify every repository and its
+    output explicitly. Two levels of verbosity (-vv) will print the
+    underlying commands being executed and three levels (-vvv) will print
+    the data being returned from them.
 
   --quiet
     Ask for less information, which currently means discarding the STDERR of
