@@ -543,14 +543,32 @@ sub do_checkout($@)
 sub stdout($;$)
 {
   my ($msgp,$suppressempty) = @_;
+  my $keys = scalar(keys(%{$msgp}));
+  my $other = " other";
+  my $limit = 7;
 
-  # Skip output if all commands returned empty output strings unless we are in verbose mode
-  return if (!$OPTIONS{'verbose'} && scalar(keys(%{$msgp})) == 1 && defined($msgp->{""}));
+  # If all commands return identical strings, generate single header line
+  # (unless we are in verbose mode) - suppress all output if all are empty
+  if (!$OPTIONS{'verbose'} && $keys == 1)
+  {
+    return if (defined($msgp->{""}));
+    $other = "";
+  }
 
   foreach my $msg (sort { $#{$msgp->{$a}} <=> $#{$msgp->{$b}} } keys %{$msgp})
   {
+    $keys--;
     next if ($suppressempty && !$OPTIONS{'verbose'} && $msg eq "");
-    print "On: ", join(', ',@{$msgp->{$msg}}), ":\n";
+    my $repos = $#{$msgp->{$msg}};
+    if (!$OPTIONS{'verbose'} && !$keys && $repos > $limit)
+    {
+      print "On all$other repositories:\n";
+    }
+    else
+    {
+      $limit = $repos + 4 if ($repos + 4 > $limit);
+      print "On: ", join(', ',@{$msgp->{$msg}}), ":\n";
+    }
     $msg =~ s/^/  /mg if (length($msg));
     print $msg;
   }
