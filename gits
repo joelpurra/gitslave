@@ -49,6 +49,7 @@ my ($progress);
 
 our($GITSLAVE) = $ENV{'GITSLAVE'}||GITSLAVE;
 our($GITS_DIR);
+my($TOP);
 our(@slaves);
 my($USAGE) = "Usage: gits [-p|--parallel COUNT] [-v|--verbose]+ [--quiet] [--help] [--version]\n".
 "\t[--eval-args] [--exclude SLAVE-REGEXP] [--keep-going]\n".
@@ -439,7 +440,7 @@ sub do_checkout($@)
   my ($slavecnt) = -1;
   my ($ok, $okcnt);
   my (%msg);
-  my ($group, $slave) = (undef, ".");
+  my ($group, $slave, $repo) = (undef, ".", $TOP);
 
   $oldbranch = shift(@args) if ($pushprocessing == 1);
 
@@ -470,10 +471,10 @@ sub do_checkout($@)
     if ($ret != 0)
     {
       chomp($msg);
-      my $warn = "gits checkout (@{[join(' ',@args)]}), failed for: '$slave': " . exitcode($ret);
+      my $warn = "gits checkout (@{[join(' ',@args)]}), failed for: '$repo': " . exitcode($ret);
       if ($pushprocessing > 1)
       {
-	$failed .= " $slave";
+	$failed .= " $repo";
       }
       elsif ($OPTIONS{'keep-going'})
       {
@@ -497,17 +498,17 @@ sub do_checkout($@)
     }
     else
     {
-      $ok .= " $slave";
+      $ok .= " $repo";
       $okcnt++;
       if ($pushprocessing)
       {
 	$msg =~ s/Switched to branch.*\n//;
 	$msg =~ s/Already on \".*\n//;
-	push(@{$msg{"$args[0]\@$slave"}}, $slave);
+	push(@{$msg{"$args[0]\@$repo"}}, $repo);
       }
       else
       {
-	push(@{$msg{$msg}}, $slave);
+	push(@{$msg{$msg}}, $repo);
       }
     }
 
@@ -515,7 +516,7 @@ sub do_checkout($@)
     if (++$slavecnt <= $#slaves)
     {
       $group = $slaves[$slavecnt];
-      $slave = $group->[1];
+      $repo = $slave = $group->[1];
 
       my ($cmd) = qq^cd %%dir%% && $git checkout ^.quoteit(@args);
       $cmd .= " --" if ($pushprocessing);
@@ -644,6 +645,7 @@ else
   die "Could not find @{[GITSLAVE]}, either you are not inside a meta-module\nor one of its slaves or this is a new meta-module which has not yet\nbeen configured for gits.  Probably it is the first case so you simply\nneed to cd into the correct git checkout with a @{[GITSLAVE]} file, but in\nthe rare event that this is a new meta-module, you need run `gits\nprepare` and then a few `gits attach` commands to set up gits for this\nnew meta-module.\n"
     unless ($#ARGV < 0 or ephemeral_command($ARGV[0]));
 }
+$TOP = "(" . basename(Cwd::realpath(".")) . ")";
 
 @slaves = git_slave_list($ARGV[0]);
 
@@ -938,6 +940,8 @@ elsif ($ARGV[0] eq 'pulls')
     foreach my $group (@list)
     {
       my $slave = $group->[1];
+      my $repo = $slave;
+      $repo = $TOP if ($repo eq ".");
 
       next if missing_slave($slave);
 
@@ -953,7 +957,7 @@ elsif ($ARGV[0] eq 'pulls')
       if ($ret != 0)
       {
 	chomp($msg);
-	my $warn = "gits pulls, failed on branch $branch for: '$slave': " . exitcode($ret);
+	my $warn = "gits pulls, failed on branch $branch for: '$repo': " . exitcode($ret);
 	if ($OPTIONS{'keep-going'} || $want_parallel)
 	{
 	  warn "Error in $warn (continuing)\n $msg\n";
@@ -974,10 +978,10 @@ elsif ($ARGV[0] eq 'pulls')
 	$msg .= do_checkout(2, $oldbranch);
 	die "$diemsg\n  $msg\n";
       }
-      $msg = $newmsg{$slave}.$msg;
+      $msg = $newmsg{$repo}.$msg;
       $msg =~ s/Switched to branch.*\n//;
       $msg =~ s/Already on \".*\n//;
-      $ok .= " $slave";
+      $ok .= " $repo";
       $okcnt++;
       # replace module name with %MODULE% to collapse redundant messages
       my $mod = $slave;
@@ -998,7 +1002,7 @@ elsif ($ARGV[0] eq 'pulls')
 	$msg =~ s/\nUpdating [0-9a-fA-F]{7}\.\.[0-9a-fA-F]{7}\n/\n/g;
 	$msg =~ s/(Fast-forwarded \S+) to [0-9a-fA-F]*\./$1/g;
       }
-      push(@{$msg{$msg}}, "$branch\@$slave");
+      push(@{$msg{$msg}}, "$branch\@$repo");
 
       $progress->update(++$progress_count) if ($progress);
     }
@@ -1035,6 +1039,8 @@ elsif ($ARGV[0] eq 'pull')
   foreach my $group (@list)
   {
     my $slave = $group->[1];
+    my $repo = $slave;
+    $repo = $TOP if ($repo eq ".");
 
     next if missing_slave($slave);
 
@@ -1050,7 +1056,7 @@ elsif ($ARGV[0] eq 'pull')
     if ($ret != 0)
     {
       chomp($msg);
-      my $warn = "gits $ARGV[0], failed for: '$slave': " . exitcode($ret);
+      my $warn = "gits $ARGV[0], failed for: '$repo': " . exitcode($ret);
       if ($OPTIONS{'keep-going'} || $want_parallel)
       {
 	warn "Error in $warn (continuing)\n $msg\n";
@@ -1069,7 +1075,7 @@ elsif ($ARGV[0] eq 'pull')
       }
       die "$diemsg\n  $msg\n";
     }
-    $ok .= " $slave";
+    $ok .= " $repo";
     $okcnt++;
     # replace module name with %MODULE% to collapse redundant messages
     my $mod = $slave;
@@ -1090,7 +1096,7 @@ elsif ($ARGV[0] eq 'pull')
       $msg =~ s/\nUpdating [0-9a-fA-F]{7}\.\.[0-9a-fA-F]{7}\n/\n/g;
       $msg =~ s/(Fast-forwarded \S+) to [0-9a-fA-F]*\./$1/g;
     }
-    push(@{$msg{$msg}}, $slave);
+    push(@{$msg{$msg}}, $repo);
 
     $progress->update(++$progress_count) if ($progress);
   }
@@ -1151,6 +1157,8 @@ elsif ($ARGV[0] eq 'push')
   foreach my $group (@list)
   {
     my $slave = $group->[1];
+    my $repo = $slave;
+    $repo = $TOP if ($repo eq ".");
 
     next if missing_slave($slave);
 
@@ -1166,7 +1174,7 @@ elsif ($ARGV[0] eq 'push')
     if ($ret != 0)
     {
       chomp($msg);
-      my $warn = "gits $ARGV[0], failed for: '$slave': " . exitcode($ret);
+      my $warn = "gits $ARGV[0], failed for: '$repo': " . exitcode($ret);
       if ($OPTIONS{'keep-going'} || $want_parallel)
       {
 	warn "Error in $warn (continuing)\n $msg\n";
@@ -1185,9 +1193,9 @@ elsif ($ARGV[0] eq 'push')
       }
       die "$diemsg\n  $msg\n";
     }
-    $ok .= " $slave";
+    $ok .= " $repo";
     $okcnt++;
-    push(@{$msg{$msg}}, $slave);
+    push(@{$msg{$msg}}, $repo);
 
     $progress->update(++$progress_count) if ($progress);
   }
@@ -1278,6 +1286,9 @@ elsif ($ARGV[0] eq 'archive')
     foreach my $group (@list)
     {
       my $slave = $group->[1];
+      my $repo = $slave;
+      $repo = $TOP if ($repo eq ".");
+
       next if missing_slave($slave);
 
       my ($ret, $msg) = getcmd(qq^cd %%dir%% && $git archive $cmdargs --prefix ${prefix}$slave/ --output $curout^,$slave);
@@ -1300,7 +1311,7 @@ elsif ($ARGV[0] eq 'archive')
       if ($ret != 0)
       {
 	chomp($msg);
-	my $warn = "gits archive failed for: '$slave': " . exitcode($ret);
+	my $warn = "gits archive failed for: '$repo': " . exitcode($ret);
 
 	if ($OPTIONS{'keep-going'})
 	{
@@ -1320,11 +1331,11 @@ elsif ($ARGV[0] eq 'archive')
 	}
 	die "$diemsg\n  $msg\n";
       }
-      $ok .= " $slave";
+      $ok .= " $repo";
       $okcnt++;
 
 
-      push(@{$msg{$msg}}, $slave);
+      push(@{$msg{$msg}}, $repo);
     }
   }
   else
@@ -1332,6 +1343,8 @@ elsif ($ARGV[0] eq 'archive')
     foreach my $group (@list)
     {
       my $slave = $group->[1];
+      my $repo = $slave;
+      $repo = $TOP if ($repo eq ".");
 
       next if missing_slave($slave);
 
@@ -1339,7 +1352,7 @@ elsif ($ARGV[0] eq 'archive')
       if ($ret != 0)
       {
 	chomp($msg);
-	my $warn = "gits archive failed for: '$slave': " . exitcode($ret);
+	my $warn = "gits archive failed for: '$repo': " . exitcode($ret);
 
 	if ($OPTIONS{'keep-going'})
 	{
@@ -1359,10 +1372,10 @@ elsif ($ARGV[0] eq 'archive')
 	}
 	die "$diemsg\n  $msg\n";
       }
-      $ok .= " $slave";
+      $ok .= " $repo";
       $okcnt++;
 
-      push(@{$msg{$msg}}, $slave);
+      push(@{$msg{$msg}}, $repo);
     }
 
   }
@@ -1381,6 +1394,8 @@ elsif ($ARGV[0] eq 'exec')
   foreach my $group (@list)
   {
     my $slave = $group->[1];
+    my $repo = $slave;
+    $repo = $TOP if ($repo eq ".");
 
     next if missing_slave($slave);
 
@@ -1388,7 +1403,7 @@ elsif ($ARGV[0] eq 'exec')
     if ($ret != 0)
     {
       chomp($msg);
-      my $warn = "gits exec $ARGV[0], failed for: '$slave': " . exitcode($ret);
+      my $warn = "gits exec $ARGV[0], failed for: '$repo': " . exitcode($ret);
 
       if ($OPTIONS{'keep-going'})
       {
@@ -1408,10 +1423,10 @@ elsif ($ARGV[0] eq 'exec')
       }
       die "$diemsg\n  $msg\n";
     }
-    $ok .= " $slave";
+    $ok .= " $repo";
     $okcnt++;
 
-    push(@{$msg{$msg}}, $slave);
+    push(@{$msg{$msg}}, $repo);
   }
 
   stdout(\%msg);
@@ -1446,6 +1461,9 @@ elsif ($ARGV[0] eq 'remote')
   foreach my $group (@list)
   {
     my $slave = $group->[1];
+    my $repo = $slave;
+    $repo = $TOP if ($repo eq ".");
+
     next if missing_slave($slave);
 
     if ($ARGV[1] eq "add")
@@ -1457,7 +1475,7 @@ elsif ($ARGV[0] eq 'remote')
     if ($ret != 0)
     {
       chomp($msg);
-      my $warn = "gits remote $ARGV[1], failed for: '$slave': " . exitcode($ret);
+      my $warn = "gits remote $ARGV[1], failed for: '$repo': " . exitcode($ret);
 
       if ($OPTIONS{'keep-going'})
       {
@@ -1477,10 +1495,10 @@ elsif ($ARGV[0] eq 'remote')
       }
       die "$diemsg\n  $msg\n";
     }
-    $ok .= " $slave";
+    $ok .= " $repo";
     $okcnt++;
 
-    push(@{$msg{$msg}}, $slave);
+    push(@{$msg{$msg}}, $repo);
   }
 
   stdout(\%msg);
@@ -1522,6 +1540,8 @@ elsif ($ARGV[0] eq 'update-remote-url')
   foreach my $group (@list)
   {
     my $slave = $group->[1];
+    my $repo = $slave;
+    $repo = $TOP if ($repo eq ".");
 
     next if missing_slave($slave);
 
@@ -1535,7 +1555,7 @@ elsif ($ARGV[0] eq 'update-remote-url')
     if ($ret != 0)
     {
       chomp($msg);
-      my $warn = "gits $cmd, failed for: '$slave': " . exitcode($ret);
+      my $warn = "gits $cmd, failed for: '$repo': " . exitcode($ret);
 
       if ($OPTIONS{'keep-going'})
       {
@@ -1555,10 +1575,10 @@ elsif ($ARGV[0] eq 'update-remote-url')
       }
       die "$diemsg\n  $msg\n";
     }
-    $ok .= " $slave";
+    $ok .= " $repo";
     $okcnt++;
 
-    push(@{$msg{$msg}}, $slave);
+    push(@{$msg{$msg}}, $repo);
   }
 
   stdout(\%msg);
@@ -1575,6 +1595,8 @@ elsif ($ARGV[0] eq 'status')
   foreach my $group (@list)
   {
     my $slave = $group->[1];
+    my $repo = $slave;
+    $repo = $TOP if ($repo eq ".");
 
     next if missing_slave($slave);
 
@@ -1582,7 +1604,7 @@ elsif ($ARGV[0] eq 'status')
     if ($ret != 0 && $ret != 256)
     {
       chomp($msg);
-      my $warn = "gits $ARGV[0], failed for: '$slave': " . exitcode($ret);
+      my $warn = "gits $ARGV[0], failed for: '$repo': " . exitcode($ret);
 
       if ($OPTIONS{'keep-going'})
       {
@@ -1609,7 +1631,7 @@ elsif ($ARGV[0] eq 'status')
       #$returncode = 1;
       1;
     }
-    $ok .= " $slave";
+    $ok .= " $repo";
     $okcnt++;
 
     my ($premove);
@@ -1669,7 +1691,7 @@ elsif ($ARGV[0] eq 'status')
       }
     }
 
-    push(@{$msg{$premove.$msg}}, $slave);
+    push(@{$msg{$premove.$msg}}, $repo);
   }
 
   print "# On branch $branch\n";
@@ -1718,6 +1740,8 @@ elsif ($ARGV[0] eq 'statuses')
     foreach my $group (@list)
     {
       my $slave = $group->[1];
+      my $repo = $slave;
+      $repo = $TOP if ($repo eq ".");
 
       next if missing_slave($slave);
 
@@ -1725,7 +1749,7 @@ elsif ($ARGV[0] eq 'statuses')
       if ($ret != 0 && $ret != 256)
       {
 	chomp($msg);
-	my $warn = "gits statuses, failed on branch $branch for: '$slave': " . exitcode($ret);
+	my $warn = "gits statuses, failed on branch $branch for: '$repo': " . exitcode($ret);
 
 	if ($OPTIONS{'keep-going'})
 	{
@@ -1757,7 +1781,7 @@ elsif ($ARGV[0] eq 'statuses')
       $msg = $newmsg{$slave}.$msg;
       $msg =~ s/Switched to branch.*\n//;
       $msg =~ s/Already on \".*\n//;
-      $ok .= " $slave";
+      $ok .= " $repo";
       $okcnt++;
 
       my ($premove);
@@ -1822,7 +1846,7 @@ elsif ($ARGV[0] eq 'statuses')
 	}
       }
 
-      push(@{$msg{$premove.$msg}}, $slave);
+      push(@{$msg{$premove.$msg}}, $repo);
     }
 
     if ($firstbranch)
@@ -1856,6 +1880,8 @@ elsif ($ARGV[0] eq 'grep')
   foreach my $group (@list)
   {
     my $slave = $group->[1];
+    my $repo = $slave;
+    $repo = $TOP if ($repo eq ".");
 
     next if missing_slave($slave);
 
@@ -1864,7 +1890,7 @@ elsif ($ARGV[0] eq 'grep')
     if ($ret != 0)
     {
       chomp($msg);
-      my $warn = "gits $ARGV[0], failed for: '$slave': " . exitcode($ret);
+      my $warn = "gits $ARGV[0], failed for: '$repo': " . exitcode($ret);
 
       if ($OPTIONS{'keep-going'})
       {
@@ -1885,7 +1911,7 @@ elsif ($ARGV[0] eq 'grep')
       die "$diemsg\n  $msg\n";
     }
 
-    $ok .= " $slave";
+    $ok .= " $repo";
     $okcnt++;
 
     $msg =~ s:^(.*\S.*\n):$slave/$1:gm unless (grep(/-h/,@ARGV));
@@ -1914,6 +1940,8 @@ elsif ($ARGV[0] eq 'clean')
   foreach my $group (@list)
   {
     my $slave = $group->[1];
+    my $repo = $slave;
+    $repo = $TOP if ($repo eq ".");
 
     next if missing_slave($slave);
 
@@ -1928,7 +1956,7 @@ elsif ($ARGV[0] eq 'clean')
     if ($ret != 0)
     {
       chomp($msg);
-      my $warn = "gits $ARGV[0], failed for: '$slave': " . exitcode($ret);
+      my $warn = "gits $ARGV[0], failed for: '$repo': " . exitcode($ret);
 
       if ($OPTIONS{'keep-going'})
       {
@@ -1948,7 +1976,7 @@ elsif ($ARGV[0] eq 'clean')
       }
       die "$diemsg\n  $msg\n";
     }
-    $ok .= " $slave";
+    $ok .= " $repo";
     $okcnt++;
 
     my $newmsg;
@@ -1987,7 +2015,7 @@ elsif ($ARGV[0] eq 'clean')
       }
     }
 
-    push(@{$msg{$newmsg}}, $slave);
+    push(@{$msg{$newmsg}}, $repo);
   }
 
   print $commonout unless ($COPTIONS{'q'});
@@ -2011,6 +2039,8 @@ elsif ($ARGV[0] eq 'logs')
   foreach my $group (@list)
   {
     my $slave = $group->[1];
+    my $repo = $slave;
+    $repo = $TOP if ($repo eq ".");
 
     next if missing_slave($slave);
 
@@ -2018,7 +2048,7 @@ elsif ($ARGV[0] eq 'logs')
     if ($ret != 0)
     {
       chomp($msg);
-      my $warn = "gits exec log, failed for: '$slave': " . exitcode($ret);
+      my $warn = "gits exec log, failed for: '$repo': " . exitcode($ret);
 
       if ($OPTIONS{'keep-going'})
       {
@@ -2038,7 +2068,7 @@ elsif ($ARGV[0] eq 'logs')
       }
       die "$diemsg\n  $msg\n";
     }
-    $ok .= " $slave";
+    $ok .= " $repo";
     $okcnt++;
 
     foreach my $line (split(/\n/,$msg))
@@ -2046,7 +2076,7 @@ elsif ($ARGV[0] eq 'logs')
       chomp($slave);
       chomp($line);
       warn "Bad entry on $slave" unless ($line =~ /^\s*(\d+)\s+([[:xdigit:]]+)\s+(\S+)\s+(.*)/);
-      push(@msg, [$1,$2,$slave,$3,$4]);
+      push(@msg, [$1,$2,$repo,$3,$4]);
     }
   }
 
@@ -2097,6 +2127,8 @@ else
   foreach my $group (@list)
   {
     my $slave = $group->[1];
+    my $repo = $slave;
+    $repo = $TOP if ($repo eq ".");
 
     next if missing_slave($slave);
 
@@ -2106,7 +2138,7 @@ else
 	!($ARGV[0] eq "stash" && $ARGV[1] eq "apply" && $msg =~ /no valid stashed state found/))
     {
       chomp($msg);
-      my $warn = "gits $ARGV[0], failed for: '$slave': " . exitcode($ret);
+      my $warn = "gits $ARGV[0], failed for: '$repo': " . exitcode($ret);
 
       if ($OPTIONS{'keep-going'})
       {
@@ -2126,9 +2158,9 @@ else
       }
       die "$diemsg\n  $msg\n";
     }
-    $ok .= " $slave";
+    $ok .= " $repo";
     $okcnt++;
-    push(@{$msg{$msg}}, $slave);
+    push(@{$msg{$msg}}, $repo);
 
     $progress->update(++$progress_count) if ($progress);
   }
