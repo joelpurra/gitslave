@@ -560,7 +560,11 @@ sub stdout($;$)
   foreach my $msg (sort { $#{$msgp->{$a}} <=> $#{$msgp->{$b}} } keys %{$msgp})
   {
     $keys--;
-    next if ($suppressempty && !$OPTIONS{'verbose'} && $msg eq "");
+    if ($suppressempty && !$OPTIONS{'verbose'} && $msg eq "")
+    {
+      $limit = 999999;		# "other" not well-defined if some are omitted
+      next;
+    }
     my $repos = $#{$msgp->{$msg}};
     if (!$OPTIONS{'verbose'} && !$keys && $repos > $limit)
     {
