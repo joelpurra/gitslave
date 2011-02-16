@@ -567,7 +567,7 @@ sub stdout($;$)
       next;
     }
     my $repos = $#{$msgp->{$msg}};
-    if (!$OPTIONS{'verbose'} && !$keys && $repos > $limit)
+    if ($OPTIONS{'verbose'} == 0 && !$keys && $repos > $limit)
     {
       print "On all$other repositories:\n";
     }
@@ -1645,9 +1645,14 @@ elsif ($ARGV[0] eq 'status')
     $branch = $localbranch unless ($branch);
     unless ($branch eq $localbranch)
     {
-      my $warning = "Branch $branch of @{[$list[0]->[1]]} and $localbranch of $slave are different!\n";
-      warn $warning;
+      our %wrongbranches;
+      # turn on minimal verbosity to get empty messages in matching repositories
+      # (this allows "all other repositories" summarization)
+      $OPTIONS{'verbose'} = "0e0" if (!$OPTIONS{'verbose'});
+      my $warning = "Top-level $TOP branch '$branch' != slave branch '$localbranch'!\n";
       $msg = $warning . $msg;
+      warn $warning if (!$wrongbranches{$localbranch});
+      $wrongbranches{$localbranch} = 1;
     }
 
     if ($msg =~ /^\# Your branch/)
