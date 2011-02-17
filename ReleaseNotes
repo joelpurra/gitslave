@@ -1,3 +1,26 @@
+2011-02-18  Alex Dupuy  <alex.dupuy@mac.com>
+
+	* split up "pulls" commands so that fetch is performed only once
+	for each repository (in most cases)
+
+	* make pulls --rebase safer by using --preserve-merges (in most cases)
+
+	* make pulls work in current (top-level) branch first
+
+	* run check for git-hooks in master only once for each repository
+
+	* modify pulls progress meter to reflect fewer fetches/pulls
+
+	* output \n before warn/die messages when progress bar is present
+
+2011-02-16  Alex Dupuy  <alex.dupuy@mac.com>
+
+	* print "(dirname)" rather than "." for top-level repository
+	(where dirname is the last component of the path to top-level)
+
+	* reduce and summarize warning output for branch mismatch
+	between master (top-level) and slave repositories
+
 2011-02-15  Alex Dupuy  <alex.dupuy@mac.com>
 
 	* -v to provide full (including suppressed) output, -vv to list
