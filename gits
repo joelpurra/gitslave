@@ -483,11 +483,14 @@ sub do_checkout($@)
       }
       elsif ($OPTIONS{'keep-going'})
       {
-	warn "Error in $warn (continuing)\n $msg\n";
+	$warn = "Error in $warn (continuing)\n $msg\n";
+	$warn = "\n$warn" if ($progress);
+	warn $warn;
       }
       else
       {
 	my $diemsg = "Aborting $warn\n ";
+	$diemsg = "\n$diemsg" if ($progress);
 	if ($ok)
 	{
 	  $diemsg .= "(ran fine on: $ok, did not run on @{[$totcnt-$okcnt]} other(s); no rollbacks)";
@@ -812,7 +815,7 @@ elsif ($ARGV[0] eq 'detach')
     $save .= $_;
   }
   close(R);
-  die "Could not requested repository $ARGV[1] in $files for detaching.  Aborting\n" unless ($found);
+  die "Could not find requested repository $ARGV[1] in $files for detaching.  Aborting\n" unless ($found);
   open(W,">",$files) || die "Cannot open $files for writing";
   print W $save;
   close(W) || die "Cannot write $files";
@@ -965,7 +968,9 @@ elsif ($ARGV[0] eq 'pulls')
 	my $warn = "gits pulls, failed on branch $branch for: '$repo': " . exitcode($ret);
 	if ($OPTIONS{'keep-going'} || $want_parallel)
 	{
-	  warn "Error in $warn (continuing)\n $msg\n";
+	  $warn = "Error in $warn (continuing)\n $msg\n";
+	  $warn = "\n$warn" if ($progress);
+	  warn $warn;
 	  $returncode = 2;
 	  next;
 	}
@@ -981,6 +986,7 @@ elsif ($ARGV[0] eq 'pulls')
 	}
 	# <TODO>some way for do_checkout to only operate on some slaves</TODO>
 	$msg .= do_checkout(2, $oldbranch);
+	$diemsg = "\n$diemsg" if ($progress);
 	die "$diemsg\n  $msg\n";
       }
       $msg = $newmsg{$repo}.$msg;
@@ -1064,7 +1070,9 @@ elsif ($ARGV[0] eq 'pull')
       my $warn = "gits $ARGV[0], failed for: '$repo': " . exitcode($ret);
       if ($OPTIONS{'keep-going'} || $want_parallel)
       {
-	warn "Error in $warn (continuing)\n $msg\n";
+	$warn = "Error in $warn (continuing)\n $msg\n";
+	$warn = "\n$warn" if ($progress);
+	warn $warn;
 	$returncode = 2;
 	next;
       }
@@ -1078,6 +1086,7 @@ elsif ($ARGV[0] eq 'pull')
       {
 	$diemsg .= "(first entry, no other successfully executed)";
       }
+      $diemsg = "\n$diemsg" if ($progress);
       die "$diemsg\n  $msg\n";
     }
     $ok .= " $repo";
@@ -1182,7 +1191,9 @@ elsif ($ARGV[0] eq 'push')
       my $warn = "gits $ARGV[0], failed for: '$repo': " . exitcode($ret);
       if ($OPTIONS{'keep-going'} || $want_parallel)
       {
-	warn "Error in $warn (continuing)\n $msg\n";
+	$warn = "Error in $warn (continuing)\n $msg\n";
+	$warn = "\n$warn" if ($progress);
+	warn $warn;
 	$returncode = 2;
 	next;
       }
@@ -1196,6 +1207,7 @@ elsif ($ARGV[0] eq 'push')
       {
 	$diemsg .= "(first entry, no other successfully executed)";
       }
+      $diemsg = "\n$diemsg" if ($progress);
       die "$diemsg\n  $msg\n";
     }
     $ok .= " $repo";
@@ -2152,7 +2164,9 @@ else
 
       if ($OPTIONS{'keep-going'})
       {
-	warn "Error in $warn\n $msg\n";
+	$warn = "Error in $warn (continuing)\n $msg\n";
+	$warn = "\n$warn" if ($progress);
+	warn $warn;
 	$returncode = 2;
 	next;
       }
@@ -2166,6 +2180,7 @@ else
       {
 	$diemsg .= "(first entry, no other successfully executed)";
       }
+      $diemsg = "\n$diemsg" if ($progress);
       die "$diemsg\n  $msg\n";
     }
     $ok .= " $repo";
