@@ -150,6 +150,16 @@ problem would still exist.
     happen is likely to be very challenging and error-prone.
 
 
+* Pull --rebase does not use --preserve-merges
+
+The pulls command now uses fetch + rebase -p to speed up processing
+(it avoids setting up ssh for all branch*repository cominations) and
+to preserve merges; however, the pull command does not.  This
+inconsistency might be worth fixing, but note that even pulls does not
+always do this, notably if a repository or refspec argument is given,
+but also if older version of git is present.
+
+
 * Pull is very slow
 
 Because of the need to contact many repositories (setting up an ssh session
@@ -172,26 +182,36 @@ control path for liveness with `ssh -S $PATH -O check localhost`, and use
 gits operation.)
 
 
-* Pulls is even slower
+* Pulls is even slower (for some pull options / arguments)
 
-Because it needs to run a pull on each branch, it slows it down even
-more.  In theory, only the first operation needs to communicate with
-the network.  The others should be able to just do a local
-merge/rebase.  However, the manual page has tantalizing hints that pull
-has some magic interaction with merge/rebase which might make that
-a slightly different operation.
+Now that pulls actually breaks up the pulls into pull + merges, or
+fetch + rebases, it runs much faster when there are multiple branches,
+since it only fetches each repository once.  However, to do this, it
+has to "understand" the arguments passed to it.  This is done in a
+somewhat simplistic way that handles standalone single character
+options (-a -b -c) but not (-abc), and option arguments with =
+(--strategy=ours) but not ones without (--strategy ours) or (-s ours).
+The end-of-options option (--) is also considered tricky.  In those
+cases, or in the (more complicated) case of a repository or refspec
+argument, rather than running the faster and safer (--preserve-merges
+for rebase) fetch and rebase subcommands, it falls back to just
+running git pull for every branch@slave repository combination.
 
-I no longer believe there is any magic in merging (or rebasing) on
-other branches.  However, figuring out the tracking relationship
-externally is likely to fail.  While we can `git remote show <remote>`
-and parse to get the right bits, this requires figuring out what the
-remote of interest is.  Still, doing a full parse of the `gits pulls`
-command line, computing defaults, and then doing the correct merge is
-likely to be a little challenging.  At least we can restrict pulls to
-the simple case of "gits pulls [--rebase] [<remote>]" since the other
-cases don't seem interesting.  Still, computing the default repository
-is likely to be annoying since it can vary on a branch-by-branch
-basis.
+In the case of a command-line specified repository or refspec, it
+might be possible to determine the remote from the command-line
+argument and the output of `git remote show <remote>`, but this
+requires figuring out what the remote of interest is.  It also raises
+the question about whether you really want to pull a particular
+refspec for all your currently active tracking branches - it is much
+more likely that you want it for just one.
+
+As for the option parsing, doing it better would require a full
+separate options parser, and doesn't seem to be worth the effort,
+since it is always possible to specify any options in a way that
+gits will be able to handle without falling back to multiple git pulls.
+There are already some option combinations that git pull doesn't
+handle (like git pull -fv --rebase) so this isn't just a problem for
+gits.
 
 
 * Inconsistent state on an abort is bad

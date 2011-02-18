@@ -584,7 +584,12 @@ sub stdout($;$)
       $limit = $repos + 4 if ($repos + 4 > $limit);
       print "On: ", join(', ',@{$msgp->{$msg}}), ":\n";
     }
-    $msg =~ s/^/  /mg if (length($msg));
+    if (length($msg))
+    {
+      # handle CR, e.g. in git rebase -p output
+      $msg =~ s/\r([^\n])/\n$1/sg;
+      $msg =~ s/^/  /mg;
+    }
     print $msg;
   }
 }
@@ -923,6 +928,33 @@ elsif ($ARGV[0] eq 'pulls')
   unshift(@list,[undef,"."]) unless ($OPTIONS{'no-master'});
   my $oldbranch = (grep(s/\s*\*\s+//, split(/\n/,getcmd("$git branch"))))[0];
   my @branches = grep(s/branch\.(.*)\.remote=.*/$1/,split(/\n/,getcmd(qq%$git config -l%)));
+  my $fetched;
+  my $rebase = 0;
+  my $force = 0;
+  my @fetchargs = grep(/^-[qvaftku]|--(no-)?(quiet|verbose|append|force|tags|keep|update-head-ok|depth=.*|upload-pack=.*|)$/, @ARGV);
+  my @mergeargs = grep(/^-[n]|--(no-)?(stat|summary|log|commit|squash|ff|strategy=.*)$/, @ARGV);
+  my $rebasearg = " -p";
+
+  # is this a rebase or merge (default) pull?
+  foreach my $arg (@ARGV)
+  {
+    $rebase = 1 if $arg eq "--rebase";
+    $rebase = 0 if $arg eq "--no-rebase";
+    # bundled single-character options (e.g. -abc) and non-option arguments
+    # (args to options, e.g. "-s ours", or repository/refspec) are too tricky;
+    # the special end-of-options flag (--) falls in that category too
+    $fetched = -1 if ($arg !~ /^-/ || $arg eq "--" || $arg =~ /^-[^-]{2}/);
+  }
+  $rebase = -1 if ($rebase && $fetched < 0);
+  # only git version 1.6.1 and later support `git rebase -p`
+  my $gitversion = `git --version`;
+  if ($rebase < 0 || $gitversion =~ /git version (1\.[12345]\.|1\.6\.0)/)
+  {
+    $rebasearg = "";
+    warn "Warning: merges may be lost when rebasing!\n";
+    # <TODO>add some user interaction to confirm possible damaging activity?
+    # or determine if there are any merge commits that would be lost?</TODO>
+  }
 
   $progress = Term::ProgressBar->new({remove=>1, ETA => 'linear', count=>(($#branches + 1)*($#list+1))}) if ($want_progress);
   $progress->max_update_rate(1) if ($progress);
@@ -930,15 +962,49 @@ elsif ($ARGV[0] eq 'pulls')
   foreach my $branch (@branches)
   {
     my (%newmsg) = do_checkout(1, $oldbranch, $branch);
-
     my (%results);
+    my $pullcmd;
+    my $getremote = "REM=`$git config branch.$branch.remote`; " .
+      "REF=`$git config branch.$branch.merge | sed 's%.*/%%'`; ";
+
+    # default command on first merge or if there are "tricky" arguments
+    if ($fetched < 1 && $rebase < 1)
+    {
+      $pullcmd = "$git pull ".quoteit(@ARGV);
+      # check for branch.<name>.rebase = true only on non-tricky first merge
+      $pullcmd = $getremote .
+	"if [ \"`$git config --bool branch.$branch.rebase`\" = true ]; then " .
+	"$git fetch " . quoteit(@fetchargs) . " && " .
+	"$git rebase$rebasearg remotes/\"\$REM/\$REF\"; else " .
+	"$pullcmd; fi" if (!$fetched);
+    }
+    # subsequent merge
+    elsif (!$rebase)
+    {
+      $pullcmd = $getremote .
+	"if [ \"`$git config --bool branch.$branch.rebase`\" = true ]; then " .
+	"$git rebase$rebasearg remotes/\"\$REM/\$REF\"; else " .
+	"RURL=`$git config remote.\"\$REM\".url`; " .
+	"$git merge -m \"Merge branch '\$REF' of \$RURL into $branch\" " .
+	quoteit(@mergeargs) . " remotes/\"\$REM/\$REF\"; fi";
+    }
+    else
+    {
+      # rebase (with -p if supported by git version)
+      $pullcmd = $getremote . "$git rebase$rebasearg remotes/\"\$REM/\$REF\"";
+      # preceded by fetch on first time through
+      $pullcmd = "$git fetch ".quoteit(@fetchargs)." && { $pullcmd; }"
+	if (!$fetched);
+    }
+    # for debugging
+    # $pullcmd = "set -x; $pullcmd";
 
     foreach my $group (@list)
     {
       my $slave = $group->[1];
       next if missing_slave($slave);
 
-      $results{$group} = gitsubst("cd %%dir%% && $git pull ".quoteit(@ARGV),$slave);
+      $results{$group} = gitsubst("cd %%dir%% && $pullcmd",$slave);
     }
     if ($want_parallel)
     {
@@ -992,6 +1058,8 @@ elsif ($ARGV[0] eq 'pulls')
       $msg = $newmsg{$repo}.$msg;
       $msg =~ s/Switched to branch.*\n//;
       $msg =~ s/Already on \".*\n//;
+      $msg =~ s/Current branch $branch is( up to date)/Already$1/;
+      $msg =~ s+(Successfully rebased and updated) refs/heads/$branch+$1+;
       $ok .= " $repo";
       $okcnt++;
       # replace module name with %MODULE% to collapse redundant messages
@@ -1017,6 +1085,9 @@ elsif ($ARGV[0] eq 'pulls')
 
       $progress->update(++$progress_count) if ($progress);
     }
+
+    # only fetch for first branch
+    $fetched = 1 if (!$fetched);
   }
 
   stdout(\%msg);
@@ -2379,6 +2450,15 @@ then switch back to the branch you were on.
 
 Please see SUBSTITUTION for information on how to replace part of the
 command with the slave module name for each executed command.
+
+In the common case where no repository or refspec is provided as an
+argument, pulls will perform a fetch once (in the current branch of
+each slave) and then rebase (with --preserve-merges) or merge in each
+branch.  This reduces redundant network overhead in the common case
+where all branches of a repository have the same remote, but if that
+is not the case, only the current remote will be fetched.  If you want
+to force the slower operation of a pull in each branch, pass the --
+argument, e.g. gits pulls --rebase --
 
   --------------------------------------------------
   gits pulls --rebase

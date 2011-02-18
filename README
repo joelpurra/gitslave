@@ -155,6 +155,15 @@ OVERVIEW
     Please see SUBSTITUTION for information on how to replace part of the
     command with the slave module name for each executed command.
 
+    In the common case where no repository or refspec is provided as an
+    argument, pulls will perform a fetch once (in the current branch of each
+    slave) and then rebase (with --preserve-merges) or merge in each branch.
+    This reduces redundant network overhead in the common case where all
+    branches of a repository have the same remote, but if that is not the
+    case, only the current remote will be fetched. If you want to force the
+    slower operation of a pull in each branch, pass the -- argument, e.g.
+    gits pulls --rebase --
+
       --------------------------------------------------
       gits pulls --rebase
       --------------------------------------------------
