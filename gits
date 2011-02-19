@@ -935,6 +935,10 @@ elsif ($ARGV[0] eq 'pulls')
   my @mergeargs = grep(/^-[n]|--(no-)?(stat|summary|log|commit|squash|ff|strategy=.*)$/, @ARGV);
   my $rebasearg = " -p";
 
+  # sort branches to list current branch of master repository first
+  my $curbranch = (grep(s/\s*\*\s+//, split(/\n/,getcmd("$git branch"))))[0];
+  @branches = sort { ($b eq $curbranch) <=> ($a eq $curbranch) } @branches;
+
   # is this a rebase or merge (default) pull?
   foreach my $arg (@ARGV)
   {
