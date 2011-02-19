@@ -960,7 +960,22 @@ elsif ($ARGV[0] eq 'pulls')
     # or determine if there are any merge commits that would be lost?</TODO>
   }
 
-  $progress = Term::ProgressBar->new({remove=>1, ETA => 'linear', count=>(($#branches + 1)*($#list+1))}) if ($want_progress);
+  if ($want_progress)
+  {
+    # steps are checkouts and fetches; if we pull in every repository for every
+    # branch, (1 + branches + (repos * branches)), else (1 + branches + repos)
+    my $steps;
+    if ($fetched < 0)
+    {
+      $steps = 1 + ($#branches + 1) * ($#list + 2);
+    }
+    else
+    {
+      $steps = 1 + ($#branches + 1) + ($#list + 1);
+    }
+
+    $progress = Term::ProgressBar->new({remove=>1, ETA => 'linear', count=>$steps});
+  }
   $progress->max_update_rate(1) if ($progress);
 
   foreach my $branch (@branches)
@@ -1087,16 +1102,24 @@ elsif ($ARGV[0] eq 'pulls')
       }
       push(@{$msg{$msg}}, "$branch\@$repo");
 
-      $progress->update(++$progress_count) if ($progress);
+      # fetch / pull is a step
+      $progress->update(++$progress_count) if ($progress && $fetched < 1);
     }
 
     # only fetch for first branch
     $fetched = 1 if (!$fetched);
+
+    # branch checkout is a step
+    $progress->update(++$progress_count) if ($progress);
   }
+
+  my $lastmsg = do_checkout(2, $oldbranch);
+  $progress->update(++$progress_count) if ($progress);
 
   stdout(\%msg);
 
-  print do_checkout(2, $oldbranch) . "\n";
+  $lastmsg .= "\n" if ($lastmsg);
+  print $lastmsg;
 }
 elsif ($ARGV[0] eq 'pull')
 {
