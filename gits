@@ -64,6 +64,8 @@ our($git) = 'git';
 # Some people are stupid enough to set CDPATH and that screws up the formatting
 delete($ENV{'CDPATH'});
 
+
+
 ######################################################################
 #
 # Translate wait status ($?) into human-readable terms
@@ -79,6 +81,8 @@ sub exitcode(;$)
   }
   return "exit " . ($ret >> 8);
 }
+
+
 
 ######################################################################
 #
@@ -110,6 +114,8 @@ sub gitsubst($$)
 
   $data;
 }
+
+
 
 ######################################################################
 #
@@ -716,6 +722,7 @@ if ($OPTIONS{'parallel'})
 }
 
 
+##################################################
 if ($ARGV[0] eq 'version' or $OPTIONS{'version'})
 {
   my $version = "{UNTAGGED}";
@@ -761,6 +768,7 @@ if ($ARGV[0] eq 'version' or $OPTIONS{'version'})
     print $vers;
   }
 }
+##################################################
 elsif ($ARGV[0] eq 'help' or $OPTIONS{'help'})
 {
   print "$USAGE";
@@ -770,6 +778,7 @@ elsif ($ARGV[0] eq 'help' or $OPTIONS{'help'})
 	" -e '/^BUGS/{x;s/\\n[[:upper:]]*/\\n/g;s/\\n\\n/\\n/;p;}'");
   exit;
 }
+##################################################
 elsif ($ARGV[0] eq 'prepare')
 {
   die "gits prepare takes no arguments\n" if ($#ARGV != 0);
@@ -781,6 +790,7 @@ elsif ($ARGV[0] eq 'prepare')
   docmd("$git add @{[$GITSLAVE]}");
   docmd(qq^$git commit -m "gits creating @{[$GITSLAVE]}" @{[$GITSLAVE]}^) unless ($OPTIONS{'no-commit'});
 }
+##################################################
 elsif ($ARGV[0] eq 'attach')
 {
   die "gits attach requires two arguments\nusage: gits attach <repository> <directory> [flags]\n" if ($#ARGV < 2 || $#ARGV > 3 || !$ARGV[1] || !$ARGV[2]);
@@ -822,6 +832,7 @@ elsif ($ARGV[0] eq 'attach')
     docmd(qq^cd "$ARGV[2]"; $git checkout $curbranch --^) || die "Branch inconsistency, branch $curbranch does not exist\n";
   }
 }
+##################################################
 elsif ($ARGV[0] eq 'detach')
 {
   die "gits detach requires one directory (sub-module) argument which must exist\nusage: gits detach <directory>\n" if ($#ARGV != 1);
@@ -875,6 +886,7 @@ elsif ($ARGV[0] eq 'detach')
   docmd(qq^rm -rf ^.quoteit($ARGV[1])) unless ($OPTIONS{'no-commit'});
   docmd(qq^$git commit -m 'gits removing ^.quoteit($ARGV[1])."' ".quoteit($GITSLAVE)." .gitignore") unless ($OPTIONS{'no-commit'});
 }
+##################################################
 elsif ($ARGV[0] eq 'clone')
 {
   my $nohooks;
@@ -923,6 +935,7 @@ elsif ($ARGV[0] eq 'clone')
   $cmd .= "populate";
   docmd($cmd);
 }
+##################################################
 elsif ($ARGV[0] eq 'populate')
 {
   if (grep(/^--nohooks$/,@ARGV))
@@ -951,6 +964,7 @@ elsif ($ARGV[0] eq 'populate')
 
   do_populate();
 }
+##################################################
 elsif ($ARGV[0] eq 'resolve')
 {
   if (grep(/^--fromcheckout$/,@ARGV))
@@ -969,6 +983,7 @@ elsif ($ARGV[0] eq 'resolve')
 
   print resolve_repository($ARGV[1], $ARGV[2], $ARGV[3])."\n";
 }
+##################################################
 elsif ($ARGV[0] eq 'pulls')
 {
   shift(@ARGV);
@@ -1170,6 +1185,7 @@ elsif ($ARGV[0] eq 'pulls')
   $lastmsg .= "\n" if ($lastmsg);
   print $lastmsg;
 }
+##################################################
 elsif ($ARGV[0] eq 'pull')
 {
   my ($ok,$okcnt,%msg);
@@ -1264,6 +1280,7 @@ elsif ($ARGV[0] eq 'pull')
 
   stdout(\%msg);
 }
+##################################################
 elsif ($ARGV[0] eq 'push')
 {
   my ($ok,$okcnt,%msg);
@@ -1366,6 +1383,7 @@ elsif ($ARGV[0] eq 'push')
 
   stdout(\%msg);
 }
+##################################################
 elsif ($ARGV[0] eq 'checkout')
 {
   shift(@ARGV);
@@ -1373,6 +1391,7 @@ elsif ($ARGV[0] eq 'checkout')
 
   stdout(\%msg);
 }
+##################################################
 elsif ($ARGV[0] eq 'archive')
 {
   shift(@ARGV);
@@ -1546,6 +1565,7 @@ elsif ($ARGV[0] eq 'archive')
 
   stdout(\%msg);
 }
+##################################################
 elsif ($ARGV[0] eq 'exec')
 {
   shift(@ARGV);
@@ -1595,6 +1615,7 @@ elsif ($ARGV[0] eq 'exec')
 
   stdout(\%msg);
 }
+##################################################
 elsif ($ARGV[0] eq 'remote')
 {
   my ($ok,$okcnt);
@@ -1667,6 +1688,7 @@ elsif ($ARGV[0] eq 'remote')
 
   stdout(\%msg);
 }
+##################################################
 elsif ($ARGV[0] eq 'update-remote-url')
 {
   $fromcheckout = 0;
@@ -1748,6 +1770,7 @@ elsif ($ARGV[0] eq 'update-remote-url')
   stdout(\%msg);
   set_fromcheckout($fromcheckout);
 }
+##################################################
 elsif ($ARGV[0] eq 'status')
 {
   my ($ok,$okcnt);
@@ -1878,6 +1901,7 @@ elsif ($ARGV[0] eq 'status')
 
   stdout(\%msg,1);
 }
+##################################################
 elsif ($ARGV[0] eq 'statuses')
 {
   my ($ok,$okcnt);
@@ -2039,6 +2063,7 @@ elsif ($ARGV[0] eq 'statuses')
   }
   print do_checkout(2, @oldbranch) . "\n";
 }
+##################################################
 elsif ($ARGV[0] eq 'grep')
 {
   my ($ok,$okcnt);
@@ -2090,6 +2115,7 @@ elsif ($ARGV[0] eq 'grep')
 
   print $out;
 }
+##################################################
 elsif ($ARGV[0] eq 'clean')
 {
   shift(@ARGV);
@@ -2196,6 +2222,7 @@ elsif ($ARGV[0] eq 'clean')
 
   stdout(\%msg);
 }
+##################################################
 elsif ($ARGV[0] eq 'logs')
 {
   shift(@ARGV);
@@ -2272,7 +2299,8 @@ elsif ($ARGV[0] eq 'logs')
     print "$out\n";
   }
 }
-else
+##################################################
+else # Generic command
 {
   my ($ok,$okcnt);
   my %msg;
