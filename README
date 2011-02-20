@@ -227,11 +227,12 @@ OVERVIEW
       --------------------------------------------------
 
    Print out URLs for arbitrary repositories like those used by attach
-      gits resolve [--[no-]fromcheckout] <repository> <local_relpath>
+      gits resolve [--[no-]fromcheckout] <repository> <local_relpath> [remote]
 
     Go through the same process that gits uses for resolving relative
     repository URLs into absolute URLs, for debugging and certain porting
-    efforts.
+    efforts. You may specify the remote of the superproject you wish the
+    relative repository to be in relation to: by default it uses origin.
 
     With --fromcheckout, resolve URLs as if the repository were a clone of
     another gits checkout. With --no-fromcheckout, resolve URLs as if it
@@ -242,6 +243,7 @@ OVERVIEW
 
       --------------------------------------------------
       gits resolve ../otherpos otherpos
+      gits resolve ../otherpos otherpos otherremote
       --------------------------------------------------
 
    Update the URL a remote repository points at

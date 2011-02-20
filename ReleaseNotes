@@ -1,3 +1,11 @@
+2011-02-20  Seth Robertson  <projectbaka@baka.org>
+
+	* Add extra optional (remote) argument for `gits resolve`
+	(Previously hardcoded to origin).
+
+	* Allow `gits update-remote-url` to work with --no-master and some
+	--exclude arguments).
+
 2011-02-19  Seth Robertson  <projectbaka@baka.org>
 
 	* Bugfix: Do not assume we just cloned onto master branch

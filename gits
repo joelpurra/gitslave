@@ -158,9 +158,11 @@ sub getcmd($;$)
 #
 # Find the absolute path to repository (relatives are relative to upstream repository)
 #
-sub resolve_repository($$;$)
+sub resolve_repository($$;$$)
 {
-  my ($relrepos,$relative,$absrepos) = @_;
+  my ($relrepos,$relative,$remote,$absrepos) = @_;
+
+  $remote = "origin" unless ($remote);
 
   # Check for already absolute
   return $relrepos if ($relrepos =~ m-^(/|\w+:/)-);
@@ -172,7 +174,7 @@ sub resolve_repository($$;$)
   # Find upstream origin URL
   if (!$absrepos)
   {
-    my ($ret, $master_repo) = getcmd("$git config remote.origin.url");
+    my ($ret, $master_repo) = getcmd(qq^$git config "remote.$remote.url"^);
     chomp($master_repo);
     die "Could not find git upstream clone which this is relative to\n" unless ($ret == 0 && $master_repo);
     $absrepos = $master_repo;
@@ -963,9 +965,9 @@ elsif ($ARGV[0] eq 'resolve')
     @ARGV = grep(!/^--no-fromcheckout$/,@ARGV);
   }
 
-  die "gits resolve requires two non-option arguments\n" if ($#ARGV != 2 || !$ARGV[1] || !$ARGV[2]);
+  die "gits resolve requires at least two non-option arguments <possibly-relative url> <location-in-repository> [remote]\n" if ($#ARGV < 2 || $#ARGV > 3 || !$ARGV[1] || !$ARGV[2]);
 
-  print resolve_repository($ARGV[1], $ARGV[2])."\n";
+  print resolve_repository($ARGV[1], $ARGV[2], $ARGV[3])."\n";
 }
 elsif ($ARGV[0] eq 'pulls')
 {
@@ -1630,7 +1632,7 @@ elsif ($ARGV[0] eq 'remote')
 
     if ($ARGV[1] eq "add")
     {
-      $ARGV[$#ARGV] = resolve_repository($group->[0],$group->[1],$realurl);
+      $ARGV[$#ARGV] = resolve_repository($group->[0],$group->[1],undef,$realurl);
     }
 
     my ($ret, $msg) = getcmd(qq^cd %%dir%% && $git ^.quoteit(@ARGV),$slave);
@@ -1710,7 +1712,7 @@ elsif ($ARGV[0] eq 'update-remote-url')
     my ($thisurl) = $url;
     if ($slave ne ".")
     {
-      $thisurl = resolve_repository($group->[0],$group->[1]);
+      $thisurl = resolve_repository($group->[0],$group->[1],undef,$url);
     }
 
     my ($ret, $msg) = getcmd(qq^cd %%dir%% && $git config "remote.$name.url" "$thisurl"^,$slave);
@@ -2608,11 +2610,12 @@ command with the slave module name for each executed command.
 
 =head3 Print out URLs for arbitrary repositories like those used by attach
 
-  gits resolve [--[no-]fromcheckout] <repository> <local_relpath>
+  gits resolve [--[no-]fromcheckout] <repository> <local_relpath> [remote]
 
 Go through the same process that gits uses for resolving relative
 repository URLs into absolute URLs, for debugging and certain porting
-efforts.
+efforts.  You may specify the remote of the superproject you wish the
+relative repository to be in relation to: by default it uses origin.
 
 With --fromcheckout, resolve URLs as if the repository were a clone of
 another gits checkout.  With --no-fromcheckout, resolve URLs as if it were
@@ -2623,6 +2626,7 @@ resolve does not change the saved default even if --fromcheckout or
 
   --------------------------------------------------
   gits resolve ../otherpos otherpos
+  gits resolve ../otherpos otherpos otherremote
   --------------------------------------------------
 
 
