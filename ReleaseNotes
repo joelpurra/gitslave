@@ -2,6 +2,8 @@
 
 	* Bugfix: Do not assume we just cloned onto master branch
 
+	* Bugfix: Allow --(no-)?fromcheckout to work with gits clone
+
 	* Bugfix: Do not assume when setting git-hooks, that slave is
 	shallow.  It may be in a subdirectory.
 
