@@ -50,7 +50,7 @@ OVERVIEW
       ..../super/lib2
 
    Clone a gits project
-    gits [--[no-]fromcheckout] clone <superproject-URL>
+    gits [--[no-]fromcheckout] [--nohooks] clone <superproject-URL>
 
     This command clones an existing superproject and all associated slave
     repoistories. It runs `git clone` on the arguments you provide (allowing
@@ -58,6 +58,10 @@ OVERVIEW
     then runs `gits populate` inside that newly checked out repository. If
     you are cloning from an existing gitslave format slave instead of the
     master layout, you would want to use the --fromcheckout argument.
+
+    By default, if there is a git-hooks directory present in the
+    superproject, that will manage the .git/hooks directory in all related
+    repositories. Adding --nohooks will disable this management.
 
       --------------------------------------------------
       gits clone ssh://sourcemaster/src/repos/super.git super2
@@ -125,7 +129,7 @@ OVERVIEW
     The push in the example is to share the detach with other users.
 
    Check out any new slave modules which someone else might have added
-      gits populate [--[no-]fromcheckout] [ifpresent modules to check out]
+      gits populate [--[no-]fromcheckout] [--nohooks] [ifpresent modules to check out]
 
     Go through the list of configured slaves and check out (clone) any which
     have not already been retrieved.
@@ -140,6 +144,10 @@ OVERVIEW
     conditional repositories, which will check out all conditional
     repositories. You could also specifically ask for certain conditional
     modules by listing them on the command line.
+
+    By default, if there is a git-hooks directory present in the
+    superproject, that will manage the .git/hooks directory in all related
+    repositories. Adding --nohooks will disable this management.
 
       --------------------------------------------------
       gits populate

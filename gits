@@ -401,6 +401,10 @@ sub do_populate(;$)
   my ($nocheckout)=@_;
   my $curbranch;
   our %hooked;
+  my $wanthooks;
+
+  my ($ret,$out) = getcmd(qq^$git config gits.nohooks^);
+  $wanthooks = !$out;
 
   $nocheckout='-n' if ($nocheckout);
 
@@ -432,12 +436,12 @@ sub do_populate(;$)
 
     # Update hooks from master (-regex '.*\\*\$' matches bogus symlink '*')
     docmd(qq^cd $slave/.git/hooks; find . -type l -a '(' -lname '$updir/git-hooks*' -o -regex '.*\\*\$' ')' -exec rm -f '{}' ';'; find $updir/git-hooks/ -type f 8>&2 2>/dev/null -exec sh -c 'ln -s \$0 . 2>&8' '{}' ';'^)
-      if (!$hooked{"$slave"});
+      if (!$hooked{"$slave"} && $wanthooks);
     $hooked{"$slave"} = 1;
   }
   # Update master's hooks as well
   docmd(qq^cd .git/hooks; find . -type l -a '(' -lname '../../git-hooks*' -o -regex '.*\\*\$' ')' -exec rm -f '{}' ';'; find ../../git-hooks/ -type f 8>&2 2>/dev/null -exec sh -c 'ln -s \$0 . 2>&8' '{}' ';'^)
-    if (!$hooked{"."});
+    if (!$hooked{"."} && $wanthooks);
   $hooked{"."} = 1;
 
   if ($missingcount)
@@ -871,7 +875,14 @@ elsif ($ARGV[0] eq 'detach')
 }
 elsif ($ARGV[0] eq 'clone')
 {
+  my $nohooks;
   my $fromcheckout;
+  if (grep(/^--nohooks$/,@ARGV))
+  {
+    $nohooks=1;
+    @ARGV = grep(!/^--nohooks$/,@ARGV);
+  }
+
   if (grep(/^--fromcheckout$/,@ARGV))
   {
     $fromcheckout=1;
@@ -892,6 +903,7 @@ elsif ($ARGV[0] eq 'clone')
   }
   chdir($1);
 
+  docmd(qq^$git config gits.nohooks 1^) if ($nohooks);
   set_fromcheckout($fromcheckout) if (defined($fromcheckout));
 
   my $cmd = "$0 ";
@@ -911,6 +923,12 @@ elsif ($ARGV[0] eq 'clone')
 }
 elsif ($ARGV[0] eq 'populate')
 {
+  if (grep(/^--nohooks$/,@ARGV))
+  {
+    docmd(qq^$git config gits.nohooks 1^);
+    @ARGV = grep(!/^--nohooks$/,@ARGV);
+  }
+
   if (grep(/^--fromcheckout$/,@ARGV))
   {
     set_fromcheckout(1);
@@ -2385,7 +2403,7 @@ is:
 
 =head3 Clone a gits project
 
-gits [--[no-]fromcheckout] clone <superproject-URL>
+gits [--[no-]fromcheckout] [--nohooks] clone <superproject-URL>
 
 This command clones an existing superproject and all associated slave
 repoistories.  It runs `git clone` on the arguments you provide
@@ -2394,6 +2412,10 @@ example) and then runs `gits populate` inside that newly checked out
 repository.  If you are cloning from an existing gitslave format slave
 instead of the master layout, you would want to use the --fromcheckout
 argument.
+
+By default, if there is a git-hooks directory present in the
+superproject, that will manage the .git/hooks directory in all related
+repositories.  Adding --nohooks will disable this management.
 
   --------------------------------------------------
   gits clone ssh://sourcemaster/src/repos/super.git super2
@@ -2474,7 +2496,7 @@ The push in the example is to share the detach with other users.
 
 =head3 Check out any new slave modules which someone else might have added
 
-  gits populate [--[no-]fromcheckout] [ifpresent modules to check out]
+  gits populate [--[no-]fromcheckout] [--nohooks] [ifpresent modules to check out]
 
 Go through the list of configured slaves and check out (clone) any which have
 not already been retrieved.
@@ -2489,6 +2511,10 @@ The gits flag --with-ifpresent is useful here as one way to populate
 conditional repositories, which will check out all conditional
 repositories.  You could also specifically ask for certain conditional
 modules by listing them on the command line.
+
+By default, if there is a git-hooks directory present in the
+superproject, that will manage the .git/hooks directory in all related
+repositories.  Adding --nohooks will disable this management.
 
   --------------------------------------------------
   gits populate
