@@ -415,9 +415,10 @@ sub do_populate(;$)
       docmd(qq^$git clone $nocheckout "$repos" "$slave"^) || die "Could not clone $repos onto $slave\n";
 
       $curbranch = (grep(s/\s*\*\s+//, split(/\n/,getcmd("$git branch"))))[0] unless ($curbranch);
-      if ($curbranch ne "master" && $curbranch !~ /no branch/)
+      my $curbranch = (grep(s/\s*\*\s+//, split(/\n/,getcmd(qq^cd "$slave"; $git branch^))))[0];
+      if ($curbranch ne $curbranch && $curbranch !~ /no branch/)
       {
-	print qq^Switching "$ARGV[2]" to branch "$curbranch"\n^;
+	print qq^Switching "$slave" to branch "$curbranch"\n^;
 	docmd(qq^cd "$slave"; $git checkout -b $curbranch origin/$curbranch^) || die "Branch inconsistency, branch $curbranch does not exist for $slave\n";
       }
     }
@@ -804,7 +805,8 @@ elsif ($ARGV[0] eq 'attach')
   docmd(qq^$git commit -m 'gits adding "$ARGV[1]" "$ARGV[2]"' $files^) unless ($OPTIONS{'no-commit'});
 
   my $curbranch = (grep(s/\s*\*\s+//, split(/\n/,getcmd("$git branch"))))[0];
-  if ($curbranch ne "master")
+  my $subbranch = (grep(s/\s*\*\s+//, split(/\n/,getcmd(qq^cd "$ARGV[2]"; $git branch^))))[0];
+  if ($curbranch ne $subbranch)
   {
     print qq^Switching "$ARGV[2]" to branch "$curbranch"\n^;
     docmd(qq^cd "$ARGV[2]"; $git checkout $curbranch --^) || die "Branch inconsistency, branch $curbranch does not exist\n";
