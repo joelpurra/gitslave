@@ -871,15 +871,16 @@ elsif ($ARGV[0] eq 'detach')
 }
 elsif ($ARGV[0] eq 'clone')
 {
+  my $fromcheckout;
   if (grep(/^--fromcheckout$/,@ARGV))
   {
-    set_fromcheckout(1);
+    $fromcheckout=1;
     @ARGV = grep(!/^--fromcheckout$/,@ARGV);
   }
 
   if (grep(/^--no-fromcheckout$/,@ARGV))
   {
-    set_fromcheckout(0);
+    $fromcheckout=0;
     @ARGV = grep(!/^--no-fromcheckout$/,@ARGV);
   }
 
@@ -890,6 +891,9 @@ elsif ($ARGV[0] eq 'clone')
     die "Could not parse git clone output\n";
   }
   chdir($1);
+
+  set_fromcheckout($fromcheckout) if (defined($fromcheckout));
+
   my $cmd = "$0 ";
   foreach my $arg (keys %OPTIONS)
   {
