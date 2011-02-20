@@ -426,8 +426,12 @@ sub do_populate(;$)
     {
       print "gits: $slave already exists\n" if ($OPTIONS{'verbose'});
     }
+
+    # Count the number of directory separators for deep slave support
+    my ($updir) = "../..".("/.."x scalar(split(m:/:,$slave)));
+
     # Update hooks from master (-regex '.*\\*\$' matches bogus symlink '*')
-    docmd(qq^cd $slave/.git/hooks; find . -type l -a '(' -lname '../../../git-hooks*' -o -regex '.*\\*\$' ')' -exec rm -f '{}' ';'; find ../../../git-hooks/ -type f 8>&2 2>/dev/null -exec sh -c 'ln -s \$0 . 2>&8' '{}' ';'^)
+    docmd(qq^cd $slave/.git/hooks; find . -type l -a '(' -lname '$updir/git-hooks*' -o -regex '.*\\*\$' ')' -exec rm -f '{}' ';'; find $updir/git-hooks/ -type f 8>&2 2>/dev/null -exec sh -c 'ln -s \$0 . 2>&8' '{}' ';'^)
       if (!$hooked{"$slave"});
     $hooked{"$slave"} = 1;
   }
