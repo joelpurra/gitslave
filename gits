@@ -884,7 +884,7 @@ elsif ($ARGV[0] eq 'clone')
     @ARGV = grep(!/^--no-fromcheckout$/,@ARGV);
   }
 
-  my ($ret,$out) = getcmd(qq^git ^.quoteit(@ARGV));
+  my ($ret,$out) = getcmd(qq^$git ^.quoteit(@ARGV));
   print STDERR $out;
   if ($ret != 0 || $out !~ /^Cloning into (.*)\.\.\.\n/)
   {
@@ -980,7 +980,7 @@ elsif ($ARGV[0] eq 'pulls')
   }
   $rebase = -1 if ($rebase && $fetched < 0);
   # only git version 1.6.1 and later support `git rebase -p`
-  my $gitversion = `git --version`;
+  my $gitversion = `$git --version`;
   if ($rebase < 0 || $gitversion =~ /git version (1\.[12345]\.|1\.6\.0)/)
   {
     $rebasearg = "";
@@ -1370,7 +1370,7 @@ elsif ($ARGV[0] eq 'archive')
     if ($ARGV[$i] eq "-l" || $ARGV[$i] eq "--list")
     {
       print "gits-tar\n";
-      print `git archive -l`;
+      print `$git archive -l`;
       exit(0);
     }
     if ($ARGV[$i] eq "--format" && $i < $#ARGV)
