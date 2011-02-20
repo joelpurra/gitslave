@@ -1,3 +1,20 @@
+2011-02-19  Seth Robertson  <projectbaka@baka.org>
+
+	* Bugfix: Do not assume we just cloned onto master branch
+
+	* Bugfix: Do not assume when setting git-hooks, that slave is
+	shallow.  It may be in a subdirectory.
+
+	* --nohooks on clone and populate to ask for no .git/hooks
+	management by gitslave (if the super-repo asked for it)
+
+	* Use $git more consistently
+
+	* Support recursive subprojects (but only if the "master"
+	subproject is relatively equivalent to the top-superproject.
+	Relative URLs do not yet understand that they should be based off
+	a new URL.
+
 2011-02-18  Alex Dupuy  <alex.dupuy@mac.com>
 
 	* split up "pulls" commands so that fetch is performed only once
