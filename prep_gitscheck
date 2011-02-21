@@ -209,3 +209,25 @@ for f in . ./sub21 ./submastertop ./submastertop/sub1 ./submastertop/sub2 ./subm
  done
 gits commit -a -m "Final adjustment to super-bug 2"
 gits push
+export GITSLAVE=.optslave
+: "Prepare another SuperDuper project of which the old thing is just an optional component"
+git clone $BASE/checkdir/master2/top2 $BASE/checkdir/superopt
+cd ../superopt
+gits prepare
+gits attach ../sub21 sub21
+gits attach --recursive=.gitslave ../../master/top submastertop ifpresent
+gits populate
+gits push
+: "Person 2 takes a look"
+cd ..
+gits clone $BASE/checkdir/master2/top2 superopt2
+cd superopt2
+find . -name datelist | while read f; do echo $f; date >> $f; done
+gits commit -a -m "superopt update"
+gits push
+: "Person 2 takes a full look"
+gits populate
+gits --with-ifpresent populate
+find . -name datelist | while read f; do echo $f; date >> $f; done
+gits commit -a -m "superopt full update"
+gits push

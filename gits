@@ -279,12 +279,16 @@ sub git_slave_list_recursive($$$$$$$)
   while (<$r>)
   {
     $lineno++;
-    if (/^\#include\s+\"([^\"]+)\"\s*$/)
+    if (/^\#include\s+\"([^\"]+)\"\s*(\sifpresent)?$/)
     {
-      my $slavefile = $1;
+      my ($slavefile,$flags) = ($1,$2);
       $slavefile = "$base/$slavefile" unless ($slavefile =~ m:^/:);
       my $newbase = $slavefile;
       $newbase =~ s:^(.*)/.*:$1:;
+      if ($flags =~ /ifpresent/ && !$OPTIONS{'with-ifpresent'})
+      {
+	next unless (-f $slavefile);
+      }
       git_slave_list_recursive($slavefile,$gitsp,$seenp,$cmd,$newbase,$vpresentp,$depth+1);
       next;
     }
