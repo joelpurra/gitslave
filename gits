@@ -162,13 +162,34 @@ sub getcmd($;$)
 
 ######################################################################
 #
+# Find the repository URL for this remote
+#
+sub find_remote_repo($$)
+{
+  my ($remote,$base) = @_;
+
+  my ($ret, $master_repo) = getcmd(qq^cd "$base" && $git config "remote.$remote.url"^);
+  chomp($master_repo);
+  die "Could not find git upstream clone which this is relative to ($base $remote)\n" unless ($ret == 0 && $master_repo);
+  $master_repo;
+}
+
+
+
+
+######################################################################
+#
 # Find the absolute path to repository (relatives are relative to upstream repository)
 #
-sub resolve_repository($$;$$)
+sub resolve_repository($$;$$$)
 {
-  my ($relrepos,$relative,$remote,$absrepos) = @_;
+  my ($relrepos,$relative,$remote,$absrepos,$localbase) = @_;
 
   $remote = "origin" unless ($remote);
+
+  $fromcheckout = get_fromcheckout($remote);
+
+  $localbase = "." if (!$localbase || $fromcheckout);
 
   # Check for already absolute
   return $relrepos if ($relrepos =~ m-^(/|\w+:/)-);
@@ -178,13 +199,7 @@ sub resolve_repository($$;$$)
   ($prefix, $suffix) = ($1, $2) if ($relrepos =~ m-^(\w+:)(.*)-);
 
   # Find upstream origin URL
-  if (!$absrepos)
-  {
-    my ($ret, $master_repo) = getcmd(qq^$git config "remote.$remote.url"^);
-    chomp($master_repo);
-    die "Could not find git upstream clone which this is relative to\n" unless ($ret == 0 && $master_repo);
-    $absrepos = $master_repo;
-  }
+  $absrepos = find_remote_repo($remote,$localbase) if (!$absrepos || !$fromcheckout);
 
   # Nuke trailing .git, if necessary
   $absrepos =~ s:/.git$::;
@@ -287,7 +302,7 @@ sub git_slave_list_recursive($$$$$$$)
 
       $ckoutrel = "$relbase$ckoutrel";
 
-      push(@$gitsp,[$baserel, $ckoutrel]) if (!$seenp->{$ckoutrel});
+      push(@$gitsp,[$baserel, $ckoutrel, $base]) if (!$seenp->{$ckoutrel});
       $seenp->{$ckoutrel} = 1;
     }
   }
@@ -310,10 +325,6 @@ sub git_slave_list($;@)
 
   $missingcount = $foundcount = 0;
 
-  # Discover the current fromcheckout status
-  my $thisfromcheckout = `$git config gits.fromcheckout`;
-  $fromcheckout = 1 if ($thisfromcheckout && $thisfromcheckout ne "false");
-
   foreach my $slavefile (split(/, /,$GITSLAVE))
   {
     $slavefile = "$GITS_DIR/$slavefile" unless ($slavefile =~ m:^/:);
@@ -328,16 +339,27 @@ sub git_slave_list($;@)
 #
 # Configure persistent fromcheckout
 #
-sub set_fromcheckout($)
+sub get_fromcheckout($)
+{
+  `$git config 'gits.$_[0].fromcheckout'`;
+}
+
+
+
+######################################################################
+#
+# Configure persistent fromcheckout
+#
+sub set_fromcheckout($$)
 {
   if ($_[0])
   {
-    `$git config gits.fromcheckout 1`;
+    `$git config 'gits.$_[1].fromcheckout' 1`;
     $fromcheckout = 1;
   }
   else
   {
-    `$git config --unset gits.fromcheckout`;
+    `$git config --unset 'gits.$_[1].fromcheckout'`;
     $fromcheckout = 0;
   }
   $? == 0;
@@ -423,7 +445,7 @@ sub do_populate(;$)
     if (! -d $slave || (!-f "$slave/config" && !-d "$slave/.git"))
     {
       print "gits: Cloning $slave\n" if ($OPTIONS{'verbose'});
-      my ($repos) = resolve_repository($group->[0],$group->[1]);
+      my ($repos) = resolve_repository($group->[0],$group->[1],undef,undef,$group->[2]);
       docmd(qq^$git clone $nocheckout "$repos" "$slave"^) || die "Could not clone $repos onto $slave\n";
 
       $curbranch = (grep(s/\s*\*\s+//, split(/\n/,getcmd("$git branch"))))[0] unless ($curbranch);
@@ -793,7 +815,16 @@ elsif ($ARGV[0] eq 'prepare')
 ##################################################
 elsif ($ARGV[0] eq 'attach')
 {
-  die "gits attach requires two arguments\nusage: gits attach <repository> <directory> [flags]\n" if ($#ARGV < 2 || $#ARGV > 3 || !$ARGV[1] || !$ARGV[2]);
+  my $include;
+
+  if ($include = (grep(/^--recursive=(.+)$/,@ARGV))[0])
+  {
+    $include =~ s/--recursive=//;
+    die "--recursive argument may not have directory components: it must be in base of new slave\n" if ($include =~ m:/:);
+    @ARGV = grep(!/^--recursive=.+$/,@ARGV);
+  }
+
+  die "gits attach requires at least two arguments\nusage: gits attach [--recursive=<.gitslave>] <repository> <directory> [flags]\n" if ($#ARGV < 2 || $#ARGV > 3 || !$ARGV[1] || !$ARGV[2]);
   my ($repos) = resolve_repository($ARGV[1],$ARGV[2]);
   die "Unknown flag $ARGV[3]\n" if ($ARGV[3] && $ARGV[3] ne "ifpresent");
   die "Refusing to attach, \$GITSLAVE variable is multipath\n" if ($GITSLAVE =~ /, /);
@@ -810,6 +841,12 @@ elsif ($ARGV[0] eq 'attach')
   print W qq^"$ARGV[1]" "$ARGV[2]"^;
   print W " $ARGV[3]" if ($ARGV[3]);
   print W "\n";
+  if ($include)
+  {
+    print W qq^#include "$ARGV[2]/$include"^;
+    print W " $ARGV[3]" if ($ARGV[3]);
+    print W "\n";
+  }
   close(W);
 
   if ($ARGV[2] !~ m:/:)
@@ -822,7 +859,9 @@ elsif ($ARGV[0] eq 'attach')
     $files .= " .gitignore";
     docmd(qq^$git add .gitignore^) if ($needadd);
   }
-  docmd(qq^$git commit -m 'gits adding "$ARGV[1]" "$ARGV[2]"' $files^) unless ($OPTIONS{'no-commit'});
+  my $msg = qq^gits adding "$ARGV[1]" "$ARGV[2]"^;
+  $msg .= qq^ and recursively $include^ if ($include);
+  docmd(qq^$git commit -m '$msg' $files^) unless ($OPTIONS{'no-commit'});
 
   my $curbranch = (grep(s/\s*\*\s+//, split(/\n/,getcmd("$git branch"))))[0];
   my $subbranch = (grep(s/\s*\*\s+//, split(/\n/,getcmd(qq^cd "$ARGV[2]"; $git branch^))))[0];
@@ -918,7 +957,7 @@ elsif ($ARGV[0] eq 'clone')
   chdir($1);
 
   docmd(qq^$git config gits.nohooks 1^) if ($nohooks);
-  set_fromcheckout($fromcheckout) if (defined($fromcheckout));
+  set_fromcheckout($fromcheckout,"origin") if (defined($fromcheckout));
 
   my $cmd = "$0 ";
   foreach my $arg (keys %OPTIONS)
@@ -946,13 +985,13 @@ elsif ($ARGV[0] eq 'populate')
 
   if (grep(/^--fromcheckout$/,@ARGV))
   {
-    set_fromcheckout(1);
+    set_fromcheckout(1,"origin");
     @ARGV = grep(!/^--fromcheckout$/,@ARGV);
   }
 
   if (grep(/^--no-fromcheckout$/,@ARGV))
   {
-    set_fromcheckout(0);
+    set_fromcheckout(0,"origin");
     @ARGV = grep(!/^--no-fromcheckout$/,@ARGV);
   }
 
@@ -989,7 +1028,7 @@ elsif ($ARGV[0] eq 'pulls')
   shift(@ARGV);
   my ($ok,$okcnt,%msg);
   my (@list) = @slaves;
-  unshift(@list,[undef,"."]) unless ($OPTIONS{'no-master'});
+  unshift(@list,[undef,".","."]) unless ($OPTIONS{'no-master'});
   my $oldbranch = (grep(s/\s*\*\s+//, split(/\n/,getcmd("$git branch"))))[0];
   my @branches = grep(s/branch\.(.*)\.remote=.*/$1/,split(/\n/,getcmd(qq%$git config -l%)));
   my $fetched;
@@ -1190,7 +1229,7 @@ elsif ($ARGV[0] eq 'pull')
 {
   my ($ok,$okcnt,%msg);
   my (@list) = @slaves;
-  unshift(@list,[undef,"."]) unless ($OPTIONS{'no-master'});
+  unshift(@list,[undef,".","."]) unless ($OPTIONS{'no-master'});
 
   $progress = Term::ProgressBar->new({remove=>1, ETA => 'linear', count=>($#list+1)}) if ($want_progress);
   $progress->max_update_rate(1) if ($progress);
@@ -1285,7 +1324,7 @@ elsif ($ARGV[0] eq 'push')
 {
   my ($ok,$okcnt,%msg);
   my (@list) = @slaves;
-  unshift(@list,[undef,"."]) unless ($OPTIONS{'no-master'});
+  unshift(@list,[undef,".","."]) unless ($OPTIONS{'no-master'});
   my ($quick) = 0;
 
   if (!$>)
@@ -1398,7 +1437,7 @@ elsif ($ARGV[0] eq 'archive')
   my $format;
   my $outfile;
   my (@list) = @slaves;
-  unshift(@list,[undef,"."]) unless ($OPTIONS{'no-master'});
+  unshift(@list,[undef,".","."]) unless ($OPTIONS{'no-master'});
   my ($ok,$okcnt);
   my (%group,%msg);
 
@@ -1571,7 +1610,7 @@ elsif ($ARGV[0] eq 'exec')
   shift(@ARGV);
   my ($ok,$okcnt);
   my (@list) = @slaves;
-  unshift(@list,[undef,"."]) unless ($OPTIONS{'no-master'});
+  unshift(@list,[undef,".","."]) unless ($OPTIONS{'no-master'});
   my ($branch);
   my (%group,%msg);
 
@@ -1620,10 +1659,11 @@ elsif ($ARGV[0] eq 'remote')
 {
   my ($ok,$okcnt);
   my (@list) = @slaves;
-  unshift(@list,[undef,"."]) unless ($OPTIONS{'no-master'});
+  unshift(@list,[undef,".","."]) unless ($OPTIONS{'no-master'});
   my ($branch);
   my (%group,%msg);
   my ($realurl);
+  my ($fromcheckout);
 
   if ($ARGV[1] eq "add")
   {
@@ -1642,6 +1682,10 @@ elsif ($ARGV[0] eq 'remote')
 
     $realurl = $ARGV[$#ARGV];
   }
+
+  # ARGV[2] better be a remote!
+  set_fromcheckout($fromcheckout,$ARGV[2]) if (defined($fromcheckout));
+
 
   foreach my $group (@list)
   {
@@ -1691,6 +1735,8 @@ elsif ($ARGV[0] eq 'remote')
 ##################################################
 elsif ($ARGV[0] eq 'update-remote-url')
 {
+  my ($fromcheckout);
+
   $fromcheckout = 0;
   if (grep(/^--fromcheckout$/,@ARGV))
   {
@@ -1720,8 +1766,10 @@ elsif ($ARGV[0] eq 'update-remote-url')
   my ($cmd,$name,$url) = @ARGV;
   my ($ok,$okcnt);
   my (@list) = @slaves;
-  unshift(@list,[undef,"."]) unless ($OPTIONS{'no-master'});
+  unshift(@list,[undef,".","."]) unless ($OPTIONS{'no-master'});
   my (%msg);
+
+  set_fromcheckout($fromcheckout,$name) if (defined($fromcheckout));
 
   foreach my $group (@list)
   {
@@ -1734,7 +1782,9 @@ elsif ($ARGV[0] eq 'update-remote-url')
     my ($thisurl) = $url;
     if ($slave ne ".")
     {
-      $thisurl = resolve_repository($group->[0],$group->[1],undef,$url);
+      $thisurl = resolve_repository($group->[0],$group->[1],$name,$url,$group->[2]);
+
+      print qq^For slave $slave, "@{[$group->[0]]}" "@{[$group->[1]]}" $name $url  "@{[$group->[2]]}" => $thisurl\n^;
     }
 
     my ($ret, $msg) = getcmd(qq^cd %%dir%% && $git config "remote.$name.url" "$thisurl"^,$slave);
@@ -1768,14 +1818,14 @@ elsif ($ARGV[0] eq 'update-remote-url')
   }
 
   stdout(\%msg);
-  set_fromcheckout($fromcheckout);
+  set_fromcheckout($fromcheckout, $name);
 }
 ##################################################
 elsif ($ARGV[0] eq 'status')
 {
   my ($ok,$okcnt);
   my (@list) = @slaves;
-  unshift(@list,[undef,"."]) unless ($OPTIONS{'no-master'});
+  unshift(@list,[undef,".","."]) unless ($OPTIONS{'no-master'});
   my ($branch);
   my (%group,%groupc,%msg);
 
@@ -1906,7 +1956,7 @@ elsif ($ARGV[0] eq 'statuses')
 {
   my ($ok,$okcnt);
   my (@list) = @slaves;
-  unshift(@list,[undef,"."]) unless ($OPTIONS{'no-master'});
+  unshift(@list,[undef,".","."]) unless ($OPTIONS{'no-master'});
   my $oldbranch = (grep(s/\s*\*\s+//, split(/\n/,getcmd("$git branch"))))[0];
   my @branches = grep(s/branch\.(.*)\.remote=.*/$1/,split(/\n/,getcmd(qq%$git config -l%)));
   my @oldbranch = ($oldbranch);
@@ -2068,7 +2118,7 @@ elsif ($ARGV[0] eq 'grep')
 {
   my ($ok,$okcnt);
   my (@list) = @slaves;
-  unshift(@list,[undef,"."]) unless ($OPTIONS{'no-master'});
+  unshift(@list,[undef,".","."]) unless ($OPTIONS{'no-master'});
   my ($out);
 
   foreach my $group (@list)
@@ -2121,7 +2171,7 @@ elsif ($ARGV[0] eq 'clean')
   shift(@ARGV);
   my ($ok,$okcnt);
   my (@list) = @slaves;
-  unshift(@list,[undef,"."]) unless ($OPTIONS{'no-master'});
+  unshift(@list,[undef,".","."]) unless ($OPTIONS{'no-master'});
   my (@unlinkers);
   my (%msg);
   my ($commonout);
@@ -2228,7 +2278,7 @@ elsif ($ARGV[0] eq 'logs')
   shift(@ARGV);
   my ($ok,$okcnt);
   my (@list) = @slaves;
-  unshift(@list,[undef,"."]) unless ($OPTIONS{'no-master'});
+  unshift(@list,[undef,".","."]) unless ($OPTIONS{'no-master'});
   my (%group,@msg,$out);
   my ($window) = 28800;				# 8 hours
 
@@ -2313,7 +2363,7 @@ else # Generic command
 
   # Run the command for each module
   my (@list) = @slaves;
-  unshift(@list,[undef,"."]) unless ($OPTIONS{'no-master'});
+  unshift(@list,[undef,".","."]) unless ($OPTIONS{'no-master'});
 
   if ($ARGV[0] eq 'gc' || $ARGV[0] eq 'fsck')
   {
@@ -2476,7 +2526,7 @@ projects.
 
 =head3 Add a slave repository to top level master
 
-  gits attach <repository> <localpath> [flags]
+  gits attach [--recursive=.gitslave] <repository> <localpath> [flags]
 
 Clone the named git repository into the named local directory, and set
 it up for further gits operations.
@@ -2491,15 +2541,23 @@ with ^, it will use only the method and hostname from the master's
 URL.  Otherwise, it will be relative to the fully qualified path.  We
 will show both in operation in the example.
 
-The only flag currently supported is "ifpresent" which will be set for
+The only [flags] currently supported is "ifpresent" which will be set for
 this slave repository.  Other people cloning or populating the
 superproject will not check out this subrepository if this flag is
 set, unless they add --with-ifpresent or otherwise arrange for the
 <localpath> to be created.
 
+If the --recursive=<filename> argument is present (and you must use
+the --recursive=<filename> style, not "--recursive filename") the
+repository you are attaching will be treated as a recursive gitslave
+master underneath the real gitslave master.  The filename will
+typically be ".gitslave".  It is relative to the localpath
+you checked out and must not have any / in it.
+
  --------------------------------------------------
  gits attach ../lib1.git lib1
  gits attach ^/src/repos/lib2.git lib2
+ gits attach --recursive=.gitslave ../../super2 supersub
  gits push
  --------------------------------------------------
 

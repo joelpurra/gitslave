@@ -7,7 +7,7 @@ PATH=$PWD:$PATH
 set -e
 
 rm -rf checkdir
-mkdir -p checkdir/master checkdir/masterprep
+mkdir -p checkdir/master checkdir/master2 checkdir/masterprep checkdir/masterprep2
 BASE=`pwd`
 (cd checkdir/masterprep
  for f in top sub1 sub2 sub3
@@ -20,6 +20,18 @@ BASE=`pwd`
     git add *
     git commit -a -m "Initial files"
     cd ../../master; git clone --bare --mirror ../masterprep/$f $f)
+  done)
+(cd checkdir/masterprep2
+ for f in top2 sub21
+  do
+   mkdir $f
+   (cd $f
+    git init
+    date > datelist
+    echo $f > packagename
+    git add *
+    git commit -a -m "Initial files"
+    cd ../../master2; git clone --bare --mirror ../masterprep2/$f $f)
   done)
 
 git clone $BASE/checkdir/master/top $BASE/checkdir/slave
@@ -129,4 +141,71 @@ gits commit -a -m "Sigh, and another bug in the new release"
 gits checkout master
 gits pull
 gits merge --no-ff checkdir-1.0
+gits push
+: "Prepare SuperDuper project of which the old thing is just a component"
+git clone $BASE/checkdir/master2/top2 $BASE/checkdir/superduper
+cd ../superduper
+gits prepare
+gits attach ../sub21 sub21
+gits attach --recursive=.gitslave ../../master/top submastertop
+gits populate
+for f in . ./sub21 ./submastertop ./submastertop/sub1 ./submastertop/sub2 ./submastertop/sub3
+ do
+  date >> $f/datelist
+ done
+gits commit -a -m "Combined superduper project"
+gits push
+: "Person 2 clones the new superproject"
+gits clone $BASE/checkdir/master2/top2 $BASE/checkdir/superduper2
+cd ../superduper2
+for f in . ./sub21 ./submastertop ./submastertop/sub1 ./submastertop/sub2 ./submastertop/sub3
+ do
+  date >> $f/datelist
+ done
+gits commit -a -m "Fixes super-bug"
+gits push
+: "Person 2 makes (but does not push) a change"
+for f in . ./sub21 ./submastertop ./submastertop/sub1 ./submastertop/sub2 ./submastertop/sub3
+ do
+  date >> $f/datelist
+ done
+gits commit -a -m "Fixes super-bug 2"
+: "Person 1 gets the latest changes"
+cd ../superduper
+gits pull --rebase
+: "Person 1 makes a shadow clone for special circumstances"
+gits clone --fromcheckout ../superduper ../superduper1
+: "Person 1 adds person 2 as a remote"
+cd ../superduper1
+gits remote add --fromcheckout othercheckout $BASE/checkdir/superduper2
+gits fetch othercheckout
+gits merge othercheckout/master
+: "Person 1 adjusts newly obtained patch"
+for f in . ./sub21 ./submastertop ./submastertop/sub1 ./submastertop/sub2 ./submastertop/sub3
+ do
+  date >> $f/datelist
+ done
+gits commit -a -m "Adjustment to super-bug 2"
+: "Person 1 repoints origin to real upstream as a remote and pushes"
+gits update-remote-url --no-fromcheckout origin $BASE/checkdir/master2/top2
+gits push
+: "Person 1 updates normal repo and then adjusts fix again"
+cd ../superduper
+gits pull
+for f in . ./sub21 ./submastertop ./submastertop/sub1 ./submastertop/sub2 ./submastertop/sub3
+ do
+  date >> $f/datelist
+ done
+gits commit -a -m "Adjustment2 to super-bug 2"
+: "Person 1 updates shadow checkout"
+cd ../superduper1
+gits update-remote-url --fromcheckout othercheckout $BASE/checkdir/superduper
+gits fetch othercheckout
+gits merge othercheckout/master
+: "Person 1 adjusts final patch"
+for f in . ./sub21 ./submastertop ./submastertop/sub1 ./submastertop/sub2 ./submastertop/sub3
+ do
+  date >> $f/datelist
+ done
+gits commit -a -m "Final adjustment to super-bug 2"
 gits push

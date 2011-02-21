@@ -85,7 +85,7 @@ OVERVIEW
       --------------------------------------------------
 
    Add a slave repository to top level master
-      gits attach <repository> <localpath> [flags]
+      gits attach [--recursive=.gitslave] <repository> <localpath> [flags]
 
     Clone the named git repository into the named local directory, and set
     it up for further gits operations.
@@ -100,15 +100,23 @@ OVERVIEW
     Otherwise, it will be relative to the fully qualified path. We will show
     both in operation in the example.
 
-    The only flag currently supported is "ifpresent" which will be set for
-    this slave repository. Other people cloning or populating the
+    The only [flags] currently supported is "ifpresent" which will be set
+    for this slave repository. Other people cloning or populating the
     superproject will not check out this subrepository if this flag is set,
     unless they add --with-ifpresent or otherwise arrange for the
     <localpath> to be created.
 
+    If the --recursive=<filename> argument is present (and you must use the
+    --recursive=<filename> style, not "--recursive filename") the repository
+    you are attaching will be treated as a recursive gitslave master
+    underneath the real gitslave master. The filename will typically be
+    ".gitslave". It is relative to the localpath you checked out and must
+    not have any / in it.
+
      --------------------------------------------------
      gits attach ../lib1.git lib1
      gits attach ^/src/repos/lib2.git lib2
+     gits attach --recursive=.gitslave ../../super2 supersub
      gits push
      --------------------------------------------------
 

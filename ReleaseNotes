@@ -1,5 +1,14 @@
 2011-02-20  Seth Robertson  <projectbaka@baka.org>
 
+	* Fully support recursive subprojects with the
+	--recursive=.gitslave argument to gits attach.  Important upgrade
+	notes: --fromcheckout is now remote aware, so legacy
+	--fromcheckout gitslave repositories will not be able to properly
+	update-remote-url or populate using the saved --fromcheckout
+	state.  Workaround, reclone or re-update-remote-url with an
+	explicit --fromcheckout.  No auto-inheritance available because of
+	multiple remotes contamination of the --fromcheckout setting.
+
 	* Add extra optional (remote) argument for `gits resolve`
 	(Previously hardcoded to origin).
 
