@@ -1,0 +1,227 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+<title>Gitslave&mdash;gits</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+</head>
+<body>
+<div class="sites-header-cell-buffer-wrapper">
+<h2>
+GitSlave&mdash;gits
+</h2>
+</div>
+<div id="sites-chrome-main-wrapper">
+<div id="sites-chrome-main-wrapper-inside">
+<table id="sites-chrome-main" class="sites-layout-hbox" cellspacing="0">
+<tr>
+<td id="sites-chrome-sidebar-left" class="sites-layout-sidebar-left">
+<div id="COMP_6272157295941546" class="sites-embed" style="width:">
+<h4 class="sites-embed-title"></h4>
+<div class="sites-embed-content" style="padding:5px;">
+<div dir="ltr"><a href="https://sourceforge.net/projects/gitslave/files/" rel="nofollow">Download the latest release.</a><br /><br /><a href="git://gitslave.git.sourceforge.net/gitroot/gitslave/gitslave">Git source code</a><br /><br /><a href="http://gitslave.git.sourceforge.net/git/gitweb-index.cgi" rel="nofollow">Browse source code</a><br /><br /><a href="https://sourceforge.net/tracker/?func=add&amp;group_id=353214&amp;atid=1475673" rel="nofollow">Submit a ticket</a><br /><br /><a href="https://sourceforge.net/mailarchive/forum.php?forum_name=gitslave-devs" rel="nofollow">Join dev mailing list</a><br /><br /><a href="http://sourceforge.net/projects/gitslave/" rel="nofollow">Visit sourceforge page</a><br /><br /><br /></div>
+</div>
+</div>
+</td>
+<td id="sites-canvas-wrapper">
+<div id="sites-canvas">
+<div id="goog-ws-editor-toolbar-container"> </div>
+<div id="title-crumbs" style="">
+</div>
+<h3 id="sites-page-title-header" style="" align="left">
+<span id="sites-page-title" dir="ltr">Introduction to GitSlave</span>
+</h3>
+
+<div id="sites-canvas-main" class="sites-canvas-main">
+<div id="sites-canvas-main-content">
+<table cellspacing="0" class="sites-layout-name-one-column sites-layout-hbox"><tbody><tr><td class="sites-layout-tile sites-tile-name-content-1">
+
+<div dir="ltr"><p>
+
+Gitslave creates a group of related repositories&mdash;a superproject
+repository and a number of slave repositories&mdash;all of which are
+concurrently developed on and on which all git operations should
+normally operate; so when you branch, each repository in the project
+is branched in turn. Similarly when you commit, push, pull, merge,
+tag, checkout, status, log, etc; each git command will run on the
+superproject and all slave repositories in turn.  This sort of
+activity may be very familiar to CVS and (to a lesser extent)
+Subversion users.  Gitslave's design is for simplicity for normal git
+operations.
+
+</p><p>
+
+Gitslave has been used for mid-sized development projects with many
+slave repositories and many developers and for single-person
+repositories tracking groups of .emacs and .vim repositories (in the
+latter case, it is basically used to keep the slave repositories up to
+date via a single command).
+
+</p><p>
+
+The gits wrapper around git combines (and occasionally post-processes
+for some special commands) the git output to make everything clearer,
+which is very useful when you have a few dozen slaves where looking at
+a concatenation of normally identical output for each git command
+would lose the wheat in the chaff.
+
+</p><p>
+
+Gitslave does not take over your repository.  You may continue to use
+legacy git commands both inside of a gits cloned repository and
+outside in a privately git-cloned repository.  Gitslave is a value
+added supplement designed to accelerate performing identical git
+actions over all linked repositories and aside from one new file in
+the superproject, adjustments to .gitignore, and perhaps a few private
+config variables, does not otherwise affect your repositories.
+
+</p>
+<h4>Other options</h4>
+<p>
+
+git-submodules is the legacy solution for this sort of
+activity. submodules went a different way where you have a submodule
+at a semi-fixed commit.  It is a little annoying to make changes to
+the submodule due to the requirement to check out onto the correct
+submodule branch, make the change, commit, and then go into the
+superproject and commit the commit (or at least record the new
+location of the submodule).  It was originally designed for third
+party projects which you typically do not doing active development on
+(it works the other way with a little inconvenience). Most git
+commands performed on the superproject will not recurse down into the
+submodules.  As suggested above, submodules give you a tight mapping
+between subproject commits and superproject commits (you always know
+which commit a subproject was in for any given superproject commit).
+
+</p><p>
+
+Another option is to stick everything in one giant repository (either
+natively or by the git subtree merge strategy).  This might make your
+repository annoyingly large and it is usually a bad idea to aggregate
+multiple concepts in the same repository.  It also doesn't work
+conveniently (or at least efficiently) if the subsets are shared with
+other super-projects or you changes need to be shared with the other
+super-projects or back upstream.
+
+</p><p>
+
+Another options include repo from Google, used with Android.  Repo
+seems to work much like gitslave from a high level perspective, but
+I've not seen a lot of documentation on using it for other projects.
+Gitslave also came first.
+
+</p><p>
+
+Still another option is kitenet's mr which supports multiple
+repository types (CVS, SVN, git, etc).  It is absolutely the solution
+for multi-SCM projects, but since it works on the lowest common
+denominator you would lose much of the expressive power of git.
+
+
+</p>
+<h4>Gitslave is not perfect</h4>
+<p>
+
+Gitslave is imperfect in a few ways.  It can complicate forensic
+archeology, it may need special care and feeding if one or more of the
+repositories are third party repositories, you can have partial
+success and partial failure (no atomic cross repository actions), and
+things can get a little squirrelly if different branches/tags have
+different attached slave repositories.  However, we have not had any
+significant problems in over two years of intensive work on a project
+using this script nor has anyone else reported anything&mdash;do not mistake
+that for a warranty or a guarantee, for there is none.
+
+</p><p>
+
+Gitslave complicates forensic archeology in two ways.  Most obviously
+you cannot have gitk (or something similar) show the complete history
+of all projects in all linked repositories.  Less obviously, there is
+a very loose relationship between commits in different repositories.
+You cannot easily and precisely determine what commit/SHA any other
+repository was at when a particular commit was made.  Only tags
+provide exact synchronization between different repositories.
+
+</p><p>
+
+Your setup <i>may</i> need special care and feeding if one or more of
+the repositories is a third party repository.  If you blindly attached
+the true upstream master to your local repository, you are at the
+mercy of the upstream commits to master.  If there is a change which
+is not fully baked, you cannot refuse to accept it.  Also you cannot
+easily use public branches since you probably will be unable to push
+those branches to the third party repository.  The solution is to:
+
+<ul>
+
+<li>Consider using a unique naming system for branches and tags.  This
+allows you to keep your branches and tags separate from the upstream
+branches and tags.  This might even go as far as ditching master as
+your normal branch for your project-specific repositories (`git
+symbolic-ref HEAD refs/heads/mymaster` can change the default branch
+of a bare clone).</li>
+
+<li>Choose one of the following schemes for updating:
+
+<ul><li>Keep a project-local master mirror repository for the third
+party package as your project's upstream (git clone --mirror --shared
+URL mydir).  Periodically fetch in the bare repository.  When you are
+ready to bring in some/all changes, you can `git merge` from
+remote/origin/<upstreambranch> to <projectbranch>.  This has the
+disadvantage of requiring server-side git commands (the fetch) to be
+executed, of requiring a strict separation of reference namespace, and
+requires that you remember which upstream branches correspond to which
+project branches, but at least you can see (via gitk) those merges
+with the correct names.</li>
+
+<li>A slight variant on the above is to have a normal bare repository
+as the project local master, and use a bare mirrored client repository
+(with the projectmaster as a remote) as a proxy to avoid having to run
+commands on the project repository server.  Fetch on origin and
+(metaphorically) `git push --all --tags projectmaster` You then can
+have a normal clone do the merge of origin/master into mymaster.  As
+long as you keep all local changes off the upstream branch, your
+transfer repository can happily import changes from the true upstream
+to the projectmaster and a normal clone can merge as necessary.  It
+still requires a strict separation of reference namespace, and you
+still have to remember which upstream branches correspond to which
+project branches, but at least you can see (via gitk) those merges
+with the correct names.</li>
+
+<li>A final variant gets rid of the require to have a strict
+separation of upstream namespace and your project namespace (except
+for the namespaceless tags).  You create a normal project-master bare
+repository and have a normal clone of it.  That clone add a remote for
+the true upstream.  That transfer clone then merges between the
+upstream remote branch and the project branch and pushes the result to
+origin as normal.  This still has the problem that there is no
+memorized mapping between the upstream and project branches.  Even
+worse, no-one except this repository (or any repository with upstream
+as a remote) will be able to see (via gitk) the mapping.  They will
+just see the merge from an anonymous branch.</li>
+
+</ul></li></ul>
+</p><p>
+
+Even less perfect is the full and complete project documentation on
+what gitslave does, how it does it, and the various features and
+tweaks it might have.  Gitslave isn't all that complex so the hope is
+that it doesn't need alot.  We have an extensive manual page which is
+a good first step, and a tutorial is being considered.
+
+</p><p>
+<a href="gits-man-page.html">Extensive man page</a>
+</p><p>
+<a href="ReleaseNotes.txt">Release notes</a>
+</p></div>
+
+</td></tr></tbody></table>
+</div>
+</div>
+</div>
+</td>
+</tr>
+</table>
+</div>
+</div>
+</body>
+</html>

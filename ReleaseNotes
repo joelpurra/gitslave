@@ -1,7 +1,7 @@
 2011-02-23  Seth Robertson  <projectbaka@baka.org>
 
-	* Store sourceforge project web pages in project-web branch, add
-	symlinks for project onto manual page.
+	* Store sourceforge project web pages in web directory, add
+	links for project onto manual page.
 
 2011-02-20  Seth Robertson  <projectbaka@baka.org>
 
