@@ -56,8 +56,9 @@ OVERVIEW
     repoistories. It runs `git clone` on the arguments you provide (allowing
     you to change the name of the checked-out repository for example) and
     then runs `gits populate` inside that newly checked out repository. If
-    you are cloning from an existing gitslave format slave instead of the
-    master layout, you would want to use the --fromcheckout argument.
+    you are cloning from an existing gitslave checkout instead of the master
+    layout (the master layout is specified in the gits attach commands), you
+    would want to use the --fromcheckout argument.
 
     By default, if there is a git-hooks directory present in the
     superproject, that will manage the .git/hooks directory in all related
@@ -263,13 +264,13 @@ OVERVIEW
 
     The --fromcheckout option supports using a gits checkout as the remote
     repository, adjusting the repository paths from their default. The
-    --no-fromcheckout option assumes a normal repository layout for the
-    remote. If neither option is given, the saved repository layout from the
-    most recent gits populate or update-remote-url command is used; however,
-    this is not generally correct, as the repository layout of the new
-    remote need not be the same as the old one. If either --fromcheckout or
-    --no-fromcheckout is given, sets the default repository layout
-    accordingly.
+    --no-fromcheckout option assumes a normal (as specified in the gits
+    attach commands) repository layout for the remote. If neither option is
+    given, the saved repository layout from the most recent gits populate or
+    update-remote-url command is used; however, this is not generally
+    correct, as the repository layout of the new remote need not be the same
+    as the old one. If either --fromcheckout or --no-fromcheckout is given,
+    sets the default repository layout accordingly.
 
     You can use this command after a clone of a local repository (or local
     gits checkout, using gits populate --fromcheckout) so that the new
