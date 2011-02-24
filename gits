@@ -1776,14 +1776,6 @@ elsif ($ARGV[0] eq 'update-remote-url')
 
   set_fromcheckout($fromcheckout,$name) if (defined($fromcheckout));
 
-  my $repodir = "";
-  my ($thisurl) = $url;
-  if ($url =~ /^(.*)\/\.git$/)
-  {
-    $url = $1;
-    $repodir = "/.git";
-  }
-
   foreach my $group (@list)
   {
     my $slave = $group->[1];
@@ -1792,11 +1784,10 @@ elsif ($ARGV[0] eq 'update-remote-url')
 
     next if missing_slave($slave);
 
+    my ($thisurl) = $url;
     if ($slave ne ".")
     {
       $thisurl = resolve_repository($group->[0],$group->[1],$name,$url,$group->[2]);
-
-      $thisurl .= $repodir;
 
       print qq^For slave $slave, "@{[$group->[0]]}" "@{[$group->[1]]}" $name $url  "@{[$group->[2]]}" => $thisurl\n^;
     }
