@@ -3,5 +3,8 @@ gits-man-page.html: ../gits
 	pod2html $^ > $@
 	@rm -f pod2htm*.tmp
 
+install: gits-man-page.html ReleaseNotes.txt index.html
+	scp $^ bakaproject,gitslave@web.sourceforge.net:/home/project-web/gitslave/htdocs
+
 clean:
 	rm -f gits-man-page.html pod2htm* *.tmp
