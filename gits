@@ -2428,6 +2428,8 @@ exit($returncode);
 
 =pod
 
+Gitslave Home Page: L<< http://gitslave.sf.net >>
+
 =head1 NAME
 
 gits - The git slave repository tool for super-project multi-repository management
@@ -3083,7 +3085,7 @@ Seth Robertson
 
 =head1 REPORTING BUGS
 
-Report bugs to http://sourceforge.net/projects/gitslave
+Report bugs to L<< http://sourceforge.net/projects/gitslave >>
 
 =head1 COPYRIGHT
 
@@ -3094,3 +3096,5 @@ details.
 =head1 SEE ALSO
 
 git(1), git-submodule(1), git-subtree(google)
+
+Gitslave Home Page: L<< http://gitslave.sf.net >>
