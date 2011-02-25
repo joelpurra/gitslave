@@ -1,3 +1,13 @@
+2011-02-25  Seth Robertson  <projectbaka@baka.org>
+
+	* Support more precise .gitignore entries for slave repos
+	which you attach.  IMPORTANT UPGRADE NOTES: The new style more
+	precise .gitignore entries will not match the old style less
+	precise entries.  This means that if you detach using post-2.0
+	gitslave on a repository attached with pre-2.0 gitslave, your
+	.gitignore file will not have the entry properly deleted.
+	Likewise, with the inverse.
+
 2011-02-23  Seth Robertson  <projectbaka@baka.org>
 
 	* Store sourceforge project web pages in web directory, add
@@ -6,8 +16,8 @@
 2011-02-20  Seth Robertson  <projectbaka@baka.org>
 
 	* Fully support recursive subprojects with the
-	--recursive=.gitslave argument to gits attach.  Important upgrade
-	notes: --fromcheckout is now remote aware, so legacy
+	--recursive=.gitslave argument to gits attach.  IMPORTANT UPGRADE
+	NOTES: --fromcheckout is now remote aware, so legacy
 	--fromcheckout gitslave repositories will not be able to properly
 	update-remote-url or populate using the saved --fromcheckout
 	state.  Workaround, reclone or re-update-remote-url with an

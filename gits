@@ -859,7 +859,7 @@ elsif ($ARGV[0] eq 'attach')
     my ($needadd) = 0;
     $needadd++ if (! -f "$GITS_DIR/.gitignore");
     open(W, ">>", $GITS_DIR."/.gitignore");
-    print W qq^$ARGV[2]\n^;
+    print W qq^/$ARGV[2]/\n^;
     close(W);
     $files .= " .gitignore";
     docmd(qq^$git add .gitignore^) if ($needadd);
@@ -918,7 +918,7 @@ elsif ($ARGV[0] eq 'detach')
     {
       my ($c) = $_;
       chomp($c);
-      next if ($c eq "$ARGV[1]");
+      next if ($c eq "/$ARGV[1]/");
       $save2 .= $_;
     }
     close(R);
