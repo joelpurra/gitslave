@@ -3,6 +3,7 @@
 <head>
 <title>Gitslave&mdash;gits</title>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<link rel="stylesheet" type="text/css" href="tutorial.css" />
 </head>
 <body>
 <div class="sites-header-cell-buffer-wrapper">
@@ -15,17 +16,37 @@ GitSlave&mdash;gits
 <table id="sites-chrome-main" class="sites-layout-hbox" cellspacing="0">
 <tr>
 <td id="sites-chrome-sidebar-left" class="sites-layout-sidebar-left">
-<div id="COMP_6272157295941546" class="sites-embed" style="width:">
+<div id="COMP_6272157295941546" class="sites-embed" style="width:120px;">
 <h4 class="sites-embed-title"></h4>
-<div class="sites-embed-content" style="padding:5px;">
-<div dir="ltr"><a href="https://sourceforge.net/projects/gitslave/files/" rel="nofollow">Download the latest release.</a><br /><br /><a href="git://gitslave.git.sourceforge.net/gitroot/gitslave/gitslave">Git source code</a><br /><br /><a href="http://gitslave.git.sourceforge.net/git/gitweb-index.cgi" rel="nofollow">Browse source code</a><br /><br /><a href="https://sourceforge.net/tracker/?func=add&amp;group_id=353214&amp;atid=1475673" rel="nofollow">Submit a ticket</a><br /><br /><a href="https://sourceforge.net/mailarchive/forum.php?forum_name=gitslave-devs" rel="nofollow">Join dev mailing list</a><br /><br /><a href="http://sourceforge.net/projects/gitslave/" rel="nofollow">Visit sourceforge page</a><br /><br /><br /></div>
+<div class="sites-embed-content" style="padding:5px; position:fixed; top:120px; width:110px;">
+<div dir="ltr">
+  <p>
+  <a href="https://sourceforge.net/projects/gitslave/files/" rel="nofollow">Download the latest release.</a>
+  </p><p>
+  <a href="git://gitslave.git.sourceforge.net/gitroot/gitslave/gitslave">Git source code</a>
+  </p><p>
+  <a href="http://gitslave.git.sourceforge.net/git/gitweb-index.cgi" rel="nofollow">Browse source code</a>
+  </p><p>
+  <a href="https://sourceforge.net/tracker/?func=add&amp;group_id=353214&amp;atid=1475673" rel="nofollow">Submit a ticket</a>
+  </p><p>
+  <a href="https://sourceforge.net/mailarchive/forum.php?forum_name=gitslave-devs" rel="nofollow">Join dev mailing list</a>
+  </p><p>
+  <a href="http://sourceforge.net/projects/gitslave/" rel="nofollow">Visit sourceforge page</a>
+  </p><p>
+  <a href="gits-man-page.html">Extensive man page</a>
+  </p><p>
+  <a href="ReleaseNotes.txt">Release notes</a>
+  </p><p>
+  <a href="tutorial-basic.html">Basic tutorial</a>
+  </p>
+</div>
 </div>
 </div>
 </td>
 <td id="sites-canvas-wrapper">
 <div id="sites-canvas">
 <div id="goog-ws-editor-toolbar-container"> </div>
-<div id="title-crumbs" style="">
+<div id="title-crumbs">
 </div>
 <h3 id="sites-page-title-header" style="" align="left">
 <span id="sites-page-title" dir="ltr">Introduction to GitSlave</span>
@@ -51,18 +72,21 @@ operations.
 </p><p>
 
 Gitslave has been used for mid-sized product development with many
-slave repositories (representing different programs and plugins) and
-many developers and for single-person repositories tracking groups of
-.emacs and .vim repositories (in the latter case, it is basically used
-to keep the slave repositories up to date via a single command).
+slave repositories (representing different programs and plugins),
+branches, tags, and developers; and for single-person repositories
+tracking groups of .emacs and .vim repositories (in the latter case,
+it is basically used to keep the slave repositories up to date via a
+single command).
 
 </p><p>
 
-The gits wrapper around git combines (and occasionally post-processes
-for some special commands) the git output to make everything clearer,
-which is very useful when you have a few dozen slaves where looking at
-a concatenation of normally identical output for each git command
-would lose the wheat in the chaff.
+The gits wrapper typically runs the indicated git command on each
+repository in the project and combines (and occasionally
+post-processes for some special commands) the output from the
+individual git commands to make everything clearer, which is very
+useful when you have a few dozen slaves&mdash;looking at a
+concatenation of normally identical output for each git command would
+lose the wheat in the chaff.
 
 </p><p>
 
@@ -158,7 +182,7 @@ allows you to keep your branches and tags separate from the upstream
 branches and tags.  This might even go as far as ditching master as
 your normal branch for your project-specific repositories (`git
 symbolic-ref HEAD refs/heads/mymaster` can change the default branch
-of a bare clone).</li>
+when cloning from a bare clone).</li>
 
 <li>Choose one of the following schemes for updating:
 
@@ -187,7 +211,7 @@ still have to remember which upstream branches correspond to which
 project branches, but at least you can see (via gitk) those merges
 with the correct names.</li>
 
-<li>A final variant gets rid of the require to have a strict
+<li>The next variant gets rid of the requirement to have a strict
 separation of upstream namespace and your project namespace (except
 for the namespaceless tags).  You create a normal project-master bare
 repository and have a normal clone of it.  That clone add a remote for
@@ -199,6 +223,21 @@ worse, no-one except this repository (or any repository with upstream
 as a remote) will be able to see (via gitk) the mapping.  They will
 just see the merge from an anonymous branch.</li>
 
+<li>Finally we have the punting option.  Have a normal bare repo as a
+local master and create a vendor branch in the repository.  When you
+want to update, checkout the vendor branch and replace the working
+directory with the most recent checkout/tarball from the appropriate
+upstream release/commit.  Then merge the changes in.  You lose the
+detailed history of the upstream changes, but this is a very easy and
+tradition method of importing changes.  There is no question of
+namespace contamination, but you must manually figure out what to
+merge where in a normal checkout from your local project master
+(though gitk can help you see what you did in the past).  This doesn't
+work at all conveniently if different local-project release branches
+are tracking different upstream-project release
+branches&mdash;creating multiple vendor branches loses the simplicity
+which makes this option attractive.</li>
+
 </ul></li></ul>
 </p><p>
 
@@ -206,12 +245,9 @@ Even less perfect is the full and complete project documentation on
 what gitslave does, how it does it, and the various features and
 tweaks it might have.  Gitslave isn't all that complex so the hope is
 that it doesn't need alot.  We have an extensive manual page which is
-a good first step, and a tutorial is being considered.
+a good first step, and there is a lengthy tutorial on basic gitslave
+operations.  See the links on the left for more information.
 
-</p><p>
-<a href="gits-man-page.html">Extensive man page</a>
-</p><p>
-<a href="ReleaseNotes.txt">Release notes</a>
 </p></div>
 
 </td></tr></tbody></table>

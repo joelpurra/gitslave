@@ -1,3 +1,10 @@
+2011-02-26  Seth Robertson  <projectbaka@baka.org>
+
+	* Remote adds going to wrong place since recursive projects
+          were added.
+
+	* Gitslave tutorial created.
+
 2011-02-25  Seth Robertson  <projectbaka@baka.org>
 
 	* Support more precise .gitignore entries for slave repos
@@ -89,6 +96,8 @@
 	the location of where an ifpresent repository should go.
 
 2011-02-04  Seth Robertson  <projectbaka@baka.org>
+
+	* 1.3 release
 
 	* #include support in .gitslave files
 

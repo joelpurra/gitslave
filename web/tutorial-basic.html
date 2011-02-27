@@ -1,0 +1,719 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+<title>Gitslave Basic Tutorial</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<link rel="stylesheet" type="text/css" href="tutorial.css" />
+</head>
+<body>
+<div class="sites-header-cell-buffer-wrapper">
+<h2>GitSlave Basic Tutorial</h2>
+</div>
+<div class="title-crumbs">
+<p><a href="index.html">Gitslave home</a></p>
+</div>
+<div id="sites-canvas">
+<div class="section-group">
+<h3>Introduction</h3>
+
+<p>In this tutorial, we will set up a basic series of git repositories
+and then link them together using gitslave to form a superproject.
+The examples will be trivial, but should help you understand basic
+gitslave operation (assuming you understand basic git operation, of
+course!).</p>
+</div>
+
+
+<div class="section-group">
+<h3>Getting git infrastructure set up</h3>
+
+<p>We are assuming that you have installed git (and know basically how
+to use it) and gitslave (and presumably don't know how to use it).  In
+this section, we are creating a series of git repositories to hold our
+example.  Please note that in order to support copy-paste, we are
+using a "##" line prefix for comments about
+the <span style="font-weight:bold">command</span>
+(in <span style="font-weight:bold">bold</span>) and "#" line prefix
+for output.</p>
+
+<div class="wrapexample"><div class="example"><pre>
+<span class="discussion">## Create bare repositories directories.  We are using
+## /tmp/ssh/server/src/git as a proxy for the upstream URL which
+## would be shared by all members on the project.  Of course, you
+## could not actually cd to a ssh// URL, but hopefully you can
+## understand the concept I am working towards.</span>
+<span class="command">mkdir -p /tmp/ssh/server/src/git/superproject /tmp/ssh/server/src/git/plugin1 /tmp/ssh/server/src/git/plugin2</span>
+
+<span class="discussion">## Create a standard bare shared repository in each of the directories</span>
+<span class="command">cd /tmp/ssh/server/src/git/superproject
+git init --bare --shared</span>
+<span class="output"># Initialized empty shared Git repository in /tmp/ssh/server/src/git/superproject/</span>
+<span class="discussion">## Please note the relative cd&mdash;we will take advantage of this later</span>
+<span class="command">cd ../plugin1
+git init --bare --shared</span>
+<span class="output"># Initialized empty shared Git repository in /tmp/ssh/server/src/git/plugin1/</span>
+<span class="command">cd ../plugin2
+git init --bare --shared</span>
+<span class="output"># Initialized empty shared Git repository in /tmp/ssh/server/src/git/plugin2/</span>
+</pre></div></div>
+
+</div>
+
+<div class="section-group">
+<h3>Setting up the superproject</h3>
+
+<p>We have now created our bare repositories, but they are currently
+empty.  For the purposes of this tutorial, we will load the initial
+content after gitslave configuration, but of course the content could
+be loaded before or during.</p>
+
+<div class="wrapexample"><div class="example"><pre>
+<span class="discussion">## Create our user's work areas on "host 1"</span>
+<span class="command">mkdir -p /tmp/host1/user1/work /tmp/host1/user2/work</span>
+<span class="discussion">## Create our user's work areas on "host 2"</span>
+<span class="command">mkdir -p /tmp/host2/user3/work</span>
+
+<span class="discussion">## Obtain the superproject as a normal git repo during setup</span>
+<span class="command">cd /tmp/host1/user1/work
+git clone /tmp/ssh/server/src/git/superproject</span>
+<span class="output"># Cloning into superproject...
+# done.
+# warning: You appear to have cloned an empty repository.</span>
+<span class="command">cd superproject</span>
+
+<span class="discussion">## Initialize gitslave</span>
+<span class="command">gits prepare</span>
+<span class="output"># [master (root-commit) 3a891c1] gits creating .gitslave
+#  0 files changed, 0 insertions(+), 0 deletions(-)
+#  create mode 100644 .gitslave</span>
+<span class="discussion">## In the above output, the SHA printed would be different for you.</span>
+
+<span class="discussion">
+
+## Attach the slaves/subprojects/plugins.  Please note the use of the
+## relative path here.  This relative path is exactly the same as the
+## relative path we used in the cd command above.  Basically, it is
+## instructing gitslave that in order to find "plugin1", it should
+## take the URL for the superproject and adjust it using the
+## information provided in the first argument.  While this is a bit of
+## a convenience factor, it gets much more interesting (almost
+## critical) when you start thinking of alternative access methods.
+## One particular user might not have read/write ssh: access but might
+## instead be using read-only git: access.  With the use of relative
+## URLs, she can clone the project and all of the subprojects will
+## automatically switch over to using git:.  Alternately, perhaps he
+## has some kind of weird network filesystem which gets him access via
+## symlinks using a completely different path than expected
+## (~/.gitsrc), again with relative paths everything will just work.
+## Of course, you are not forbidden from using absolute paths, it just
+## probably is a sign that you are doing something wrong (see Gitslave
+## imperfections on the gitslave home page, specifically the bit about
+## third party packages)&mdash;at least if this is being used for a
+## development project and not a repository aggregation or backup
+## system.</span>
+<span class="command">gits attach ../plugin1 plugin1</span>
+<span class="output"># Cloning into plugin1...
+# done.
+# warning: You appear to have cloned an empty repository.
+# [master 13ce8e7] gits adding "../plugin1" "plugin1"
+#  2 files changed, 2 insertions(+), 0 deletions(-)
+#  create mode 100644 .gitignore
+# Switching "plugin1" to branch "master"
+# fatal: invalid reference: master
+# Branch inconsistency, branch master does not exist</span>
+<span class="discussion">## Don't worry about the scary "fatal" and "Branch inconsistency"
+## errors, and the ominous warning.  This is all because the upstream
+## repository is empty since we just created it and have not put
+## anything in it yet.  However, you <i style="font-style:normal">should</i> be scared if you
+## see these messages under any other circumstance.  Oh, and the SHA
+## printed would still be different for you.  This will always be true.</span>
+<span class="command">gits attach ../plugin2 plugin2</span>
+<span class="output"># Cloning into plugin2...
+# done.
+# warning: You appear to have cloned an empty repository.
+# [master 9c8175a] gits adding "../plugin2" "plugin2"
+#  2 files changed, 2 insertions(+), 0 deletions(-)
+#  create mode 100644 .gitignore
+# Switching "plugin2" to branch "master"
+# fatal: invalid reference: master
+# Branch inconsistency, branch master does not exist</span>
+
+<span class="discussion">## We now have a fully set up and configured gitslave superproject.
+## Of course, no-one else can play with the superproject yet since we
+## have not pushed our changes.  Also, we really need to get some
+## initial content in our repositories so they have a branch and are
+## otherwise normal.  Initial content first.</span>
+<span class="command">echo 'core' >> .gitignore
+echo 'core' >> plugin1/.gitignore
+echo 'core' >> plugin2/.gitignore</span>
+
+<span class="discussion">## Now we want to add and commit everything.  Our first normal use of <b>gits</b></span>
+<span class="command">gits add -A
+gits commit -m "Ignore core dumps"</span>
+<span class="output"># On: (superproject):
+#   [master d47dfd2] Ignore core dumps
+#    1 files changed, 1 insertions(+), 0 deletions(-)
+# On: plugin1, plugin2:
+#   [master (root-commit) b7d31fc] Ignore core dumps
+#    1 files changed, 1 insertions(+), 0 deletions(-)
+#    create mode 100644 .gitignore</span>
+<span class="discussion">## Depending on a clock race, you might not get the same SHA for the
+## plugins and thus you might get three output groups.  When running
+## gitslave commands, it will normally try to aggregate commands which
+## produce the same output together to help you focus in on the
+## important differences instead of trying to visually compare many
+## identical outputs to find the one which might be different in some
+## minor way.  It occasionally (depending on the sub-command) even
+## deletes the SHA from the output to promote aggregation.</span>
+
+<span class="discussion">## Now to finish off the basic initialization, share our changes with upstream.</span>
+<span class="command">gits push</span>
+<span class="output"># On: (superproject):
+#   To /tmp/ssh/server/src/git/superproject
+#    * [new branch]      master -> master
+# On: plugin2:
+#   To /tmp/ssh/server/src/git/plugin2
+#    * [new branch]      master -> master
+# On: plugin1:
+#   To /tmp/ssh/server/src/git/plugin1
+#    * [new branch]      master -> master</span>
+</pre></div></div>
+
+
+<div class="section-group">
+<h3>Providing fake content</h3>
+
+<p>Our git administrator (user1) has properly configured the shared
+repository and used gitslave to attach everything into a superproject.
+But the git administrator really isn't the application developer for
+this project, so we move over to user2 who is going to start doing
+development on the project.</p>
+
+<div class="wrapexample"><div class="example"><pre>
+<span class="command">cd /tmp/host1/user2/work
+gits clone /tmp/ssh/server/src/git/superproject</span>
+<span class="output"># Cloning into superproject...
+# done.
+# Cloning into plugin1...
+# done.
+# Cloning into plugin2...
+# done.</span>
+
+<span class="discussion">## We have a fully configured gitslave project.  Start writing content.</span>
+<span class="command">cd superproject
+cat &gt; hello.sh &lt;&lt;'EOF'
+#!/bin/sh
+#
+#
+for f in */*.txt
+ do
+  while read l
+   do
+    echo "Hello $l"
+   done &lt; $f
+ done
+EOF
+chmod 755 hello.sh
+git add hello.sh
+cat &gt; plugin1/messages.txt &lt;&lt;'EOF'
+world!
+EOF
+(cd plugin1; git add messages.txt)</span>
+<span class="discussion">## I want to provide big warning here.  In general you never want to
+## provide a pathname to most gits command.  Gitslave operates by
+## running git command using the arguments you provide on each
+## repository in the superproject.  This is great and all, but
+## consider what would happen if you attempted to run something like
+## gits add plugin1/messages.txt.  Well, it would run the git add
+## plugin1/messages.txt command in the superproject repository <b>and
+## add that listed file to the superproject git repository!</b>.
+## Next, it would run that same command in the plugin1
+## repository, <b>and the provided pathname would not match!</b>
+## Finally, it would run that command in plugin2 and would again fail
+## to match anything.  While this is pretty obvious for the add
+## subcommand, it is true for checkout, log, diff, and pretty much any
+## command which you might be tempted to provide a path or filepattern
+## to.  When you want to provide a pathname, you probably want to use
+## an individual git command in the correct repository like I did
+## above.  Yes, there is the odd pathname which might accidentally
+## appear in all of your repositories (eg. .gitignore) but using gits
+## with pathnames is probably a bad habit to get into.</span>
+
+<span class="command">cat &gt; plugin2/definition.txt &lt;&lt;'EOF'
+has the definition (from the Merriam-Webster Dictionary): "an expression or gesture of greeting"
+EOF
+(cd plugin2; git add definition.txt)</span>
+
+<span class="discussion">## Let us try this extremely complex project out.</span>
+<span class="command">./hello.sh</span>
+<span class="output">Hello world!
+Hello has the definition (from the Merriam-Webster Dictionary): "an expression or gesture of greeting"</span>
+<span class="discussion">## Very exciting and surprising, I'm sure</span>
+
+<span class="discussion">## Check to see where we are</span>
+<span class="command">gits status</span>
+<span class="output"># # On branch master
+# # Changes to be committed:
+# #   (use "git reset HEAD <file>..." to unstage)
+# #
+# #       new file:   ./hello.sh
+# #       new file:   plugin1/messages.txt
+# #       new file:   plugin2/definition.txt
+# #</span>
+
+<span class="discussion">## Ready to commit</span>
+<span class="command">gits commit -a -m "Initial program and plugin messages"</span>
+<span class="output"># On: plugin1:
+#   [master 3a42676] Initial program and plugin messages
+#    1 files changed, 1 insertions(+), 0 deletions(-)
+#    create mode 100644 messages.txt
+# On: plugin2:
+#   [master c2c9ede] Initial program and plugin messages
+#    1 files changed, 1 insertions(+), 0 deletions(-)
+#    create mode 100644 definition.txt
+# On: (superproject):
+#   [master c562a0b] Initial program and plugin messages
+#    1 files changed, 10 insertions(+), 0 deletions(-)
+#    create mode 100755 hello.sh</span>
+
+<span class="discussion">## Ready to share with the class</span>
+<span class="command">gits push</span>
+<span class="output"># On: plugin2:
+#   To /tmp/ssh/server/src/git/plugin2
+#      b7d31fc..c2c9ede  master -> master
+# On: plugin1:
+#   To /tmp/ssh/server/src/git/plugin1
+#      b7d31fc..3a42676  master -> master
+# On: (superproject):
+#   To /tmp/ssh/server/src/git/superproject
+#      d47dfd2..c562a0b  master -> master</span>
+</pre></div></div>
+</div>
+
+
+<div class="section-group">
+<h3>Someone else playing around</h3>
+
+<p>After our senior developer (user2) created the initial content,
+the git administrator (user1) wanted to check out what she did.</p>
+
+<div class="wrapexample"><div class="example"><pre>
+<span class="discussion">## Get the changes</span>
+<span class="command">cd /tmp/host1/user1/work/superproject
+gits fetch</span>
+<span class="output"># On: plugin2:
+#   From /tmp/ssh/server/src/git/plugin2
+#      b7d31fc..c2c9ede  master     -> origin/master
+# On: (superproject):
+#   From /tmp/ssh/server/src/git/superproject
+#      d47dfd2..c562a0b  master     -> origin/master
+# On: plugin1:
+#   From /tmp/ssh/server/src/git/plugin1
+#      b7d31fc..3a42676  master     -> origin/master
+</span>
+
+<span class="discussion">## Examine the changes</span>
+<span class="command">gits log master...@{upstream}</span>
+<span class="output"># On: plugin1:
+#   commit 3a4267660fed6e44b8be9be99e97a3578d4927ca
+#   Author: Seth Robertson &lt;projectbaka@baka.org&gt;
+#   Date:   Sat Feb 26 18:49:37 2011 -0500
+#
+#       Initial program and plugin messages
+# On: plugin2:
+#   commit c2c9edeb7b7bb2fdc2891cbce7561efa9d1952fa
+#   Author: Seth Robertson &lt;projectbaka@baka.org&gt;
+#   Date:   Sat Feb 26 18:49:37 2011 -0500
+#
+#       Initial program and plugin messages
+# On: (superproject):
+#   commit c562a0bb908206d05bbca88aef8515ee10a4526d
+#   Author: Seth Robertson &lt;projectbaka@baka.org&gt;
+#   Date:   Sat Feb 26 18:49:37 2011 -0500
+#
+#       Initial program and plugin messages</span>
+<span class="discussion">## We could `gits diff master...@{u}` as well</span>
+
+<span class="discussion">## Double-check what is what.</span>
+<span class="command">gits status</span>
+<span class="output"># # On branch master
+# On: (superproject), plugin1, plugin2:
+#   # Your branch is behind 'origin/master' by 1 commit, and can be fast-forwarded.</span>
+
+<span class="discussion">## Merge (well, rebase due to personal preference) the changes in.</span>
+<span class="command">gits rebase @{upstream}</span>
+<span class="output"># On: (superproject), plugin1, plugin2:
+#   First, rewinding head to replay your work on top of it...
+#   Fast-forwarded master to @{upstream}.</span>
+
+<span class="discussion">## Test it out, yo.</span>
+<span class="command">./hello.sh</span>
+<span class="output"># [Elided&mdash;same output as before]</span>
+</pre></div></div>
+</div>
+
+
+<div class="section-group">
+<h3>Someone else playing around</h3>
+
+<p>After our senior developer (user2) has created the initial content,
+someone else (user3) wants to make a change to the project.  However
+user3, is afraid of change and doesn't want to use gitslave.</p>
+
+<div class="wrapexample"><div class="example"><pre>
+<span class="command">cd /tmp/host2/user3/work
+git clone /tmp/ssh/server/src/git/plugin1</span>
+<span class="output"># Cloning into plugin1...
+# done.</span>
+
+<span class="discussion">## Add some content.</span>
+<span class="command">cd plugin1
+echo "Sailor!" >> messages.txt</span>
+<span class="discussion">## But…how to test it?</span>
+
+<span class="discussion">## Check out the superproject.</span>
+<span class="command">cd ..
+git clone /tmp/ssh/server/src/git/superproject</span>
+<span class="output"># Cloning into superproject...
+# done.</span>
+<span class="discussion">## Darn…the plugin needs to be a subdirectory to work</span>
+<span class="command">mv plugin1 superproject</span>
+<span class="discussion">## Now I can finally test.</span>
+<span class="command">cd superproject
+./hello.sh</span>
+<span class="output"># Hello world!
+# Hello Sailor!</span>
+
+<span class="discussion">## Add some content.</span>
+<span class="command">echo 'echo "Good-bye!"' >> hello.sh</span>
+
+<span class="discussion">## Who needs to test?  Share with everyone else.</span>
+<span class="command">git commit -a -m "Add farewell"</span>
+<span class="output"># [master c5a6d9d] Add farewell
+#  1 files changed, 1 insertions(+), 0 deletions(-)</span>
+<span class="command">cd plugin1; git commit -a -m "Navel experience welcome."</span>
+<span class="output"># [master 7f52942] Navel experience welcome.
+#  1 files changed, 1 insertions(+), 0 deletions(-)</span>
+<span class="command">git push</span>
+<span class="output"># Counting objects: 5, done.
+# Delta compression using up to 4 threads.
+# Compressing objects: 100% (2/2), done.
+# Writing objects: 100% (3/3), 313 bytes, done.
+# Total 3 (delta 0), reused 0 (delta 0)
+# Unpacking objects: 100% (3/3), done.
+# To /tmp/ssh/server/src/git/plugin1
+#    3a42676..7f52942  master -> master</span>
+<span class="command">cd ..; git push</span>
+<span class="output"># Counting objects: 5, done.
+# Delta compression using up to 4 threads.
+# Compressing objects: 100% (3/3), done.
+# Writing objects: 100% (3/3), 302 bytes, done.
+# Total 3 (delta 2), reused 0 (delta 0)
+# Unpacking objects: 100% (3/3), done.
+# To /tmp/ssh/server/src/git/superproject
+#    c562a0b..c5a6d9d  master -> master</span>
+</pre></div></div>
+
+<p>User1 wandered over and asked why user3 didn't use gitslave.  User3
+mumbled something about understanding how to run git commands in the
+right directory.  User1 said that technique was exactly what gitslave
+did.  It just ran the git command in each repository.  Just type
+"gits" instead of "git" to try it out, though one could look at the
+commands with the addition of "-vv".  After dismay was expressed about
+the third person passive dialog, User3 tried it out for the next item
+to be changed.</p>
+
+<div class="wrapexample"><div class="example"><pre>
+<span class="command">echo "Kitty!" >> plugin1/messages.txt
+gits -vv commit -a -m "I like cats."</span>
+<span class="output"># Can't locate Parallel/Iterator.pm in @INC
+# BEGIN failed--compilation aborted
+# gits: Gitslave found in /tmp/host2/user3/work/superproject
+# Running command: `(cd . && git "commit" "-a" "-m" "I like cats.") 2>&1`
+# Running command: `(cd plugin1 && git "commit" "-a" "-m" "I like cats.") 2>&1`
+# Missing one or more git slaves including plugin2, consider 'gits populate'.
+# On: plugin1:
+#   [master 1014ada] I like cats.
+#    1 files changed, 1 insertions(+), 0 deletions(-)
+# On: (superproject):
+#   # On branch master
+#   nothing to commit (working directory clean)</span>
+</pre></div></div>
+
+<p>"See?" said User 1, "I've fixed that nasty third person passive
+problem, and gitslave did exactly what I suggested.  You can ignore
+that bit about 'Parallel/Iterator' and 'BEGIN failed'.  You only see
+those messages because of the -v arguments you supplied.  Gitslave
+would be able to perform some actions in parallel if that perl module
+was installed.  In any event, gitslave ran exactly the commands you
+would have run and shows you the output that each command generated.
+Gitslave warned you that you don't have all of the suggested plugins
+in the superproject and told you how to resolve that problem, but that
+is something you clearly are aware of."</p>
+
+<p>"Thanks," User 3 expressed, "Gitslave brought be into the first
+person active voice too.  Is there nothing it cannot do?"</p>
+
+<p>"I see you need to push.  One trick I've found is that you can add
+the '--quick' option to the gits push command line and it will only
+push those branches which have outstanding changes.  This can speed
+things up if you have many large repositories and a slow connections
+to the git server.</p>
+
+<div class="wrapexample"><div class="example"><pre>
+<span class="command">gits push</span>
+<span class="output"># Missing one or more git slaves including plugin2, consider 'gits populate'.
+# On: (superproject):
+#   Skipping push, this branch is up to date.
+# On: plugin1:
+#   To /tmp/ssh/server/src/git/plugin1
+#      7f52942..1014ada  master -> master</span>
+</pre></div></div>
+
+</div>
+
+
+
+<div class="section-group">
+<h3>Ready to release</h3>
+
+<p>Our senior developer (user2) wants to cut a release.</p>
+
+<div class="wrapexample"><div class="example"><pre>
+<span class="command">cd /tmp/host1/user2/work/superproject
+gits pull --rebase</span>
+<span class="output"># On: plugin2:
+#   Current branch master is up to date.
+# On: (superproject), plugin1:
+#   From /tmp/ssh/server/src/git/%MODULE%
+#     master     -> origin/master
+#   First, rewinding head to replay your work on top of it...
+#   Fast-forwarded master</span>
+<span class="command">./hello.sh</span>
+<span class="output"># Hello world!
+# Hello Sailor!
+# Hello Kitty!
+# Hello has the definition (from the Merriam-Webster Dictionary): "an expression or gesture of greeting"
+# Good-bye!</span>
+<span class="discussion">## Looks good.  Let's cut this puppy! <span style="font-size:50%">(no animals were harmed in the production of this tutorial)</span></span>
+<span class="command">gits tag v1.0 -a -m "First product release"
+gits archive --format gits-tar --prefix superproject -o /tmp/superproject-1.0.tar v1.0
+gzip /tmp/superproject-1.0.tar
+tar tzf /tmp/superproject-1.0.tar.gz</span>
+<span class="output"># superproject/./
+# superproject/./.gitignore
+# superproject/./.gitslave
+# superproject/./hello.sh
+# superproject/plugin1/
+# superproject/plugin1/.gitignore
+# superproject/plugin1/messages.txt
+# superproject/plugin2/
+# superproject/plugin2/.gitignore
+# superproject/plugin2/definition.txt</span>
+<span class="command">gits push --tags</span>
+<span class="output"># On: (superproject):
+#   To /tmp/ssh/server/src/git/superproject
+#    * [new tag]         v1.0 -> v1.0
+# On: plugin2:
+#   To /tmp/ssh/server/src/git/plugin2
+#    * [new tag]         v1.0 -> v1.0
+# On: plugin1:
+#   To /tmp/ssh/server/src/git/plugin1
+#    * [new tag]         v1.0 -> v1.0</span>
+</pre></div></div>
+</div>
+
+<div class="section-group">
+<h3>Pressing on</h3>
+
+<p>User3 decides to start working on the next release</p>
+
+<div class="wrapexample"><div class="example"><pre>
+<span class="command">cd /tmp/host2/user3/work/superproject
+gits pull --rebase</span>
+<span class="output"># Missing one or more git slaves including plugin2, consider 'gits populate'.
+# On: (superproject), plugin1:
+#   From /tmp/ssh/server/src/git/%MODULE%
+#    * [new tag]         v1.0       -> v1.0
+#   Current branch master is up to date.</span>
+<span class="command">echo "Universe" >> plugin1/messages.txt
+gits commit -a -m "Universal upgrade."</span>
+<span class="output"># Missing one or more git slaves including plugin2, consider 'gits populate'.
+# On: plugin1:
+#   [master 83378ed] Universal upgrade.
+#    1 files changed, 1 insertions(+), 0 deletions(-)
+# On: (superproject):
+#   # On branch master
+#   nothing to commit (working directory clean)</span>
+<span class="command">./hello.sh</span>
+<span class="output"># Hello world!
+# Hello Sailor!
+# Hello Kitty!
+# Hello Universe
+# Good-bye!</span>
+<span class="discussion">## Something is wrong, but I can't quite put my finger on it… Perhaps I should get the whole project.</span>
+<span class="command">gits populate</span>
+<span class="output"># Cloning into plugin2...
+# done.</span>
+<span class="command">./hello.sh</span>
+<span class="output"># Hello world!
+# Hello Sailor!
+# Hello Kitty!
+# Hello Universe
+# Hello has the definition (from the Merriam-Webster Dictionary): "an expression or gesture of greeting"
+# Good-bye!</span>
+<span class="discussion">## That didn't help.  Perhaps my good colleague User2 can figure it out.</span>
+
+<span class="command">cd /tmp/host1/user2/work/superproject
+gits remote add user3 --fromcheckout /tmp/host2/user3/work/superproject
+gits fetch user3</span>
+<span class="output"># On: (superproject):
+#   From /tmp/host2/user3/work/superproject
+#    * [new branch]      master     -> user3/master
+# On: plugin2:
+#   From /tmp/host2/user3/work/superproject/plugin2
+#    * [new branch]      master     -> user3/master
+# On: plugin1:
+#   From /tmp/host2/user3/work/superproject/plugin1
+#    * [new branch]      master     -> user3/master</span>
+<span class="command">gits diff master...user3/master</span>
+<span class="output"># On: plugin1:
+#   diff --git a/messages.txt b/messages.txt
+#   index ac8eb27..bee688c 100644
+#   --- a/messages.txt
+#   +++ b/messages.txt
+#   @@ -1,3 +1,4 @@
+#    world!
+#    Sailor!
+#    Kitty!
+#   +Universe
+# On: (superproject), plugin2:</span>
+<span class="discussion">## Oh, I see.  The universe is not enough!</span>
+<span class="command">gits merge user3/master</span>
+<span class="output"># On: plugin1:
+#   Updating 1014ada..83378ed
+#   Fast-forward
+#    messages.txt |    1 +
+#    1 files changed, 1 insertions(+), 0 deletions(-)
+# On: (superproject), plugin2:
+#   Already up-to-date.</span>
+<span class="command">sed -i 's/Universe/Universe!/' plugin1/messages.txt</span>
+<span class="command">gits diff master...user3/master</span>
+<span class="output"># On: plugin1:
+#   diff --git a/messages.txt b/messages.txt
+#   index bee688c..5e07e30 100644
+#   --- a/messages.txt
+#   +++ b/messages.txt
+#   @@ -1,4 +1,4 @@
+#    world!
+#    Sailor!
+#    Kitty!
+#   -Universe
+#   +Universe!
+# On: (superproject), plugin2:</span>
+<span class="command">gits commit -a -m "The universe is not enough!"</span>
+<span class="output"># On: plugin1:
+#   [master b19e365] The universe is not enough!
+#    1 files changed, 1 insertions(+), 1 deletions(-)
+# On: (superproject), plugin2:
+#   # On branch master
+#   nothing to commit (working directory clean)</span>
+<span class="command">gits push</span>
+<span class="output"># On: plugin1:
+#   To /tmp/ssh/server/src/git/plugin1
+#      1014ada..b19e365  master -> master
+# On: (superproject), plugin2:
+#   Everything up-to-date</span>
+</pre></div></div>
+</div>
+
+<div class="section-group">
+<h3>Sanrio is not amused</h3>
+
+<p>At least not in my mythical tutorial world.  I guess we should have
+run that through legal… Emergency release!</p>
+
+<div class="wrapexample"><div class="example"><pre>
+<span class="command">cd /tmp/host1/user2/work/superproject
+gits checkout -b B-1.0.x v1.0</span>
+<span class="output"># On: (superproject), plugin1, plugin2:
+#   Switched to a new branch 'B-1.0.x'</span>
+<span class="command">sed -i 's/Kitty/Kitty™/' plugin1/messages.txt
+gits commit -a -m "Apologies to Hello Kitty™ and Sanrioⓡ"</span>
+<span class="output"># On: plugin1:
+#   [B-1.0.x 04470fd] Apologies to Hello Kitty™ and Sanrioⓡ
+#    1 files changed, 1 insertions(+), 1 deletions(-)
+# On: (superproject), plugin2:
+#   # On branch B-1.0.x
+#   nothing to commit (working directory clean)</span>
+<span class="command">gits tag v1.0.1 -a -m "1.0.1 Trademark fixup release"
+gits archive --format gits-tar --prefix superproject -o /tmp/superproject-1.0.1.tar v1.0
+gzip /tmp/superproject-1.0.1.tar
+gits push</span>
+<span class="output"># Aborting gits push, failed for: '(superproject)': exit 128
+#  (first entry, no other successfully executed)
+#   fatal: The current branch B-1.0.x is not tracking anything.</span>
+<span class="discussion">## Oh yeah, upstream doesn't have the branch yet.</span>
+<span class="command">gits push origin B-1.0.x:B-1.0.x</span>
+<span class="output"># On: plugin2:
+#   To /tmp/ssh/server/src/git/plugin2
+#    * [new branch]      B-1.0.x -> B-1.0.x
+# On: plugin1:
+#   To /tmp/ssh/server/src/git/plugin1
+#    * [new branch]      B-1.0.x -> B-1.0.x
+# On: (superproject):
+#   To /tmp/ssh/server/src/git/superproject
+#    * [new branch]      B-1.0.x -> B-1.0.x</span>
+<span class="command">gits checkout master</span>
+<span class="output"># On: (superproject), plugin1, plugin2:
+#   Switched to branch 'master'</span>
+<span class="command">gits merge --no-ff B-1.0.x</span>
+<span class="output"># Aborting gits merge, failed for: 'plugin1': exit 1
+#  (ran fine on:  (superproject), did not run on 1 other(s); no rollbacks)
+#   Auto-merging messages.txt
+# CONFLICT (content): Merge conflict in messages.txt
+# Automatic merge failed; fix conflicts and then commit the result.</span>
+<span class="discussion">## Merge conflicts and partial success.  Grr.</span>
+<span class="command">awk 'NR<3{print;} NR==5{save=$0;} NR==7{print;} END { print save;}' plugin1/messages.txt > x
+mv x plugin1/messages.txt
+gits commit -a -m "Merge conflict with B-1.0.x"</span>
+<span class="output"># On: plugin1:
+#   [master 62132c3] Merge conflict with B-1.0.x
+# On: (superproject), plugin2:
+#   # On branch master
+#   nothing to commit (working directory clean)</span>
+<span class="discussion">## Partial success before, don't forget.  Finish the merge.</span>
+<span class="command">gits merge --no-ff B-1.0.x</span>
+<span class="output"># On: (superproject), plugin1, plugin2:
+#   Already up-to-date.</span>
+<span class="command">gits push && gits push --tags</span>
+<span class="output"># On: plugin1:
+#   To /tmp/ssh/server/src/git/plugin1
+#      b19e365..62132c3  master -> master
+# On: (superproject), plugin2:
+#   Everything up-to-date
+# On: (superproject):
+#   To /tmp/ssh/server/src/git/superproject
+#    * [new tag]         v1.0.1 -> v1.0.1
+# On: plugin1:
+#   To /tmp/ssh/server/src/git/plugin1
+#    * [new tag]         v1.0.1 -> v1.0.1
+# On: plugin2:
+#   To /tmp/ssh/server/src/git/plugin2
+#    * [new tag]         v1.0.1 -> v1.0.1</span>
+<span class="discussion">## Get rid of my non-tracking branch.</span>
+<span class="command">gits branch -d B-1.0.x</span>
+<span class="output"># On: plugin2:
+#   Deleted branch B-1.0.x (was c2c9ede).
+# On: plugin1:
+#   Deleted branch B-1.0.x (was 04470fd).
+# On: (superproject):
+#   Deleted branch B-1.0.x (was c5a6d9d).</span>
+</pre></div></div>
+</div>
+
+<p>Has anyone actually read through this entire tutorial?  Did you learn anything?  I'd like to know.</p>
+
+</div>
+</body>
+</html>

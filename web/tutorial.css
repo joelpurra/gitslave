@@ -1,0 +1,19 @@
+body { background-color:lightblue; margin:10px; }
+#sites-canvas { background-color:white; padding:10px; margin:10px; }
+h2 { text-decoration:underline; text-align:center; }
+div.title-crumbs {
+    font-size:90%;
+    text-align:center;
+}
+div.wrapexample {
+    display: inline-block;
+}
+div.example {
+    background-color:lightgrey;
+    padding: 10px;
+    font-family:Courier;
+    white-space:pre;
+    float: left;
+}
+span.discussion { font-style:italic; }
+span.command { font-weight:bold; }
