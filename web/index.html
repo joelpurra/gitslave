@@ -148,12 +148,13 @@ denominator you would lose much of the expressive power of git.
 Gitslave is imperfect in a few ways.  It can complicate forensic
 archeology, it may need special care and feeding if one or more of the
 repositories are third party repositories, you can have partial
-success and partial failure (no atomic cross repository actions), and
+success and partial failure (no atomic cross repository actions), not
+every git command has specific support in gits which needs it, and
 things can get a little squirrelly if different branches/tags have
 different attached slave repositories.  However, we have not had any
 significant problems in over two years of intensive work on a project
-using this script nor has anyone else reported anything&mdash;do not mistake
-that for a warranty or a guarantee, for there is none.
+using this script nor has anyone else reported anything&mdash;do not
+mistake that for a warranty or a guarantee, for there is none.
 
 </p><p>
 
@@ -239,6 +240,18 @@ branches&mdash;creating multiple vendor branches loses the simplicity
 which makes this option attractive.</li>
 
 </ul></li></ul>
+</p><p>
+
+Some git subcommands need special support from gitslave because they
+deal with (typically) repository URLs.  For instance, `gits remote add
+NAME URL` is special cased because it has to figure out the correct
+URL for each of the submodules based on the superrepository URL and
+the subproject information.  However, not all git commands have been
+specially modified when run with gits.  See the manual page for the
+list of the ones which have, but specifically `gits remote set-url`
+and `gits branch --set-upstream` are two which have not been specially
+supported yet.
+
 </p><p>
 
 Even less perfect is the full and complete project documentation on
