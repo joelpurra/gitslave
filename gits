@@ -199,7 +199,7 @@ sub resolve_repository($$;$$$)
   ($prefix, $suffix) = ($1, $2) if ($relrepos =~ m-^(\w+:)(.*)-);
 
   # Find upstream origin URL
-  $absrepos = find_remote_repo($remote,$localbase) if (!$absrepos || !$fromcheckout);
+  $absrepos = find_remote_repo($remote,$localbase) if (!$absrepos || $localbase ne ".");
 
   # Nuke trailing .git, if necessary
   $absrepos =~ s:/.git$::;
@@ -1702,7 +1702,7 @@ elsif ($ARGV[0] eq 'remote')
 
     if ($ARGV[1] eq "add")
     {
-      $ARGV[$#ARGV] = resolve_repository($group->[0],$group->[1],undef,$realurl);
+      $ARGV[$#ARGV] = resolve_repository($group->[0],$group->[1],$ARGV[2],$realurl);
     }
 
     my ($ret, $msg) = getcmd(qq^cd %%dir%% && $git ^.quoteit(@ARGV),$slave);
