@@ -1,3 +1,9 @@
+2011-02-27  Seth Robertson  <projectbaka@baka.org>
+
+	* gits attach now supports .gitignore management when adding a
+	slave in a deep directory (handling the case where the deep
+	directory might be in a different, but non-recursive, repo).
+
 2011-02-26  Seth Robertson  <projectbaka@baka.org>
 
 	* Remote adds going to wrong place since recursive projects

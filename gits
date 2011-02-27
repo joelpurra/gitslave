@@ -607,7 +607,34 @@ sub do_checkout($@)
 
   %msg;
 }
+######################################################################
+#
+# Find .gitignore for a given path
+#
+sub findignore($)
+{
+  my ($mntpt) = @_;
 
+  my $gitignore = $GITS_DIR;
+  my $ignorefile = $mntpt;
+  if ($mntpt =~ m:.*/.*:)
+  {
+    my @dirs = split(m:/:,$mntpt);
+    print STDERR "GITIGNORE $gitignore $mntpt $ignorefile $#dirs\n";
+    for(my $x=$#dirs-1;$x>=0;$x--)
+    {
+      my ($tmp) = $GITS_DIR."/".join("/",@dirs[0 .. $x]);
+      if (-d "$tmp/.git")
+      {
+	$gitignore = $tmp;
+	$ignorefile = join("/",@dirs[$x+1 .. $#dirs]);
+	print STDERR "Found intervening .git, want to use $gitignore dir with content $ignorefile\n";
+	last;
+      }
+    }
+  }
+  ($gitignore,$ignorefile);
+}
 
 
 ######################################################################
@@ -854,15 +881,25 @@ elsif ($ARGV[0] eq 'attach')
   }
   close(W);
 
-  if ($ARGV[2] !~ m:/:)
+  if (1)
   {
+    my ($gitignore, $ignorefile) = findignore($ARGV[2]);
+
     my ($needadd) = 0;
-    $needadd++ if (! -f "$GITS_DIR/.gitignore");
-    open(W, ">>", $GITS_DIR."/.gitignore");
-    print W qq^/$ARGV[2]/\n^;
+    $needadd++ if (! -f "$gitignore/.gitignore");
+    open(W, ">>", $gitignore."/.gitignore");
+    print W qq^/$ignorefile/\n^;
     close(W);
-    $files .= " .gitignore";
-    docmd(qq^$git add .gitignore^) if ($needadd);
+    docmd(qq^cd $gitignore; $git add .gitignore^) if ($needadd);
+    if ($gitignore eq $GITS_DIR)
+    {
+      $files .= " .gitignore";
+    }
+    else
+    {
+      my $msg = qq^gits adding "$ARGV[1]" "$ARGV[2]" (.gitignore)^;
+      docmd(qq^cd $gitignore; $git commit -m '$msg' .gitignore^) unless ($OPTIONS{'no-commit'});
+    }
   }
   my $msg = qq^gits adding "$ARGV[1]" "$ARGV[2]"^;
   $msg .= qq^ and recursively $include^ if ($include);
@@ -911,24 +948,27 @@ elsif ($ARGV[0] eq 'detach')
   print W $save;
   close(W) || die "Cannot write $files";
 
-  if (open(R,"<",".gitignore"))
+  my ($gitignore, $ignorefile) = findignore($ARGV[1]);
+
+  if (open(R,"<","$gitignore/.gitignore"))
   {
     my $save2;
     while (<R>)
     {
       my ($c) = $_;
       chomp($c);
-      next if ($c eq "/$ARGV[1]/");
+      next if ($c eq "/$ignorefile/");
       $save2 .= $_;
     }
     close(R);
-    open(W,">",".gitignore") || die "Cannot open .gitignore for writing";
+    open(W,">","$gitignore/.gitignore") || die "Cannot open .gitignore for writing";
     print W $save2;
     close(W) || die "Cannot write .gitignore";
+    docmd(qq^cd $gitignore; $git commit -m 'gits removing ^.quoteit($ARGV[1])."' .gitignore") unless ($gitignore eq $GITS_DIR || $OPTIONS{'no-commit'});
   }
 
   docmd(qq^rm -rf ^.quoteit($ARGV[1])) unless ($OPTIONS{'no-commit'});
-  docmd(qq^$git commit -m 'gits removing ^.quoteit($ARGV[1])."' ".quoteit($GITSLAVE)." .gitignore") unless ($OPTIONS{'no-commit'});
+  docmd(qq^$git commit -m 'gits removing ^.quoteit($ARGV[1])."' ".quoteit($GITSLAVE).($gitignore eq $GITS_DIR?" .gitignore":"")) unless ($OPTIONS{'no-commit'});
 }
 ##################################################
 elsif ($ARGV[0] eq 'clone')

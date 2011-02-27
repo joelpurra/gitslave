@@ -1,12 +1,3 @@
-* gits attach does not handle/.gitignore deep checkout paths
-
-Attach does not attempt to manipulate the .gitignore file if the path
-contains a / in it.  Meaning that `gits attach URL plugins/foo` will
-be unhappy.  This is slightly tricky since plugins could in theory be
-a attached repo and you do NOT want to include a directory inside
-another repo in your .gitignore.
-
-
 * gits attach could allow existant destination under one condition
 
 Currently attach fails if the destination location exists.  This is a
