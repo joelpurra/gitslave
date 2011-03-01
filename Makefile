@@ -3,7 +3,7 @@ bindir=${prefix}/bin
 mandir=${prefix}/share/man
 man1dir=${mandir}/man1
 
-TARGETS=gits.1 README gits contrib/gitslave.spec
+TARGETS=gits.1 README gits contrib/gitslave.spec webtargets contribtargets
 JUNK=gits.1 checkdir contrib/gitslave.spec
 
 all: $(TARGETS)
@@ -32,7 +32,7 @@ install: $(TARGETS)
 	fi
 	@perl -MTerm::ProgressBar -e 1 >/dev/null 2>&1 || echo Warning: Missing optional Term::ProgressBar
 	@perl -MParallel::Iterator -e 1 >/dev/null 2>&1 || echo Warning: Missing optional Parallel::Iterator package
-	@echo Consider: "cd contrib; make install"
+	@echo Consider: "make install -C contrib"
 
 README: gits
 	pod2text < gits > README
@@ -51,9 +51,18 @@ release: README
 	  echo /tmp/gitslave-$$VERSION.tar.gz
 	@echo "Did you update ReleaseNotes?"
 
+contribtargets:
+	$(MAKE) -C contrib
+
+webtargets:
+	$(MAKE) -C web
+
 clean nuke:
 	rm -rf $(JUNK) *~ core* \#*
-	(cd contrib; make $@)
+	$(MAKE) -C contrib $@
+	$(MAKE) -C web $@
 
 check test: clean
 	./prep_gitscheck
+
+.PHONY: contribtargets webtargets
