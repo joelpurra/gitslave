@@ -1100,7 +1100,8 @@ elsif ($ARGV[0] eq 'pulls')
   $rebase = -1 if ($rebase && $fetched < 0);
   # only git version 1.6.1 and later support `git rebase -p`
   my $gitversion = `$git --version`;
-  if ($rebase < 0 || $gitversion =~ /git version (1\.[12345]\.|1\.6\.0)/)
+  if ($rebase < 0 ||
+      ($rebase > 0 && $gitversion =~ /git version (1\.[12345]\.|1\.6\.0)/))
   {
     $rebasearg = "";
     warn "Warning: merges may be lost when rebasing!\n";
