@@ -87,6 +87,18 @@ enable automatic paging for gits output (the latter might well be useful
 for many commands).
 
 
+* Enhance docmd/getcmd to take an optional third argument for directory
+
+Most of the uses of docmd() and getcmd() in gits have commands in the
+form of `cd "$slavedir" && $git do-something` - the use of the
+separate cd command and && requires /bin/sh to be exec'ed to interpret
+the command, and creates more possibilities for quote/escape mangling
+of directory paths (whitespace is handled by the quotes, but any of
+[$`"] will still cause problems).  Having an optional argument that is
+used as a chdir target for the command could eliminate that (although
+it would require replacing "system" with explicit fork/chdir/exec).
+
+
 * Relative paths aren't handled intelligently by gits add
 
 Right now, `gits add submod/some/thing.c` will just abort, telling you that

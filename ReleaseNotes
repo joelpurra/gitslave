@@ -90,6 +90,9 @@ using --preserve-merges (in most cases).
 
 * Summarize last message "On:" header if there are many many entries.
 
+* Gitslave correctly handles directory paths with whitespace in them, and
+  will not execute commands in the wrong directory if it cannot chdir
+
 
 
 ----------------------------------------------------------------------
