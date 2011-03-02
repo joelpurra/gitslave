@@ -628,7 +628,7 @@ sub findignore($)
   if ($mntpt =~ m:.*/.*:)
   {
     my @dirs = split(m:/:,$mntpt);
-    print STDERR "GITIGNORE $gitignore $mntpt $ignorefile $#dirs\n";
+    # print STDERR "GITIGNORE $gitignore $mntpt $ignorefile $#dirs\n";
     for(my $x=$#dirs-1;$x>=0;$x--)
     {
       my ($tmp) = $GITS_DIR."/".join("/",@dirs[0 .. $x]);
@@ -636,7 +636,7 @@ sub findignore($)
       {
 	$gitignore = $tmp;
 	$ignorefile = join("/",@dirs[$x+1 .. $#dirs]);
-	print STDERR "Found intervening .git, want to use $gitignore dir with content $ignorefile\n";
+	print STDERR "Found intervening .git, want to use $gitignore dir with content $ignorefile\n" if ($OPTIONS{'verbose'} > 1);
 	last;
       }
     }
