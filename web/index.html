@@ -163,8 +163,10 @@ you cannot have gitk (or something similar) show the complete history
 of all projects in all linked repositories.  Less obviously, there is
 a very loose relationship between commits in different repositories.
 You cannot easily and precisely determine what commit/SHA any other
-repository was at when a particular commit was made.  Only tags
-provide exact synchronization between different repositories.
+repository was at when a particular commit was made (though you can
+approximate and assume pretty easily).  Only tags provide exact
+synchronization between different repositories.  Thus, gitslave may
+not be appropriate for blame-based debugging or egofull programming.
 
 </p><p>
 
@@ -260,6 +262,15 @@ tweaks it might have.  Gitslave isn't all that complex so the hope is
 that it doesn't need alot.  We have an extensive manual page which is
 a good first step, and there is a lengthy tutorial on basic gitslave
 operations.  See the links on the left for more information.
+
+</p>
+<h4>Summary, gitslave is a powerful tool when used for good</h4>
+<p>
+
+When you have a problem which calls for easy multirepository
+management without lots of synchronization, where you typically might
+want to run the same git command over every repository in your
+project, gitslave is the solution for you.
 
 </p></div>
 
