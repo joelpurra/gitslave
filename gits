@@ -454,14 +454,15 @@ sub do_populate(;$)
   {
     my $slave = $group->[1];
 
-    if (! -d $slave || (!-f "$slave/config" && !-d "$slave/.git"))
+    $curbranch = (grep(s/\s*\*\s+//, split(/\n/,getcmd("$git branch"))))[0] unless ($curbranch);
+
+    if (! -d $slave || (! -f "$slave/config" && ! -d "$slave/.git"))
     {
       print "gits: Cloning $slave\n" if ($OPTIONS{'verbose'});
       my ($repos) = resolve_repository($group->[0],$group->[1],undef,undef,$group->[2]);
       docmd(qq^$git clone $nocheckout "$repos" "$slave"^) || die "Could not clone $repos onto $slave\n";
 
-      $curbranch = (grep(s/\s*\*\s+//, split(/\n/,getcmd("$git branch"))))[0] unless ($curbranch);
-      my $subbranch = (grep(s/\s*\*\s+//, split(/\n/,getcmd(qq^cd "$slave"; $git branch^))))[0];
+      my $subbranch = (grep(s/\s*\*\s+//, split(/\n/,getcmd(qq^cd "$slave" && $git branch^))))[0];
       if ($curbranch ne $subbranch && $curbranch !~ /no branch/)
       {
 	print qq^Switching "$slave" to branch "$curbranch"\n^;
@@ -470,7 +471,18 @@ sub do_populate(;$)
     }
     else
     {
-      print "gits: $slave already exists\n" if ($OPTIONS{'verbose'});
+      my ($cursubbranch,$subbranch) = grep(s/^\s*\*\s+(.*)|\s+($curbranch)$/$1$2/, split(/\n/,getcmd(qq^cd "$slave" && $git branch | sort^)));
+      if ($curbranch ne $cursubbranch && $curbranch ne $subbranch && $curbranch !~ /no branch/)
+      {
+	print qq^Switching "$slave" to branch "$curbranch"\n^;
+	docmd(qq^cd "$slave" && $git checkout -b $curbranch origin/$curbranch^) || die "Branch inconsistency, branch $curbranch does not exist for $slave\n";
+      }
+      else
+      {
+	my $branchmsg = "";
+	$branchmsg = " (branch $curbranch)" if ($curbranch ne "master");
+	print STDERR "gits: $slave already exists\n" if ($OPTIONS{'verbose'});
+      }
     }
 
     # Count the number of directory separators for deep slave support

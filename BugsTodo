@@ -98,48 +98,6 @@ other than fail - it has all the necessary information to figure out the
 appropriate slave modules from the pathname.
 
 
-* Gits populate doesn't work correctly on non-master branch
-
-When running gits populate on a non-master branch, the checkout fails
-because the local branch doesn't exist:
-
-$ gits branch
-On: ., foo, bar, baz, biff, bard:
-  * HATID-1
-
-$ gits populate
-Initialized empty Git repository in /proj/ell/dup/wb/foo/.git/
-Checking out files: 100% (152/152), done.
-Switching "" to branch "HATID-1"
-error: pathspec 'HATID-1' did not match any file(s) known to git.
-Branch inconsistency, branch HATID-1 does not exist for foo
-
-This might be aggravated by fact that I have deleted the master branch for
-this checkout - I don't need it, and it speeds up pulls, but I suspect the
-problem would still exist.
-
-    The problem seems to be if master has a local branch (HATID-1) and
-    you perhaps adjust the GITSLAVE or .gitslave (or failed to create
-    the local branch using gits), git populate fails because the new
-    children do not have the HATID-1 branch.
-
-    The fix did not handle this case, it created the HATID-1 branch on the
-    top level without the request of the user, but then failed to create
-    the branch for any of the children.
-
-    In any case, gits has no business creating branches without an
-    explicit request.  gbuild is attempting to check out a tag (a
-    perfectly valid way to operate) but this change made the top level
-    attempt to create a local branch from a tag, which really cannot
-    work. .  What I could see being legal would be, if the top level
-    repo had a local branch and the slave did not, perhaps
-    automatically creating the local branch for the slave, but even
-    this is fallable.  Branch and tag operations are really important
-    to create correctly the first time instead of updating them
-    piecemeal.  Expecting gits to intuit what the user wanted to have
-    happen is likely to be very challenging and error-prone.
-
-
 * Pull --rebase does not use --preserve-merges
 
 The pulls command now uses fetch + rebase -p to speed up processing
