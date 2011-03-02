@@ -525,6 +525,13 @@ BUGS
 
     Programs like gitk will not show the global system history.
 
+    Special care may be needed if one or more of the repositories is a third
+    party repository and you plan to have a complex branch/tag management
+    strategy, plan to do (public or private) development on the third party
+    repository, or might sometimes not want the absolute latest code on the
+    third party branch. See the gitslave home page for more information on
+    workarounds.
+
     The behavior when different branches have different slave modules
     associated with them and you checkout back and forth is probably not
     ideal (nor are any of the options we have thought of completely ideal).
