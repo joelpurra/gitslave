@@ -17,6 +17,7 @@ use strict;
 use warnings;
 no warnings 'uninitialized';
 no warnings 'io';
+use Config;
 use Cwd;
 use File::Spec;
 use constant GITSLAVE => '.gitslave';
@@ -75,10 +76,17 @@ sub exitcode(;$)
   my ($ret) = @_;
   $ret = $? if !defined($ret);
 
-  if ($ret & 127)
+  my $sig = $ret & 127;
+
+  # shell exits with 128 + signal for child killed by signal
+  $sig = ($ret >> 8) - 128 if (!$sig && ($ret >> 8) > 128);
+
+  if ($sig)
   {
-    return "killed by signal " . ($ret & 127);
+    my $signame = (split(' ', $Config{sig_name}))[$sig];
+    return "killed by SIG" . $signame . " (signal " . $sig . ")";
   }
+
   return "exit " . ($ret >> 8);
 }
 
