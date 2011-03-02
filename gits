@@ -466,7 +466,14 @@ sub do_populate(;$)
       if ($curbranch ne $subbranch && $curbranch !~ /no branch/)
       {
 	print qq^Switching "$slave" to branch "$curbranch"\n^;
-	docmd(qq^cd "$slave"; $git checkout -b $curbranch origin/$curbranch^) || die "Branch inconsistency, branch $curbranch does not exist for $slave\n";
+
+	# <TRICKY>Use of -f for git checkout is dangerous, as it throws away
+	# local changes; but it is needed here for git 1.6, which treats the
+	# empty (but not declared bare!) working tree as an uncommitted change
+	# deleting all files that prevents checkout of the new branch</TRICKY>
+	my $force = "";
+	$force = " -f" if ($nocheckout);
+	docmd(qq^cd "$slave" && $git checkout$force -b $curbranch origin/$curbranch^) || die "Branch inconsistency, branch $curbranch does not exist for $slave\n";
       }
     }
     else
@@ -1014,8 +1021,10 @@ elsif ($ARGV[0] eq 'clone')
   }
 
   my ($ret,$out) = getcmd(qq^$git ^.quoteit(@ARGV));
-  print STDERR $out;
-  if ($ret != 0 || $out !~ /^Cloning into (.*)\.\.\.\n/)
+  print $out;
+  if ($ret != 0 ||
+      ($out !~ /^Cloning into (.*)\.\.\.\n/
+       && $out !~ m^Initialized empty Git repository in (.*)/\.git/\n^))
   {
     die "Could not parse git clone output\n";
   }
