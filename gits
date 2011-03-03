@@ -456,7 +456,7 @@ sub do_populate(;$)
   my $wanthooks;
 
   my ($ret,$out) = getcmd(qq^$git config gits.nohooks^);
-  $wanthooks = !$out;
+  $wanthooks = !$out && -d "git-hooks";
 
   $nocheckout='-n' if ($nocheckout);
 
@@ -507,12 +507,12 @@ sub do_populate(;$)
     my ($updir) = "../..".("/.."x @slaves);
 
     # Update hooks from master (-regex '.*\\*\$' matches bogus symlink '*')
-    docmd(qq^cd "$slave/.git/hooks" && find . -type l -a '(' -lname '$updir/git-hooks*' -o -regex '.*\\*\$' ')' -exec rm -f '{}' ';'; find $updir/git-hooks/ -type f 8>&2 2>/dev/null -exec sh -c 'ln -s \$0 . 2>&8' '{}' ';'^)
+    docmd(qq^cd "$slave/.git/hooks" && { find . -type l -a '(' -lname '$updir/git-hooks*' -o -regex '.*\\*\$' ')' -exec rm -f '{}' ';'; find $updir/git-hooks/ -type f -exec sh -c 'ln -s \$0 .' '{}' ';'; }^)
       if (!$hooked{"$slave"} && $wanthooks);
     $hooked{"$slave"} = 1;
   }
   # Update master's hooks as well
-  docmd(qq^cd .git/hooks && find . -type l -a '(' -lname '../../git-hooks*' -o -regex '.*\\*\$' ')' -exec rm -f '{}' ';'; find ../../git-hooks/ -type f 8>&2 2>/dev/null -exec sh -c 'ln -s \$0 . 2>&8' '{}' ';'^)
+  docmd(qq^cd .git/hooks && { find . -type l -a '(' -lname '../../git-hooks*' -o -regex '.*\\*\$' ')' -exec rm -f '{}' ';'; find ../../git-hooks/ -type f -exec sh -c 'ln -s \$0 .' '{}' ';'; }^)
     if (!$hooked{"."} && $wanthooks);
   $hooked{"."} = 1;
 
