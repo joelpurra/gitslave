@@ -55,7 +55,7 @@ OVERVIEW
     gits [--[no-]fromcheckout] [--nohooks] clone <superproject-URL>
 
     This command clones an existing superproject and all associated slave
-    repoistories. It runs `git clone` on the arguments you provide (allowing
+    repositories. It runs `git clone` on the arguments you provide (allowing
     you to change the name of the checked-out repository for example) and
     then runs `gits populate` inside that newly checked out repository. If
     you are cloning from an existing gitslave checkout instead of the master
@@ -508,11 +508,11 @@ SUBSTITUTION
 BUGS
     gits changes directory to the directory where .gitslave exists.
     Likewise, when executing most git commands, gits changes directory to
-    the root of the git slave, so any pathnames being passed in to gits must
-    be absolute, not relative. Generally this is only a concern for
-    pre-generate commit messages or something, you should NOT be passing
-    files checked into git in a gits command--you will likely get the wrong
-    result.
+    the root of the git slave, so any pathnames passed as arguments to gits
+    must be absolute, not relative. Generally this is only a concern for
+    pre-generated commit messages or things like that, you should NOT be
+    passing gits the pathnames of files checked into git slaves--you will
+    likely get the wrong result.
 
     No coding has been performed yet to handle `gits remote set-url` or
     `gits branch --set-upstream`. See `gits update-remote-url` for a
@@ -567,6 +567,8 @@ ENVIRONMENT
 
 REQUIREMENTS
     perl 5 (probably almost any version of perl 5)
+
+    git 1.6 or later (git 1.7 or later preferred)
 
     Optionally uses Parallel::Iterator and Term::ProgressBar if available
 
