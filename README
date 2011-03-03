@@ -211,7 +211,9 @@ OVERVIEW
     fixed format, with related commits grouped together and ordered by time.
     Do *not* provide git log options that modify the output format, as they
     will break the ordering and grouping functionality; only arguments that
-    control the selection of commits should be used.
+    control the selection of commits should be used. (Note that using the
+    --date={relative,local,default,iso,rfc,short} option is okay, and will
+    modify the displayed date format).
 
     The related commit grouping will group together all commits (in any
     sub-project) within an 8-hour period that have the same author e-mail
