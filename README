@@ -464,8 +464,8 @@ DESCRIPTION
   --no-progress
     This flag requests that gits NOT print a progress bar, which it does by
     default for slow operations if Term::ProgressBar is loaded. Slow
-    operations are the checkout, pull(s), and push subcommands. You may use
-    this flag for all operations.
+    operations are the checkout, fetch, pull(s), and push subcommands. You
+    may use this flag for all operations.
 
   --with-ifpresent
     Operate also on those slave repositories which are marked as "ifpresent"

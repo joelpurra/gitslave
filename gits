@@ -1300,7 +1300,7 @@ elsif ($ARGV[0] eq 'pulls')
   print $lastmsg;
 }
 ##################################################
-elsif ($ARGV[0] eq 'pull')
+elsif ($ARGV[0] eq 'pull' || $ARGV[0] eq 'fetch')
 {
   my ($ok,$okcnt,%msg);
   my (@list) = @slaves;
@@ -3034,8 +3034,8 @@ will not be needed much.
 
 This flag requests that gits NOT print a progress bar, which it does
 by default for slow operations if Term::ProgressBar is loaded.  Slow
-operations are the checkout, pull(s), and push subcommands.  You may use this
-flag for all operations.
+operations are the checkout, fetch, pull(s), and push subcommands.
+You may use this flag for all operations.
 
 =head2 --with-ifpresent
 
