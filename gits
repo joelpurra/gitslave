@@ -152,9 +152,11 @@ sub getcmd($;$)
 
   $cmd = gitsubst($cmd,$slave) if ($slave);
 
-  $cmd = "($cmd) 2>&1";
+  $cmd = "{ $cmd ;} 2>&1";
   print STDERR "Running command: `$cmd`\n" if ($OPTIONS{'verbose'} > 1);
   my $out = `$cmd`;
+  # strip out progress messages (e.g. "Writing objects:  94% (47/50)")
+  $out =~ s/^.*\d% .*\r(?!\n)//mg;
   if ($OPTIONS{'verbose'} > 2)
   {
     my $tout = $out;
@@ -704,7 +706,7 @@ sub stdout($;$)
     if (length($msg))
     {
       # handle CR, e.g. in git rebase -p output
-      $msg =~ s/\r([^\n])/\n$1/sg;
+      $msg =~ s/\r(?!\n)/\n/sg;
       $msg =~ s/^/  /mg;
     }
     print $msg;
