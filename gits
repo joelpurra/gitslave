@@ -136,11 +136,11 @@ sub docmd($)
 
   if ($OPTIONS{'quiet'})
   {
-    $cmd .= " 2>/dev/null";
+    $cmd = "{ $cmd ; } 2>/dev/null";
   }
   elsif ($pagination)
   {
-    $cmd .= " 2>&1";
+    $cmd = "{ $cmd ; } 2>&1";
   }
   print STDERR "Running command: `$cmd`\n" if ($OPTIONS{'verbose'} > 1);
   system($cmd);
