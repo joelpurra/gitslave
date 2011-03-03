@@ -812,7 +812,7 @@ if ($pagination && -t STDOUT && open(TTY, "</dev/tty"))
   $PAGER = $ENV{'GIT_PAGER'} if (defined $ENV{'GIT_PAGER'});
 
   # for less, explicitly add -K so that SIGINT will terminate (and cleanup)
-  $PAGER .= " -K" if ($PAGER =~ m!^([^\s(`;]*/)?less([-+$\w ]*)?$!);
+  $PAGER .= " -K" if ($PAGER =~ m!^([^\s(`;]*/)?less([-+\$\w ]*)?$!);
 
   if ($PAGER && $PAGER ne "cat")
   {
