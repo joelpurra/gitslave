@@ -7,12 +7,19 @@ repo's remote origin URL is consistent with the (possibly relative)
 URL provided on the attach line.
 
 
-* Pager support on output
+* Automatically disable pager for interactive git commands
 
-Currently any commands which are supposed to run through a pager when
-using git are depagerized when sent through gits, and gits has no
-pager support.  It is not perfectly clear how this could be resolved
-cleanly.
+Gits uses the configured (or default if unconfigured) pager from the
+master repository (default is `less -FRSX`) to page gits output.  For
+most gits commands, this makes sense, but some commands like `gits
+commit` may want to perform interactive operations using $EDITOR or
+built-in functionality (e.g. commit --interactive).  It is possible to
+disable the pager with -n or --no-pager, or setting GIT_PAGER=cat, but
+if it were possible for gits to detect interactive commands reliably
+and do this automatically, that would be better.
+
+Some interactive functionality (notably SSH password/key-phrase input)
+uses /dev/tty directly and seems to work even with pagination.
 
 
 * Shallow clone/sparse checkout support for subprojects
@@ -71,20 +78,24 @@ probably (although not always) don't want to remove them.  Another -f
 argument (or maybe -F?) should be necessary to force their removal.
 
 
-* Git coloring and paging are ineffective for gits
+* Auto-colorized output
 
-Running `gits diff` doesn't provide automatic coloring or paging, since the
-output of each git diff command is directed into a pipe.  Since the diff
-command is unlikely to be collapsible (except if it is entirely empty),
-having the output collapsing isn't that useful.  Add -C, --no-collapse
-option to disable output duplication collapse
+Gits uses the configured (or default if unconfigured) pager from the
+master repository (default is `less -FRSX`) to page gits output.
+However, auto-colorization of git subcommands depends on detecting
+standard output as a terminal (rather than a pipe to gits) and is
+therefore disabled.  Adding --color to subcommands based on the output
+of `git config --get-colorbool color.XXX` could fix this problem, but
+not all commands support this option, and the presence of ANSI color
+markup might confuse gits summarization or other parsing (explicit
+--no-color has already been added to all `git branch` commands to
+handle that case already).
 
-Another way to do this might be to have a direct subcommand; you could then
-say `gits direct git diff` to get direct (uncollapsed) git diff output.
-
-Alternately, have an option to force automatic coloring, and (another to)
-enable automatic paging for gits output (the latter might well be useful
-for many commands).
+As a workaround, setting `gits config color.ui always` enables
+colorized output from gits (but also from git in other contexts where
+it may not be desirable, e.g. `git $command | grep $pattern`).
+However, gits can handle this setting, and as noted above, disables
+color where it would cause confusion (in branch name parsing)
 
 
 * Enhance docmd/getcmd to take an optional third argument for directory

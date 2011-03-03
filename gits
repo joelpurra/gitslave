@@ -53,11 +53,12 @@ our($GITS_DIR);
 my($TOP);
 our(@slaves);
 my($USAGE) = "Usage: gits [-p|--parallel COUNT] [-v|--verbose]+ [--quiet] [--help] [--version]\n".
-"\t[--eval-args] [--exclude SLAVE-REGEXP] [--keep-going]\n".
-"\t[--no-commit] [--no-hide] [--no-master] [--no-progress]\n".
+"\t[-n|--no-pager] [--paginate] [--eval-args] [--exclude SLAVE-REGEXP]\n".
+"\t[--keep-going] [--no-commit] [--no-hide] [--no-master] [--no-progress]\n".
 "\t[--with-ifpresent] [-- GIT-OPTIONS...] SUBCOMMAND [ARGS]...\n";
 our(%OPTIONS);
 my ($returncode) = 0;
+my $pagination;
 delete($ENV{'GIT_DIR'});
 our($fromcheckout);
 our($git) = 'git';
@@ -133,7 +134,14 @@ sub docmd($)
 {
   my ($cmd) = @_;
 
-  $cmd .= " 2>/dev/null" if ($OPTIONS{'quiet'});
+  if ($OPTIONS{'quiet'})
+  {
+    $cmd .= " 2>/dev/null";
+  }
+  elsif ($pagination)
+  {
+    $cmd .= " 2>&1";
+  }
   print STDERR "Running command: `$cmd`\n" if ($OPTIONS{'verbose'} > 1);
   system($cmd);
   print STDERR "Command " . exitcode() . "\n" if ($OPTIONS{'verbose'} > 2);
@@ -460,7 +468,7 @@ sub do_populate(;$)
 
     if (! -d $slave || (! -f "$slave/config" && ! -d "$slave/.git"))
     {
-      print "gits: Cloning $slave\n" if ($OPTIONS{'verbose'});
+      print STDERR "gits: Cloning $slave\n" if ($OPTIONS{'verbose'});
       my ($repos) = resolve_repository($group->[0],$group->[1],undef,undef,$group->[2]);
       docmd(qq^$git clone $nocheckout "$repos" "$slave"^) || die "Could not clone $repos onto $slave\n";
 
@@ -721,9 +729,12 @@ sub stdout($;$)
 #
 Getopt::Long::Configure("bundling", "no_ignore_case", "no_auto_abbrev", "no_getopt_compat", "require_order");
 GetOptions(\%OPTIONS, 'parallel|p=i', 'verbose|v+', 'quiet', 'help', 'version',
-	   'eval-args', 'exclude=s', 'keep-going',
-	   'no-commit', 'no-hide', 'no-master', 'no-progress', 'with-ifpresent',
-	   'press-on') || die $USAGE;
+	   'pager|paginate!', 'n', 'eval-args', 'exclude=s', 'keep-going',
+	   'no-commit', 'no-hide', 'no-master', 'no-progress',
+	   'with-ifpresent', 'press-on') || die $USAGE;
+# -n option is separate from --pager/--no-pager/--paginate/--no-paginate due
+# to limitations of GetOptions API - the last explicit option overrides -n,
+# even if -n comes after the last explicit option
 
 while ($ARGV[0] =~ /^--/)
 {
@@ -738,6 +749,14 @@ $OPTIONS{'keep-going'} = 1 if $OPTIONS{'press-on'};
 
 $want_parallel = $OPTIONS{'parallel'} if (defined($want_parallel));
 $OPTIONS{'no-progress'} = 1 if ($want_parallel);
+
+# default is pagination; however, if verbose is set, default is no pager
+# because verbose generates warnings to STDERR, which is not paginated
+$pagination = !$OPTIONS{'verbose'};
+# unless gits -n
+$pagination = 0 if ($OPTIONS{'n'});
+# but explicit --pager/--no-pager/--pagination/--no-pagination overrides that
+$pagination = $OPTIONS{'pager'} if (defined $OPTIONS{'pager'});
 
 die "$USAGE" if ($#ARGV < 0 and !($OPTIONS{'version'} or $OPTIONS{'help'}));
 
@@ -779,6 +798,44 @@ else
 }
 $TOP = "(" . basename(Cwd::realpath(".")) . ")";
 
+# Get configured pager from environment and/or master (meta-module) settings
+# and redirect standard output through pager if it is currently a terminal
+# (and a controlling tty is available from which the pager can take commands)
+if ($pagination && -t STDOUT && open(TTY, "</dev/tty"))
+{
+  close(TTY);
+  my $PAGER = `$git config core.pager`;
+  chomp $PAGER;
+  # PAGER environment variable or default only used if core.pager not set
+  $PAGER = $ENV{'PAGER'} || "less" if ($?);
+  # GIT_PAGER environment variable trumps everything else
+  $PAGER = $ENV{'GIT_PAGER'} if (defined $ENV{'GIT_PAGER'});
+
+  # for less, explicitly add -K so that SIGINT will terminate (and cleanup)
+  $PAGER .= " -K" if ($PAGER =~ m!^([^\s(`;]*/)?less([-+$\w ]*)?$!);
+
+  if ($PAGER && $PAGER ne "cat")
+  {
+    # set LESS environment for pager only (not later git subcommands)
+    $PAGER = "LESS=FRSX " . $PAGER if (!$ENV{'LESS'});
+
+    my $pid;
+    if ($pid = open(STDOUT, "|$PAGER"))
+    {
+      # cleanup pager on die
+      $SIG{__DIE__} = sub
+	{
+	  die @_ if $^S; # do nothing if die called within eval
+	  kill 'INT', $pid;
+	  close STDOUT;
+	};
+    }
+    else
+    {
+      warn "Unable to run pager '$PAGER': $!\n";
+    }
+  }
+}
 @slaves = git_slave_list($ARGV[0]);
 
 if (!$OPTIONS{'no-progress'})
@@ -1526,6 +1583,8 @@ elsif ($ARGV[0] eq 'archive')
     {
       print "gits-tar\n";
       print `$git archive -l`;
+      # explicit close will wait in case we have forked a pager
+      close(STDOUT);
       exit(0);
     }
     if ($ARGV[$i] eq "--format" && $i < $#ARGV)
@@ -1550,8 +1609,7 @@ elsif ($ARGV[0] eq 'archive')
 
   if ($format eq "gits-tar" && !$outfile)
   {
-    print STDERR "Must provide a --output file with gits-tar archive format\n";
-    exit(1);
+    die "Must provide a --output file with gits-tar archive format\n";
   }
   if ($format eq "gits-tar" && $outfile)
   {
@@ -2494,6 +2552,8 @@ else # Generic command
 
   stdout(\%msg);
 }
+# explicit close will wait in case we have forked a pager
+close(STDOUT);
 exit($returncode);
 
 
@@ -2509,9 +2569,9 @@ gits - The git slave repository tool for super-project multi-repository manageme
 =head1 SYNOPSIS
 
 gits [-p|--parallel COUNT] [-v|--verbose]+ [--quiet] [--help] [--version]
-[--eval-args] [--exclude SLAVE-REGEXP] [--keep-going]
-[--no-commit] [--no-hide] [--no-master] [--no-progress] [--with-ifpresent]
-[-- GIT-OPTIONS...] SUBCOMMAND [ARGS]...
+[-n|--no-pager] [--paginate] [--eval-args] [--exclude SLAVE-REGEXP]
+[--keep-going] [--no-commit] [--no-hide] [--no-master] [--no-progress]
+[--with-ifpresent] [-- GIT-OPTIONS...] SUBCOMMAND [ARGS]...
 
 =head1 OVERVIEW
 
@@ -2996,6 +3056,22 @@ from this documentation, then exit.
 =head2 --version
 
 Print version information for gits, git, and Perl.
+
+=head2 --paginate --no-pager -n
+
+Disable or re-enable default pagination of gits output using a pager.
+The pager (default is less) and its options are configured just as for
+git itself (using core.pager in the master repository or global settings,
+or environment variables PAGER or GIT_PAGER, with the same precedence).
+
+Pagination is only enabled if standard output is a tty (and there is a
+controlling tty for the pager to take input from).  Pagination is
+disabled if the configured pager (from config and environment) is set
+to the value "cat" or the empty string.
+
+The -n option will disable pagination, but will be overridden by any
+--paginate or --no-pager arguments present on the command line, even if
+the -n option is given later.
 
 =head2 --eval-args
 

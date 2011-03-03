@@ -6,9 +6,10 @@ NAME
 
 SYNOPSIS
     gits [-p|--parallel COUNT] [-v|--verbose]+ [--quiet] [--help]
-    [--version] [--eval-args] [--exclude SLAVE-REGEXP] [--keep-going]
-    [--no-commit] [--no-hide] [--no-master] [--no-progress]
-    [--with-ifpresent] [-- GIT-OPTIONS...] SUBCOMMAND [ARGS]...
+    [--version] [-n|--no-pager] [--paginate] [--eval-args] [--exclude
+    SLAVE-REGEXP] [--keep-going] [--no-commit] [--no-hide] [--no-master]
+    [--no-progress] [--with-ifpresent] [-- GIT-OPTIONS...] SUBCOMMAND
+    [ARGS]...
 
 OVERVIEW
     gits is a program that assists in assembling a meta-project from a
@@ -431,6 +432,22 @@ DESCRIPTION
 
   --version
     Print version information for gits, git, and Perl.
+
+  --paginate --no-pager -n
+    Disable or re-enable default pagination of gits output using a pager.
+    The pager (default is less) and its options are configured just as for
+    git itself (using core.pager in the master repository or global
+    settings, or environment variables PAGER or GIT_PAGER, with the same
+    precedence).
+
+    Pagination is only enabled if standard output is a tty (and there is a
+    controlling tty for the pager to take input from). Pagination is
+    disabled if the configured pager (from config and environment) is set to
+    the value "cat" or the empty string.
+
+    The -n option will disable pagination, but will be overridden by any
+    --paginate or --no-pager arguments present on the command line, even if
+    the -n option is given later.
 
   --eval-args
     When quoting gits arguments, do not quote dollar '$' and backtick '`'

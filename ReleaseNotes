@@ -26,6 +26,14 @@ Gits pulls perform a pull on all available local branches.  This now should
 perform only one fetch (in most cases).  Also --rebase is safer by
 using --preserve-merges (in most cases).
 
+* gits now implements paginated output by default, just like git
+
+Pagination is only enabled if standard output is a tty (and there is a
+controlling tty for the pager to take input from).  If you do not want
+paginated output, the -n or --no-pager option disables it.  All the git
+pager configuration settings (GIT_PAGER and PAGER environment variables,
+and core.pager configuration setting) are honored.
+
 * gits populate can now request population of specific ifpresent modules
 
 
