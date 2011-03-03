@@ -2622,7 +2622,7 @@ is:
 
 =head3 Clone a gits project
 
-gits [--[no-]fromcheckout] [--nohooks] clone <superproject-URL>
+gits clone [--[no-]fromcheckout] [--nohooks] <superproject-URL>
 
 This command clones an existing superproject and all associated slave
 repositories.  It runs `git clone` on the arguments you provide
