@@ -1083,7 +1083,7 @@ elsif ($ARGV[0] eq 'clone')
   }
 
   my ($ret,$out) = getcmd(qq^$git ^.quoteit(@ARGV));
-  print $out;
+  print STDERR $out;
   if ($ret != 0 ||
       ($out !~ /^Cloning into (.*)\.\.\.\n/
        && $out !~ m^Initialized empty Git repository in (.*)/\.git/\n^))
