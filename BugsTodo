@@ -1,3 +1,15 @@
+* gits auto-branch-creation checkout doesn't work post 2.0
+
+`gits checkout -b foo existingbranch` should work.
+
+* gits does not fully support non-URL schemes (user@host:directory, git+ssh://git@git.example.com/CommonRepo)
+
+gitolite style URLs (user@host:reponame) do not work.  Workaround for gitolite user@host:/reponame).
+Workaround for traditional directories, user@host:./reponame
+
+git+ssh://git@git.example.com/CommonRepo also doesn't appear to work.
+
+
 * gits attach could allow existant destination under one condition
 
 Currently attach fails if the destination location exists.  This is a
