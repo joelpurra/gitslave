@@ -400,7 +400,7 @@ sub missing_slave($)
   my ($slave) = @_;
   if (!-d $slave)
   {
-    warn "Missing one or more git slaves including $slave, consider 'gits populate'.\n" unless ($warngitslavesync);
+    warn "Missing one or more git slaves including $slave, consider 'gits populate'.\n" unless ($warngitslavesync || $OPTIONS{'quiet'});
     $warngitslavesync++;
     return 1;
   }
@@ -832,7 +832,7 @@ if ($pagination && -t STDOUT && open(TTY, "</dev/tty"))
     }
     else
     {
-      warn "Unable to run pager '$PAGER': $!\n";
+      warn "Unable to run pager '$PAGER': $!\n" unless ($OPTIONS{'quiet'});
     }
   }
 }
@@ -1195,7 +1195,7 @@ elsif ($ARGV[0] eq 'pulls')
       ($rebase > 0 && $gitversion =~ /git version (1\.[12345]\.|1\.6\.0)/))
   {
     $rebasearg = "";
-    warn "Warning: merges may be lost when rebasing!\n";
+    warn "Warning: merges may be lost when rebasing!\n" unless ($OPTIONS{'quiet'});
     # <TODO>add some user interaction to confirm possible damaging activity?
     # or determine if there are any merge commits that would be lost?</TODO>
   }
