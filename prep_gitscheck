@@ -3,6 +3,7 @@
 #
 #
 PATH=$PWD:$PATH
+export GIT_PAGER=cat
 
 set -e
 
