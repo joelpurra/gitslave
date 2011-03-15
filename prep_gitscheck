@@ -41,7 +41,7 @@ echo Starting gits checks
 echo ----------------------------------------------------------------------
 set -x
 : Configure the git slave setup and upload it
-gits prepare
+GITS_DIR=`pwd` gits prepare
 gits attach ../sub1 sub1
 gits attach ../sub2 sub2
 gits populate
@@ -145,7 +145,7 @@ gits push
 : "Prepare SuperDuper project of which the old thing is just a component"
 git clone $BASE/checkdir/master2/top2 $BASE/checkdir/superduper
 cd ../superduper
-gits prepare
+GITS_DIR=`pwd` gits prepare
 gits attach ../sub21 sub21
 gits attach --recursive=.gitslave ../../master/top submastertop
 gits populate
@@ -213,7 +213,7 @@ export GITSLAVE=.optslave
 : "Prepare another SuperDuper project of which the old thing is just an optional component"
 git clone $BASE/checkdir/master2/top2 $BASE/checkdir/superopt
 cd ../superopt
-gits prepare
+GITS_DIR=`pwd` gits prepare
 gits attach ../sub21 sub21
 gits attach --recursive=.gitslave ../../master/top submastertop ifpresent
 gits populate
