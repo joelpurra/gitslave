@@ -280,3 +280,15 @@ path).  Use `git rev-parse --show-cdup` to get the git top-level
 directory, then `git config gits.master` to get GITS_DIR.  This will
 allow master and slave repositories to be located in non-hierarchical
 locations, using relative or absolute paths.
+
+Interaction with recursive projects will need to be considered.  It is
+unclear what the least surprise would be, or whether both are equally
+desirable.  Note that some people prefer to manually move git repos
+around inside of gitslave superprojects (either for a manual attach or
+the non-existent rename) to reduce cloning costs.  This might mean
+that we need to support traditional .gitslave location discovery if we
+cannot find a .gitslave using the cached value (if we do it at all).
+However, as long as we are doing any kind of .gitslave discovery (even
+if we do NOT do any caching—I'm a little dubious that this will
+actually speed things up), we should probably support the
+GIT_CEILING_DIRECTORIES and GIT_DISCOVERY_ACROSS_FILESYSTEM.
