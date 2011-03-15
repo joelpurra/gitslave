@@ -199,59 +199,114 @@ sub find_remote_repo($$)
 #
 # Find the absolute path to repository (relatives are relative to upstream repository)
 #
+# We need to handle the following schemes:
+# scheme://domain/~user
+# scheme://domain/~user/dir
+# scheme://domain/path
+# scheme://domain:port/path
+# scheme://username:password@domain:port/path
+#
+# where scheme == http ssh git git+ssh
+# where /path == /path/from/root/to/repo
+# where /path == /repo
+# where /path == /~user
+# where /path == /~user/repo
+# domain:path
+#
+# username@domain:path
+#
+# where path == repo
+# where path == /path/to/repo
+# where path == path/to/repo
+# where path == ~repo
+# where path == ~user/repo
+#
+# Note that git currently cannot clone from the following directory:
+# /tmp/foo/bar:bar/baz Any : will cause the system to treat it like a
+# hostname or URL scheme as above.
+#
+# The relative URL schemes we support include:
+# ../lib1
+# ^/src/repos/lib1
+#
 sub resolve_repository($$;$$$)
 {
   my ($relrepos,$relative,$remote,$absrepos,$localbase) = @_;
 
   $remote = "origin" unless ($remote);
 
-  $fromcheckout = get_fromcheckout($remote);
+  $fromcheckout = get_fromcheckout($remote) unless defined($fromcheckout);
 
   $localbase = "." if (!$localbase || $fromcheckout);
 
-  # Check for already absolute
-  return $relrepos if ($relrepos =~ m-^(/|\w+:/)-);
+  if ($fromcheckout)
+  {
+    $relrepos = $relative;
+  }
 
-  # Break into method and path sections
-  my ($prefix, $suffix) = ("", $relrepos);
-  ($prefix, $suffix) = ($1, $2) if ($relrepos =~ m-^(\w+:)(.*)-);
+  # Check for already absolute
+  return $relrepos if ($relrepos =~ m-^(/|.+?:)-);
 
   # Find upstream origin URL
   $absrepos = find_remote_repo($remote,$localbase) if (!$absrepos || $localbase ne ".");
 
   # Nuke trailing .git, if necessary
-  $absrepos =~ s:/.git$::;
+  $absrepos =~ s:/\.git$::;
 
-  if ($fromcheckout)
+  ##################################################
+  # Break into method and path sections
+  my ($rprefix, $rsuffix) = ("", $absrepos);
+  my ($lprefix, $lsuffix) = ("", $relrepos);
+
+  if ($absrepos =~ /(.+?:)(.*)/)
   {
-    $relrepos = "$absrepos/$relative";
+    $rprefix = $1;
+    $rsuffix = $2;
+
+    # If this is scheme://hostish/ move /hostish into prefix.
+    $rprefix .= $1 if ($rsuffix =~ s:^(//[^/]+)/:/:);
   }
-  else
+
+  if ($relrepos =~ /(.+?:)(.*)/)
   {
-    my ($mprefix, $msuffix) = ("", $absrepos);
-    ($mprefix, $msuffix) = ($1, $2) if ($relrepos =~ m-^(\w+:(?://[^/]*|))(.*)-);
+    $lprefix = $1;
+    $lsuffix = $2;
 
-    # Is this repository-relative? (keep method://host from master)
-    if ($relrepos =~ m:^\^(/.*):)
-    {
-      return "$mprefix$1";
-    }
-
-    # Do we have a replacement method://?  (Seems like an unlikely case)
-    if ($prefix)
-    {
-      $absrepos = $prefix.$msuffix;
-    }
-
-    # Handle smushing together, relative paths, etc
-    $relrepos = "$absrepos/$suffix";
-    while ($relrepos =~ s:/\./:/:) {;}
-    while ($relrepos =~ s:/[^/]+?/\.\./:/:) {;}
-    while ($relrepos =~ s-(^\w+://.*)//-$1-g) {;}
-    while ($relrepos !~ m-^\w+://- && $relrepos =~ s://:/:g) {;}
+    # If this is scheme://hostish/ move /hostish into prefix.
+    $lprefix .= $1 if ($lsuffix =~ s:^(//[^/]+)/:/:);
   }
-  $relrepos =~ s:/\.$::;
-  $relrepos;
+
+  # At this point, prefix has all networkish components, and suffix
+  # has all hostish location components.  We don't know if suffix is
+  # absolute or "relative" at this point.
+
+  # Handle ^/src/repos/lib1 case
+  if ($lsuffix =~ m:^\^(.*):)
+  {
+    return (($lprefix || $rprefix).$1);
+  }
+
+  my $newpath = "$rsuffix/$lsuffix";
+
+  # Handle "xxx//yyy" -> "xxx/yyy"
+  while ($newpath =~ s://:/:) {;}
+
+  # Handle "xxx/./yyy" -> "xxx/yyy"
+  while ($newpath =~ s:/\./:/:) {;}
+  # Handle "./xxx" -> "xxx"
+  while ($newpath =~ s:^\./::) {;}
+  # Handle "/." -> "/"
+  while ($newpath =~ s:^/\.$:/:) {;}
+  # Handle "xxx/." -> "xxx"
+  while ($newpath =~ s:/\.$::) {;}
+
+  # Handle "/xxx/../yyy" -> "/yyy"
+  # Handle "xxx/../yyy" -> "yyy"
+  # Handle "/xxx/.." -> "/"
+  # Handle "xxx/.." -> ""
+  while ($newpath =~ s:(^ | /) [^/]+ / \.\. ($ | /):$1:x) {;}
+
+  $relrepos = ($lprefix || $rprefix).$newpath;
 }
 
 

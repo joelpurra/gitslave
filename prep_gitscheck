@@ -150,6 +150,176 @@ git branch checkdir-1.0 origin/checkdir-1.0
 git checkout checkdir-1.0
 gits populate
 if gits status | grep ' != slave branch'; then exit 1; fi
+: "Test a few relative URL schemes"
+gits remote add ssher ssh://example.com/repo/dir
+gits remote add ssheru ssh://user@example.com/repo/dir
+gits remote add sshgit git+ssh://example.com/CommonRepo
+gits remote add scper example.com:/repo/dir
+gits remote add scperu user@example.com:/repo/dir
+gits remote add scperd example.com:repo
+gits remote add --fromcheckout fssher ssh://example.com/repo/dir
+gits remote add --fromcheckout fssheru ssh://user@example.com/repo/dir
+gits remote add --fromcheckout fsshgit git+ssh://example.com/CommonRepo
+gits remote add --fromcheckout fscper example.com:/repo/dir
+gits remote add --fromcheckout fscperu user@example.com:/repo/dir
+gits remote add --fromcheckout fscperd example.com:repo
+: perl -e '@tests=("test1 TEST1", "--fromcheckout test1 TEST1", "--no-fromcheckout test1 TEST1", "../test1 TEST1",
+              ".././//test1 TEST1", "/path/to/test1 TEST1", ".. TEST1", "^/path/to/test1 TEST1",
+              "ssh://example.org/test1 TEST1", "example.org:test1 TEST1");
+      @repos=("", "ssher", "fssher", "ssheru", "fssheru", "sshgit", "fsshgit", "scper", "fscper", "scperu", "fscperu", "scperd", "fscperd");
+      foreach my $repo (@repos) { foreach my $test (@tests) {
+        $cmd = "gits resolve $test $repo";
+        $out = `$cmd`;
+        chomp($out);
+        $bquote = quotemeta($ENV{"BASE"});
+        $out =~ s/$bquote/\$BASE/;
+        print qq^if [ \`$cmd\` != "$out" ]; then exit 1; fi\n^;
+     } print "\n"; }'
+
+if [ `gits resolve test1 TEST1 ` != "$BASE/checkdir/master/top/test1" ]; then exit 1; fi
+if [ `gits resolve --fromcheckout test1 TEST1 ` != "$BASE/checkdir/master/top/TEST1" ]; then exit 1; fi
+if [ `gits resolve --no-fromcheckout test1 TEST1 ` != "$BASE/checkdir/master/top/test1" ]; then exit 1; fi
+if [ `gits resolve ../test1 TEST1 ` != "$BASE/checkdir/master/test1" ]; then exit 1; fi
+if [ `gits resolve .././//test1 TEST1 ` != "$BASE/checkdir/master/test1" ]; then exit 1; fi
+if [ `gits resolve /path/to/test1 TEST1 ` != "/path/to/test1" ]; then exit 1; fi
+if [ `gits resolve .. TEST1 ` != "$BASE/checkdir/master/" ]; then exit 1; fi
+if [ `gits resolve ^/path/to/test1 TEST1 ` != "/path/to/test1" ]; then exit 1; fi
+if [ `gits resolve ssh://example.org/test1 TEST1 ` != "ssh://example.org/test1" ]; then exit 1; fi
+if [ `gits resolve example.org:test1 TEST1 ` != "example.org:test1" ]; then exit 1; fi
+
+if [ `gits resolve test1 TEST1 ssher` != "ssh://example.com/repo/dir/test1" ]; then exit 1; fi
+if [ `gits resolve --fromcheckout test1 TEST1 ssher` != "ssh://example.com/repo/dir/TEST1" ]; then exit 1; fi
+if [ `gits resolve --no-fromcheckout test1 TEST1 ssher` != "ssh://example.com/repo/dir/test1" ]; then exit 1; fi
+if [ `gits resolve ../test1 TEST1 ssher` != "ssh://example.com/repo/test1" ]; then exit 1; fi
+if [ `gits resolve .././//test1 TEST1 ssher` != "ssh://example.com/repo/test1" ]; then exit 1; fi
+if [ `gits resolve /path/to/test1 TEST1 ssher` != "/path/to/test1" ]; then exit 1; fi
+if [ `gits resolve .. TEST1 ssher` != "ssh://example.com/repo/" ]; then exit 1; fi
+if [ `gits resolve ^/path/to/test1 TEST1 ssher` != "ssh://example.com/path/to/test1" ]; then exit 1; fi
+if [ `gits resolve ssh://example.org/test1 TEST1 ssher` != "ssh://example.org/test1" ]; then exit 1; fi
+if [ `gits resolve example.org:test1 TEST1 ssher` != "example.org:test1" ]; then exit 1; fi
+
+if [ `gits resolve test1 TEST1 fssher` != "ssh://example.com/repo/dir/TEST1" ]; then exit 1; fi
+if [ `gits resolve --fromcheckout test1 TEST1 fssher` != "ssh://example.com/repo/dir/TEST1" ]; then exit 1; fi
+if [ `gits resolve --no-fromcheckout test1 TEST1 fssher` != "ssh://example.com/repo/dir/test1" ]; then exit 1; fi
+if [ `gits resolve ../test1 TEST1 fssher` != "ssh://example.com/repo/dir/TEST1" ]; then exit 1; fi
+if [ `gits resolve .././//test1 TEST1 fssher` != "ssh://example.com/repo/dir/TEST1" ]; then exit 1; fi
+if [ `gits resolve /path/to/test1 TEST1 fssher` != "ssh://example.com/repo/dir/TEST1" ]; then exit 1; fi
+if [ `gits resolve .. TEST1 fssher` != "ssh://example.com/repo/dir/TEST1" ]; then exit 1; fi
+if [ `gits resolve ^/path/to/test1 TEST1 fssher` != "ssh://example.com/repo/dir/TEST1" ]; then exit 1; fi
+if [ `gits resolve ssh://example.org/test1 TEST1 fssher` != "ssh://example.com/repo/dir/TEST1" ]; then exit 1; fi
+if [ `gits resolve example.org:test1 TEST1 fssher` != "ssh://example.com/repo/dir/TEST1" ]; then exit 1; fi
+
+if [ `gits resolve test1 TEST1 ssheru` != "ssh://user@example.com/repo/dir/test1" ]; then exit 1; fi
+if [ `gits resolve --fromcheckout test1 TEST1 ssheru` != "ssh://user@example.com/repo/dir/TEST1" ]; then exit 1; fi
+if [ `gits resolve --no-fromcheckout test1 TEST1 ssheru` != "ssh://user@example.com/repo/dir/test1" ]; then exit 1; fi
+if [ `gits resolve ../test1 TEST1 ssheru` != "ssh://user@example.com/repo/test1" ]; then exit 1; fi
+if [ `gits resolve .././//test1 TEST1 ssheru` != "ssh://user@example.com/repo/test1" ]; then exit 1; fi
+if [ `gits resolve /path/to/test1 TEST1 ssheru` != "/path/to/test1" ]; then exit 1; fi
+if [ `gits resolve .. TEST1 ssheru` != "ssh://user@example.com/repo/" ]; then exit 1; fi
+if [ `gits resolve ^/path/to/test1 TEST1 ssheru` != "ssh://user@example.com/path/to/test1" ]; then exit 1; fi
+if [ `gits resolve ssh://example.org/test1 TEST1 ssheru` != "ssh://example.org/test1" ]; then exit 1; fi
+if [ `gits resolve example.org:test1 TEST1 ssheru` != "example.org:test1" ]; then exit 1; fi
+
+if [ `gits resolve test1 TEST1 fssheru` != "ssh://user@example.com/repo/dir/TEST1" ]; then exit 1; fi
+if [ `gits resolve --fromcheckout test1 TEST1 fssheru` != "ssh://user@example.com/repo/dir/TEST1" ]; then exit 1; fi
+if [ `gits resolve --no-fromcheckout test1 TEST1 fssheru` != "ssh://user@example.com/repo/dir/test1" ]; then exit 1; fi
+if [ `gits resolve ../test1 TEST1 fssheru` != "ssh://user@example.com/repo/dir/TEST1" ]; then exit 1; fi
+if [ `gits resolve .././//test1 TEST1 fssheru` != "ssh://user@example.com/repo/dir/TEST1" ]; then exit 1; fi
+if [ `gits resolve /path/to/test1 TEST1 fssheru` != "ssh://user@example.com/repo/dir/TEST1" ]; then exit 1; fi
+if [ `gits resolve .. TEST1 fssheru` != "ssh://user@example.com/repo/dir/TEST1" ]; then exit 1; fi
+if [ `gits resolve ^/path/to/test1 TEST1 fssheru` != "ssh://user@example.com/repo/dir/TEST1" ]; then exit 1; fi
+if [ `gits resolve ssh://example.org/test1 TEST1 fssheru` != "ssh://user@example.com/repo/dir/TEST1" ]; then exit 1; fi
+if [ `gits resolve example.org:test1 TEST1 fssheru` != "ssh://user@example.com/repo/dir/TEST1" ]; then exit 1; fi
+
+if [ `gits resolve test1 TEST1 sshgit` != "git+ssh://example.com/CommonRepo/test1" ]; then exit 1; fi
+if [ `gits resolve --fromcheckout test1 TEST1 sshgit` != "git+ssh://example.com/CommonRepo/TEST1" ]; then exit 1; fi
+if [ `gits resolve --no-fromcheckout test1 TEST1 sshgit` != "git+ssh://example.com/CommonRepo/test1" ]; then exit 1; fi
+if [ `gits resolve ../test1 TEST1 sshgit` != "git+ssh://example.com/test1" ]; then exit 1; fi
+if [ `gits resolve .././//test1 TEST1 sshgit` != "git+ssh://example.com/test1" ]; then exit 1; fi
+if [ `gits resolve /path/to/test1 TEST1 sshgit` != "/path/to/test1" ]; then exit 1; fi
+if [ `gits resolve .. TEST1 sshgit` != "git+ssh://example.com/" ]; then exit 1; fi
+if [ `gits resolve ^/path/to/test1 TEST1 sshgit` != "git+ssh://example.com/path/to/test1" ]; then exit 1; fi
+if [ `gits resolve ssh://example.org/test1 TEST1 sshgit` != "ssh://example.org/test1" ]; then exit 1; fi
+if [ `gits resolve example.org:test1 TEST1 sshgit` != "example.org:test1" ]; then exit 1; fi
+
+if [ `gits resolve test1 TEST1 fsshgit` != "git+ssh://example.com/CommonRepo/TEST1" ]; then exit 1; fi
+if [ `gits resolve --fromcheckout test1 TEST1 fsshgit` != "git+ssh://example.com/CommonRepo/TEST1" ]; then exit 1; fi
+if [ `gits resolve --no-fromcheckout test1 TEST1 fsshgit` != "git+ssh://example.com/CommonRepo/test1" ]; then exit 1; fi
+if [ `gits resolve ../test1 TEST1 fsshgit` != "git+ssh://example.com/CommonRepo/TEST1" ]; then exit 1; fi
+if [ `gits resolve .././//test1 TEST1 fsshgit` != "git+ssh://example.com/CommonRepo/TEST1" ]; then exit 1; fi
+if [ `gits resolve /path/to/test1 TEST1 fsshgit` != "git+ssh://example.com/CommonRepo/TEST1" ]; then exit 1; fi
+if [ `gits resolve .. TEST1 fsshgit` != "git+ssh://example.com/CommonRepo/TEST1" ]; then exit 1; fi
+if [ `gits resolve ^/path/to/test1 TEST1 fsshgit` != "git+ssh://example.com/CommonRepo/TEST1" ]; then exit 1; fi
+if [ `gits resolve ssh://example.org/test1 TEST1 fsshgit` != "git+ssh://example.com/CommonRepo/TEST1" ]; then exit 1; fi
+if [ `gits resolve example.org:test1 TEST1 fsshgit` != "git+ssh://example.com/CommonRepo/TEST1" ]; then exit 1; fi
+
+if [ `gits resolve test1 TEST1 scper` != "example.com:/repo/dir/test1" ]; then exit 1; fi
+if [ `gits resolve --fromcheckout test1 TEST1 scper` != "example.com:/repo/dir/TEST1" ]; then exit 1; fi
+if [ `gits resolve --no-fromcheckout test1 TEST1 scper` != "example.com:/repo/dir/test1" ]; then exit 1; fi
+if [ `gits resolve ../test1 TEST1 scper` != "example.com:/repo/test1" ]; then exit 1; fi
+if [ `gits resolve .././//test1 TEST1 scper` != "example.com:/repo/test1" ]; then exit 1; fi
+if [ `gits resolve /path/to/test1 TEST1 scper` != "/path/to/test1" ]; then exit 1; fi
+if [ `gits resolve .. TEST1 scper` != "example.com:/repo/" ]; then exit 1; fi
+if [ `gits resolve ^/path/to/test1 TEST1 scper` != "example.com:/path/to/test1" ]; then exit 1; fi
+if [ `gits resolve ssh://example.org/test1 TEST1 scper` != "ssh://example.org/test1" ]; then exit 1; fi
+if [ `gits resolve example.org:test1 TEST1 scper` != "example.org:test1" ]; then exit 1; fi
+
+if [ `gits resolve test1 TEST1 fscper` != "example.com:/repo/dir/TEST1" ]; then exit 1; fi
+if [ `gits resolve --fromcheckout test1 TEST1 fscper` != "example.com:/repo/dir/TEST1" ]; then exit 1; fi
+if [ `gits resolve --no-fromcheckout test1 TEST1 fscper` != "example.com:/repo/dir/test1" ]; then exit 1; fi
+if [ `gits resolve ../test1 TEST1 fscper` != "example.com:/repo/dir/TEST1" ]; then exit 1; fi
+if [ `gits resolve .././//test1 TEST1 fscper` != "example.com:/repo/dir/TEST1" ]; then exit 1; fi
+if [ `gits resolve /path/to/test1 TEST1 fscper` != "example.com:/repo/dir/TEST1" ]; then exit 1; fi
+if [ `gits resolve .. TEST1 fscper` != "example.com:/repo/dir/TEST1" ]; then exit 1; fi
+if [ `gits resolve ^/path/to/test1 TEST1 fscper` != "example.com:/repo/dir/TEST1" ]; then exit 1; fi
+if [ `gits resolve ssh://example.org/test1 TEST1 fscper` != "example.com:/repo/dir/TEST1" ]; then exit 1; fi
+if [ `gits resolve example.org:test1 TEST1 fscper` != "example.com:/repo/dir/TEST1" ]; then exit 1; fi
+
+if [ `gits resolve test1 TEST1 scperu` != "user@example.com:/repo/dir/test1" ]; then exit 1; fi
+if [ `gits resolve --fromcheckout test1 TEST1 scperu` != "user@example.com:/repo/dir/TEST1" ]; then exit 1; fi
+if [ `gits resolve --no-fromcheckout test1 TEST1 scperu` != "user@example.com:/repo/dir/test1" ]; then exit 1; fi
+if [ `gits resolve ../test1 TEST1 scperu` != "user@example.com:/repo/test1" ]; then exit 1; fi
+if [ `gits resolve .././//test1 TEST1 scperu` != "user@example.com:/repo/test1" ]; then exit 1; fi
+if [ `gits resolve /path/to/test1 TEST1 scperu` != "/path/to/test1" ]; then exit 1; fi
+if [ `gits resolve .. TEST1 scperu` != "user@example.com:/repo/" ]; then exit 1; fi
+if [ `gits resolve ^/path/to/test1 TEST1 scperu` != "user@example.com:/path/to/test1" ]; then exit 1; fi
+if [ `gits resolve ssh://example.org/test1 TEST1 scperu` != "ssh://example.org/test1" ]; then exit 1; fi
+if [ `gits resolve example.org:test1 TEST1 scperu` != "example.org:test1" ]; then exit 1; fi
+
+if [ `gits resolve test1 TEST1 fscperu` != "user@example.com:/repo/dir/TEST1" ]; then exit 1; fi
+if [ `gits resolve --fromcheckout test1 TEST1 fscperu` != "user@example.com:/repo/dir/TEST1" ]; then exit 1; fi
+if [ `gits resolve --no-fromcheckout test1 TEST1 fscperu` != "user@example.com:/repo/dir/test1" ]; then exit 1; fi
+if [ `gits resolve ../test1 TEST1 fscperu` != "user@example.com:/repo/dir/TEST1" ]; then exit 1; fi
+if [ `gits resolve .././//test1 TEST1 fscperu` != "user@example.com:/repo/dir/TEST1" ]; then exit 1; fi
+if [ `gits resolve /path/to/test1 TEST1 fscperu` != "user@example.com:/repo/dir/TEST1" ]; then exit 1; fi
+if [ `gits resolve .. TEST1 fscperu` != "user@example.com:/repo/dir/TEST1" ]; then exit 1; fi
+if [ `gits resolve ^/path/to/test1 TEST1 fscperu` != "user@example.com:/repo/dir/TEST1" ]; then exit 1; fi
+if [ `gits resolve ssh://example.org/test1 TEST1 fscperu` != "user@example.com:/repo/dir/TEST1" ]; then exit 1; fi
+if [ `gits resolve example.org:test1 TEST1 fscperu` != "user@example.com:/repo/dir/TEST1" ]; then exit 1; fi
+
+if [ `gits resolve test1 TEST1 scperd` != "example.com:repo/test1" ]; then exit 1; fi
+if [ `gits resolve --fromcheckout test1 TEST1 scperd` != "example.com:repo/TEST1" ]; then exit 1; fi
+if [ `gits resolve --no-fromcheckout test1 TEST1 scperd` != "example.com:repo/test1" ]; then exit 1; fi
+if [ `gits resolve ../test1 TEST1 scperd` != "example.com:test1" ]; then exit 1; fi
+if [ `gits resolve .././//test1 TEST1 scperd` != "example.com:test1" ]; then exit 1; fi
+if [ `gits resolve /path/to/test1 TEST1 scperd` != "/path/to/test1" ]; then exit 1; fi
+if [ `gits resolve .. TEST1 scperd` != "example.com:" ]; then exit 1; fi
+if [ `gits resolve ^/path/to/test1 TEST1 scperd` != "example.com:/path/to/test1" ]; then exit 1; fi
+if [ `gits resolve ssh://example.org/test1 TEST1 scperd` != "ssh://example.org/test1" ]; then exit 1; fi
+if [ `gits resolve example.org:test1 TEST1 scperd` != "example.org:test1" ]; then exit 1; fi
+
+if [ `gits resolve test1 TEST1 fscperd` != "example.com:repo/TEST1" ]; then exit 1; fi
+if [ `gits resolve --fromcheckout test1 TEST1 fscperd` != "example.com:repo/TEST1" ]; then exit 1; fi
+if [ `gits resolve --no-fromcheckout test1 TEST1 fscperd` != "example.com:repo/test1" ]; then exit 1; fi
+if [ `gits resolve ../test1 TEST1 fscperd` != "example.com:repo/TEST1" ]; then exit 1; fi
+if [ `gits resolve .././//test1 TEST1 fscperd` != "example.com:repo/TEST1" ]; then exit 1; fi
+if [ `gits resolve /path/to/test1 TEST1 fscperd` != "example.com:repo/TEST1" ]; then exit 1; fi
+if [ `gits resolve .. TEST1 fscperd` != "example.com:repo/TEST1" ]; then exit 1; fi
+if [ `gits resolve ^/path/to/test1 TEST1 fscperd` != "example.com:repo/TEST1" ]; then exit 1; fi
+if [ `gits resolve ssh://example.org/test1 TEST1 fscperd` != "example.com:repo/TEST1" ]; then exit 1; fi
+if [ `gits resolve example.org:test1 TEST1 fscperd` != "example.com:repo/TEST1" ]; then exit 1; fi
+
+
 
 ######################################################################
 : "Prepare SuperDuper project of which the old thing is just a component"
