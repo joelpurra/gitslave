@@ -1,7 +1,8 @@
-* gits status --porcelain breaks the gits porcelain
+* gits status --porcelain|--short breaks the gits porcelain
 
-gits status depends on decoration not present in --porcelain mode.  It
-should be protected in some way.
+gits status depends on decoration not present if --porcelain or
+--short are given.  (git status --short --branch presents the branch
+information, but differently).  It should be protected in some way.
 
 
 * gits attach could allow existant destination under one condition
