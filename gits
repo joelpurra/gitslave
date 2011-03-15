@@ -264,11 +264,7 @@ sub resolve_repository($$;$$$)
     $rsuffix = $2;
 
     # If this is scheme://hostish/ move /hostish into prefix.
-    if ($rsuffix =~ s:^(//[^/]+)/:/:)
-    {
-      $rprefix .= $1;
-    }
-    elsif ($rsuffix =~ s:^(//)/:/:)
+    if ($rsuffix =~ s:^(//[^/]*)/:/:)
     {
       $rprefix .= $1;
     }
@@ -280,11 +276,7 @@ sub resolve_repository($$;$$$)
     $lsuffix = $2;
 
     # If this is scheme://hostish/ move /hostish into prefix.
-    if ($lsuffix =~ s:^(//[^/]+)/:/:)
-    {
-      $lprefix .= $1;
-    }
-    elsif ($lsuffix =~ s:^(//)/:/:)
+    if ($lsuffix =~ s:^(//[^/]*)/:/:)
     {
       $lprefix .= $1;
     }
