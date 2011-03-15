@@ -862,11 +862,11 @@ else
   } while (!-f $GITS_DIR."/".GITSLAVE && $S[0] == $dev && $S[1] != $ino);
 }
 
-# All (non-prepare) operations are relative to gitslave base
+# All (non-prepare/clone) operations are relative to gitslave base
 if (-f $GITS_DIR."/".GITSLAVE)
 {
   $GITS_DIR = Cwd::realpath($GITS_DIR);
-  chdir($GITS_DIR) unless ($ARGV[0] eq "prepare");
+  chdir($GITS_DIR) unless ($ARGV[0] eq "prepare" || $ARGV[0] eq "clone");
   print STDERR "gits: Gitslave found in $GITS_DIR\n" if ($OPTIONS{'verbose'} > 1);
 }
 else
@@ -1005,7 +1005,7 @@ elsif ($ARGV[0] eq 'prepare')
   die "Refusing to prepare, \$GITSLAVE variable is multipath\n" if ($GITSLAVE =~ /, /);
   die "Refusing to prepare, $GITS_DIR/@{[$GITSLAVE]} already exists\n" if (-f $GITS_DIR."/".$GITSLAVE);
   die "Refusing to prepare, $SUPER_GITS_DIR/@{[$GITSLAVE]} already exists\n"
-    . " (GITS_DIR=".`pwd`." gits prepare will override)\n" if (-f $SUPER_GITS_DIR."/".$GITSLAVE);
+    . " (GITS_DIR=".`pwd`." gits prepare will override)\n" if (-f $SUPER_GITS_DIR."/".$GITSLAVE && !defined($ENV{'GITS_DIR'}));
   open(W, ">", $GITS_DIR."/".$GITSLAVE) || die "Could not create $GITS_DIR/@{[$GITSLAVE]}\n";
   close(W);
   docmd("$git add @{[$GITSLAVE]}");
@@ -1168,6 +1168,7 @@ elsif ($ARGV[0] eq 'clone')
   {
     die "Could not parse git clone output\n";
   }
+  $GITS_DIR = Cwd::realpath($1);
   chdir($1);
 
   docmd(qq^$git config gits.nohooks 1^) if ($nohooks);
