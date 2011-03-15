@@ -264,7 +264,14 @@ sub resolve_repository($$;$$$)
     $rsuffix = $2;
 
     # If this is scheme://hostish/ move /hostish into prefix.
-    $rprefix .= $1 if ($rsuffix =~ s:^(//[^/]+)/:/:);
+    if ($rsuffix =~ s:^(//[^/]+)/:/:)
+    {
+      $rprefix .= $1;
+    }
+    elsif ($rsuffix =~ s:^(//)/:/:)
+    {
+      $rprefix .= $1;
+    }
   }
 
   if ($relrepos =~ /(.+?:)(.*)/)
@@ -273,7 +280,14 @@ sub resolve_repository($$;$$$)
     $lsuffix = $2;
 
     # If this is scheme://hostish/ move /hostish into prefix.
-    $lprefix .= $1 if ($lsuffix =~ s:^(//[^/]+)/:/:);
+    if ($lsuffix =~ s:^(//[^/]+)/:/:)
+    {
+      $lprefix .= $1;
+    }
+    elsif ($lsuffix =~ s:^(//)/:/:)
+    {
+      $lprefix .= $1;
+    }
   }
 
   # At this point, prefix has all networkish components, and suffix
