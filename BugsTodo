@@ -1,7 +1,3 @@
-* gits auto-branch-creation checkout doesn't work post 2.0
-
-`gits checkout -b foo existingbranch` should work.
-
 * gits does not fully support non-URL schemes (user@host:directory, git+ssh://git@git.example.com/CommonRepo)
 
 gitolite style URLs (user@host:reponame) do not work.  Workaround for gitolite user@host:/reponame).

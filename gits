@@ -489,10 +489,19 @@ sub do_populate(;$)
     else
     {
       my ($cursubbranch,$subbranch) = grep(s/^\s*\*\s+(.*)|\s+($curbranch)$/$1$2/, split(/\n/,getcmd(qq^cd "$slave" && $git branch --no-color | sort^)));
-      if ($curbranch ne $cursubbranch && $curbranch ne $subbranch && $curbranch !~ /no branch/)
+      if ($curbranch ne $cursubbranch && $curbranch !~ /no branch/ && !$nocheckout)
       {
 	print qq^Switching "$slave" to branch "$curbranch"\n^;
-	docmd(qq^cd "$slave" && $git checkout -b $curbranch origin/$curbranch^) || die "Branch inconsistency, branch $curbranch does not exist for $slave\n";
+
+	my $gitversion = `$git --version`;
+	if ($curbranch ne $subbranch && $gitversion =~ /git version (1\.[12345]\.|1\.6\.[012345])/)
+	{
+	  docmd(qq^cd "$slave" && $git checkout -b $curbranch origin/$curbranch^) || die "Branch inconsistency, branch $curbranch does not exist for $slave\n";
+	}
+	else
+	{
+	  docmd(qq^cd "$slave" && $git checkout $curbranch^) || die "Branch inconsistency, branch $curbranch does not exist for $slave\n";
+	}
       }
       else
       {

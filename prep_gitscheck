@@ -142,6 +142,16 @@ gits checkout master
 gits pull
 gits merge --no-ff checkdir-1.0
 gits push
+: "Person 3 tried to look at checkdir-1.0 directly"
+cd ..
+git clone $BASE/checkdir/master/top $BASE/checkdir/slave3
+cd slave3
+git branch checkdir-1.0 origin/checkdir-1.0
+git checkout checkdir-1.0
+gits populate
+if gits status | grep ' != slave branch'; then exit 1; fi
+
+######################################################################
 : "Prepare SuperDuper project of which the old thing is just a component"
 git clone $BASE/checkdir/master2/top2 $BASE/checkdir/superduper
 cd ../superduper
