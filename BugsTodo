@@ -252,3 +252,14 @@ module generates insignificant differences in the output that prevent them
 from being coalesced.  There is better support for eliminating these in the
 gits pulls command (even there it is probably not complete) but not really
 any for other commands, especially pass-throughs.
+
+
+* Eliminate dependence on .gitslave searching
+
+Rather than searching for .gitslave files in parent directories, save
+the master directory with `git config gits.master ../../...` (or use
+an absolute path if the slave was added to master using an absolute
+path).  Use `git rev-parse --show-cdup` to get the git top-level
+directory, then `git config gits.master` to get GITS_DIR.  This will
+allow master and slave repositories to be located in non-hierarchical
+locations, using relative or absolute paths.
