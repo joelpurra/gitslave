@@ -1,4 +1,83 @@
 			       Gitslave
+			    Release 2.0.1
+			      2011-??-??
+
+
+
+			     New Features
+
+
+* Now supports git+ssh:// and host:repo style GRLs
+
+Traditionally gitslave has only supported /path/to/repo and URL
+(ssh://host/path/to/repo) style Git Resource Locators.  Gitslave has
+now been taught about the alternate reference styles.
+
+
+* gits now has pager support
+
+gits will use less, $PAGER, and $GIT_PAGER hopefully similar to how
+native git uses pagers for output.
+
+
+
+		    Features or Bugs of Minor Note
+
+
+* gits prepare can now work under an existing gitslave tree
+
+Instead of behaving potentially unexpectedly if you are attempting to
+`gits prepare` instead a directory which is already under a gitslave
+tree, throw a fatal error (with a way to work around this problem if
+you really really want to `gits prepare` a newly created recursive
+subproject or something like that.
+
+
+* gits logs now understands the --date option
+
+gits logs tries to summarized commits across all repositories and
+aggregate commits about the same topic in multiple repositories.  This
+aggressive aggregation means that many log options are not support.
+--date is no longer within that group.
+
+
+* Provide progress support for gits fetch
+
+If you have Term::ProgressBar loaded, certain operations which are
+sometimes long will by default provide progress indicators.  Fetch is
+now within that group.
+
+
+* gits populate/checkout will now try to auto-create target branch
+
+If you are on an alternate branch when you attempt to populate or
+checkout which will cause a new repository to be checked out into the
+superproject, gitslave will now attempt to create a tracking branch
+from upstream if it does not exist.
+
+
+* Support git client versions back to 1.5.x
+
+Through a lack of old git installations to test on, older git versions
+had accidentally become broken.  Support has been resurrected, but we
+still don't test as a matter of course with back-rev'd git
+installations, so a `make check` might be a good idea.
+
+
+* Protect against git color.ui always
+
+Git colorization can sometimes confuse gitslave when it parses git
+output.  Protect against one detected occurrence.
+
+
+* Protect against subprojects with spaces in the name
+
+This is not full quote protection against arbitrary characters, but
+the possibly more common case should be handled better.
+
+
+----------------------------------------------------------------------
+			       Gitslave
 			     Release 2.0
 			      2011-03-01
 
@@ -13,6 +92,7 @@ With the use of `gits attach --recursive=.gitslave URL DIRECTORY`
 gitslave now fully support recursive subprojects (or slaves which are
 themselves gitslave masters of yet more slaves).
 
+
 * gitslave tutorial created
 
 A tutorial was created which walks the reader through a from-scratch
@@ -20,11 +100,13 @@ repository creation using the most popular and needed git commands in
 the multi-repository gitslave environment.  The tutorial and overall
 gitslave website is now stored as part of gitslave.
 
+
 * gits pulls more efficient and safer.
 
 Gits pulls perform a pull on all available local branches.  This now should
 perform only one fetch (in most cases).  Also --rebase is safer by
 using --preserve-merges (in most cases).
+
 
 * gits now implements paginated output by default, just like git
 
@@ -33,6 +115,7 @@ controlling tty for the pager to take input from).  If you do not want
 paginated output, the -n or --no-pager option disables it.  All the git
 pager configuration settings (GIT_PAGER and PAGER environment variables,
 and core.pager configuration setting) are honored.
+
 
 * gits populate can now request population of specific ifpresent modules
 
