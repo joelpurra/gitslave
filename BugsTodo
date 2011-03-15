@@ -9,6 +9,8 @@ Workaround for traditional directories, user@host:./reponame
 
 git+ssh://git@git.example.com/CommonRepo also doesn't appear to work.
 
+Proposal from cjz:
+^[A-Za-z0-9][\w+.]+\:[0-9]*//
 
 * gits attach could allow existant destination under one condition
 
