@@ -2460,6 +2460,12 @@ elsif ($ARGV[0] eq 'clean')
 
 	  next if grep($_->[1] =~ m:^$qpath$:, @slaves);
 
+	  if (-d "$path/.git")		# Don't remove directories with .git in them.
+	  {
+	    $commonout .= "Skipping $path (contains .git)\n";
+	    next;
+	  }
+
 	  # Restore trailing /
 	  $path .= "/";
 	}
