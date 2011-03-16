@@ -29,6 +29,14 @@ Some interactive functionality (notably SSH password/key-phrase input)
 uses /dev/tty directly and seems to work even with pagination.
 
 
+* Superproject branches having different slaves is hard
+
+The behavior when different branches have different slave modules
+associated with them and you checkout back and forth is probably not
+ideal (nor are any of the options we have thought of completely
+ideal).
+
+
 * Shallow clone/sparse checkout support for subprojects
 
 Some people want to have shallow clones or sparse checkouts.  This
@@ -136,6 +144,9 @@ to preserve merges; however, the pull command does not.  This
 inconsistency might be worth fixing, but note that even pulls does not
 always do this, notably if a repository or refspec argument is given,
 but also if older version of git is present.
+
+On the other hand, adding unnecessary incompatibilities with git isn't
+something to be desired.
 
 
 * Pull is very slow

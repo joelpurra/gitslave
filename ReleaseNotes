@@ -20,17 +20,24 @@ gits will use less, $PAGER, and $GIT_PAGER hopefully similar to how
 native git uses pagers for output.
 
 
+* gits will not clean directories with .git in them
+
+Replicating recent git functionality, `gits clean -dfx` will not
+destroy repositories.  This helps the situation where different
+branches have different slave modules attached.
+
+
 
 		    Features or Bugs of Minor Note
 
 
-* gits prepare can now work under an existing gitslave tree
+* gits prepare/clone can now work under an existing gitslave tree
 
 Instead of behaving potentially unexpectedly if you are attempting to
-`gits prepare` instead a directory which is already under a gitslave
-tree, throw a fatal error (with a way to work around this problem if
-you really really want to `gits prepare` a newly created recursive
-subproject or something like that.
+`gits prepare` or clone instead a directory which is already under a
+gitslave tree, throw a fatal error (with a way to work around this
+problem if you really really want to `gits prepare` (or clone) a newly
+created recursive subproject or something like that.
 
 
 * gits logs now understands the --date option
