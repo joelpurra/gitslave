@@ -1,15 +1,13 @@
     Gitslave Home Page: <http://gitslave.sf.net>
 
 NAME
-    gits - The git slave repository tool for super-project multi-repository
-    management
+    gits - The git slave repository tool for multi-repository management
 
 SYNOPSIS
     gits [-p|--parallel COUNT] [-v|--verbose]+ [--quiet] [--help]
     [--version] [-n|--no-pager] [--paginate] [--eval-args] [--exclude
-    SLAVE-REGEXP] [--keep-going] [--no-commit] [--no-hide] [--no-master]
-    [--no-progress] [--with-ifpresent] [-- GIT-OPTIONS...] SUBCOMMAND
-    [ARGS]...
+    SLAVE-REGEXP] [--keep-going] [--no-commit] [--no-hide] [--no-progress]
+    [--no-master] [--with-ifpresent] SUBCOMMAND [ARGS]...
 
 OVERVIEW
     gits is a program that assists in assembling a meta-project from a
@@ -24,7 +22,7 @@ OVERVIEW
     or commit, do not recursively descend into the submodules so you are
     forced to do execute all git commands N+1 times (leading to pain and
     mistakes), also, submodules revisions are tracked in the supermodule so
-    that change to the slave project made outside the superproject are not
+    that changes to a submodule made outside the supermodule are not
     automatically seen. Since git does not allow partial checkouts, we are
     left with little alternative.
 
@@ -34,9 +32,9 @@ OVERVIEW
 
     The basic theory is that there are a few sub-commands (prepare, attach,
     populate) which help set up the meta-project for gits operations. Then,
-    for any git command which is not file specific (git add <filename>; git
-    reset <filename>; etc), you should use "gits" instead of "git", and the
-    command will run on all repositories in the project.
+    except for git commands with specific filenames, like git add FILENAME;
+    git reset FILENAME; etc., you should use "gits" instead of "git", and
+    the command will run on all repositories in the project.
 
   Example Usage
     In the following example, we will have the following master
@@ -53,7 +51,7 @@ OVERVIEW
       ..../super/lib2
 
    Clone a gits project
-    gits clone [--[no-]fromcheckout] [--nohooks] <superproject-URL>
+    gits clone [--[no-]fromcheckout] [--nohooks] SUPERPROJECT-URL
 
     This command clones an existing superproject and all associated slave
     repositories. It runs `git clone` on the arguments you provide (allowing
@@ -64,16 +62,18 @@ OVERVIEW
     would want to use the --fromcheckout argument.
 
     By default, if there is a git-hooks directory present in the
-    superproject, that will manage the .git/hooks directory in all related
-    repositories. Adding --nohooks will disable this management.
+    superproject, hooks there will be symlinked into the .git/hooks
+    directory in all related repositories. Adding --nohooks will disable
+    this management.
 
       --------------------------------------------------
       gits clone ssh://sourcemaster/src/repos/super.git super2
       cd super2
       --------------------------------------------------
 
-    The gits flag --with-ifpresent is useful here as one way to populate
-    conditional repositories.
+    The gits option --with-ifpresent can be used with this command to
+    populate all conditional slave repositories (those marked with ifpresent
+    flag).
 
    Initialize a gits project
     gits prepare
@@ -89,15 +89,15 @@ OVERVIEW
       --------------------------------------------------
 
    Add a slave repository to top level master
-      gits attach [--recursive=.gitslave] <repository> <localpath> [flags]
+      gits attach [--recursive=FILENAME] REPOSITORY LOCALPATH [FLAGS]
 
     Clone the named git repository into the named local directory, and set
     it up for further gits operations.
 
-    Typically <localpath> would be a path relative to the top level working
+    Typically LOCALPATH would be a path relative to the top level working
     directory, for example, a subdirectory in the top level.
 
-    <repository> can also be relative (relative to the URL the top level
+    REPOSITORY can also be relative (relative to the URL the top level
     master checkout was cloned from). It may also be an absolute URL but if
     so, `gits remote add` is not going to be happy. If the URL starts with
     ^, it will use only the method and hostname from the master's URL.
@@ -107,13 +107,13 @@ OVERVIEW
     The only [flags] currently supported is "ifpresent" which will be set
     for this slave repository. Other people cloning or populating the
     superproject will not check out this subrepository if this flag is set,
-    unless they add --with-ifpresent or otherwise arrange for the
-    <localpath> to be created.
+    unless they add --with-ifpresent or otherwise arrange for the LOCALPATH
+    to be created.
 
-    If the --recursive=<filename> argument is present (and you must use the
-    --recursive=<filename> style, not "--recursive filename") the repository
+    If the --recursive=FILENAME argument is present (and you *must* use the
+    --recursive=FILENAME style, not "--recursive FILENAME") the repository
     you are attaching will be treated as a recursive gitslave master
-    underneath the real gitslave master. The filename will typically be
+    underneath the top-level gitslave master. The filename will typically be
     ".gitslave". It is relative to the localpath you checked out and must
     not have any / in it.
 
@@ -127,10 +127,10 @@ OVERVIEW
     The push in the example is to share the attach with other users.
 
    Remove a slave repository from top level master
-      gits detach <localpath>
+      gits detach LOCALPATH
 
-    Remove the named directory from both the local filesystem, the .gitslave
-    management file, and the .gitignore file so that it will not be used in
+    Remove the named directory from the local filesystem, the .gitslave
+    management file, and the .gitignore file; so that it will not be used in
     subsequent gits activities.
 
      --------------------------------------------------
@@ -140,8 +140,8 @@ OVERVIEW
 
     The push in the example is to share the detach with other users.
 
-   Check out any new slave modules which someone else might have added
-      gits populate [--[no-]fromcheckout] [--nohooks] [ifpresent modules to check out]
+   Checkout any slave repositories that may have been added
+      gits populate [--[no-]fromcheckout] [--nohooks] [SLAVES]...
 
     Go through the list of configured slaves and check out (clone) any which
     have not already been retrieved.
@@ -152,14 +152,15 @@ OVERVIEW
     layout. If either option is given, sets the default repository layout,
     which is used when no explicit option is provided.
 
-    The gits flag --with-ifpresent is useful here as one way to populate
-    conditional repositories, which will check out all conditional
-    repositories. You could also specifically ask for certain conditional
-    modules by listing them on the command line.
+    The gits option --with-ifpresent can be used with this command to
+    populate all conditional slave repositories (those marked with ifpresent
+    flag). You can also populate particular conditional slave repositories
+    by listing them on the command line.
 
     By default, if there is a git-hooks directory present in the
-    superproject, that will manage the .git/hooks directory in all related
-    repositories. Adding --nohooks will disable this management.
+    superproject, hooks there will be symlinked into the .git/hooks
+    directory in all related repositories. Adding --nohooks will disable
+    this management.
 
       --------------------------------------------------
       gits populate
@@ -173,7 +174,7 @@ OVERVIEW
     then switch back to the branch you were on.
 
     Please see SUBSTITUTION for information on how to replace part of the
-    command with the slave module name for each executed command.
+    command with the slave repository name for each executed command.
 
     In the common case where no repository or refspec is provided as an
     argument, pulls will perform a fetch once (in the current branch of each
@@ -196,7 +197,7 @@ OVERVIEW
     on other branches will still be fetched.
 
     Please see SUBSTITUTION for information on how to replace part of the
-    command with the slave module name for each executed command.
+    command with the slave repository name for each executed command.
 
       --------------------------------------------------
       gits pull --rebase
@@ -225,14 +226,13 @@ OVERVIEW
       --------------------------------------------------
 
    Perform an arbitrary command for all tracked branches
-      gits exec <command> [args]
+      gits exec COMMAND [ARGS]
 
     For each slave being tracked by the superproject and the superproject
-    itself, cd to the root of the slave project directory and execute the
-    listed command.
+    itself, cd to the slave directory and execute the listed command.
 
     Please see SUBSTITUTION for information on how to replace part of the
-    command with the slave module name for each executed command.
+    command with the slave repository name for each executed command.
 
       --------------------------------------------------
       gits exec gitk
@@ -241,7 +241,7 @@ OVERVIEW
       --------------------------------------------------
 
    Print out URLs for arbitrary repositories like those used by attach
-      gits resolve [--[no-]fromcheckout] <repository> <local_relpath> [remote]
+      gits resolve [--[no-]fromcheckout] REPOSITORY LOCAL_RELPATH [REMOTE]
 
     Go through the same process that gits uses for resolving relative
     repository URLs into absolute URLs, for debugging and certain porting
@@ -261,11 +261,11 @@ OVERVIEW
       --------------------------------------------------
 
    Update the URL a remote repository points at
-      gits update-remote-url [--[no-]fromcheckout] <remote-name> <url>
+      gits update-remote-url [--[no-]fromcheckout] REMOTENAME NEWURL
 
-    Update the super-project's remote.name.url using the url and remote name
-    listed above. Then go though each slave repository and update its url
-    using the normal relative url mechanism.
+    Update the superproject's remote.REMOTENAME.url to be NEWURL. Then go
+    though each slave repository and update its remote.REMOTENAME.url using
+    the normal relative url mechanism.
 
     The --fromcheckout option supports using a gits checkout as the remote
     repository, adjusting the repository paths from their default. The
@@ -290,15 +290,17 @@ OVERVIEW
       --------------------------------------------------
 
    Add a new remote to all repositories
-      gits remote add [--[no-]fromcheckout] <git-remote-add options> <repositoryname> <url>
+      gits remote add [--[no-]fromcheckout] GIT-REMOTE-ADD-OPTS REMOTENAME REMOTEURL
 
-    Adds a remote named <name> for the repository at <url> (as modified by
-    the relative URL rules from `gits attach` and `gits update-remote-url`
-    and the --fromcheckout argument). The command gits fetch <name> can then
-    be used to create and update remote-tracking branches <name>/<branch>.
+    Adds a remote named REMOTENAME for the repository at REMOTEURL (as
+    modified by the relative URL rules from `gits attach` and `gits
+    update-remote-url` and the --fromcheckout argument). The command gits
+    fetch REMOTENAME can then be used to create and update remote-tracking
+    branches matching REMOTENAME/*.
 
-    The <url> would be the absolute url for the superproject and each slave
-    repository would have a modified version of that path.
+    The superproject remote URL will be set to REMOTEURL, which should be an
+    absolute URL; the slave repositories will have a modified version of
+    that URL (the layout must match that of the existing remotes).
 
     Please note that we do not currently support `gits remote set-url` in a
     useful way. See `gits update-remote-url` for an alternate method which
@@ -324,7 +326,7 @@ OVERVIEW
     standard origin.
 
     Please see SUBSTITUTION for information on how to replace part of the
-    command with the slave module name for each executed command.
+    command with the slave repository name for each executed command.
 
       --------------------------------------------------
       gits push --quick
@@ -352,18 +354,20 @@ OVERVIEW
       --------------------------------------------------
 
    Make an archive of the repositories
-      gits archive <standard git-archive arguments>
+      gits archive GIT-ARCHIVE-ARGS
 
     This is the standard git archive command--with the addition of a new
     --format option of "gits-tar". When you select the gits-tar option, you
-    must supply a on-disk --output file and you cannot use any tar
+    must supply an on-disk --output file and you cannot use any tar
     compression options. With gits-tar, the output tar archive will be a
     unified archive of the entire project, superproject and slaves. Any
     existing prefix will be treated as a directory prefix (e.g. --prefix foo
     and --prefix foo/ are the same) and all slave repositories will be
     unpacked in their corresponding superproject locations.
 
-    Remember the %%type%% substitutions if you choose to not use gits-tar.
+    If you choose a format other than gits-tar, you will probably want to
+    use one of the substitutions like %%basename%% or %%dir%% in the output
+    filename.
 
       --------------------------------------------------
       gits archive --format gits-tar -o /tmp/foo.tar master
@@ -398,7 +402,8 @@ DESCRIPTION
   --parallel=COUNT -p COUNT
     Specify the number of parallel git operations you wish to execute.
     Parallelism is only activated for push and pull(s) subcommands. This can
-    speed up your processing significantly for large numbers of submodules.
+    speed up your processing significantly for large numbers of slave
+    repositories.
 
     If remote repositories are accessed over ssh, you may also wish to
     activate ssh "ControlMaster" multiplexing.
@@ -468,7 +473,7 @@ DESCRIPTION
 
   --no-commit
     This flag requests that gits-internal sub-commands, such as prepare or
-    attach should not commit their changes after they make them.
+    attach, should not commit their changes after they make them.
 
   --no-hide
     This flag requests that gits not hide information when similar (but not
@@ -477,8 +482,7 @@ DESCRIPTION
 
   --no-master
     This flag requests that gits only run the listed command on the slave
-    repositories and NOT the super/master/top repository. This probably will
-    not be needed much.
+    repositories and NOT the super/master/top repository.
 
   --no-progress
     This flag requests that gits NOT print a progress bar, which it does by
@@ -491,7 +495,7 @@ DESCRIPTION
     even if they are not present. This is mostly useful for `gits populate`
     and `gits checkout`.
 
-  SUBCOMMAND ARGS...
+  SUBCOMMAND [ARGS]...
     Run the specified git command (with associated arguments) on the
     repository and all slave repositories. Typically they are git commands
     run over each slave, but there are gits specific commands such as:
@@ -529,7 +533,7 @@ BUGS
     Likewise, when executing most git commands, gits changes directory to
     the root of the git slave, so any pathnames passed as arguments to gits
     must be absolute, not relative. Generally this is only a concern for
-    pre-generated commit messages or things like that, you should NOT be
+    pre-generated commit messages or things like that; you should NOT be
     passing gits the pathnames of files checked into git slaves--you will
     likely get the wrong result.
 
@@ -551,7 +555,7 @@ BUGS
     third party branch. See the gitslave home page for more information on
     workarounds.
 
-    The behavior when different branches have different slave modules
+    The behavior when different branches have different slave repositories
     associated with them and you checkout back and forth is probably not
     ideal (nor are any of the options we have thought of completely ideal).
 
@@ -567,22 +571,30 @@ FILES
     flags]
 
     The flags, which are optional, currently can be the value "ifpresent"
-    which indicates that gits will only process those modules if the
+    which indicates that gits will only process this repository if the
     top-level-checkout-relative-path is already present.
 
 ENVIRONMENT
-  $GITSLAVE
-    Allow overriding on the name of the .gitslave file (for supplemental
-    activity, the .gitslave file must still exist even if it is not used for
-    this particular operation). Also, allows a comma-space separated list of
-    files names, the sum of which will be the list of slaves to use.
+  GITSLAVE
+    The GITSLAVE environment variable specifies alternate location(s) of the
+    .gitslave file. Note that the .gitslave file must still exist even if it
+    is not used for this particular operation). GITSLAVE can be a filename
+    or a list of filenames separated by comma and space; if a list of
+    filenames is specified, it has the same effect as if the files were
+    concatenated.
 
-    An example ".gitslave, .gitslave-extras" would allow an supplemental
-    list of slaves for unusual activity (e.g. release tagging) to the normal
-    list.
+    An example of a list of filenames, GITSLAVE=".gitslave,
+    .gitslave-extras" would allow adding a supplemental list of slaves for
+    unusual activity (e.g. release tagging) to the normal list.
 
-    Alternately, you could play tricks where you only get a subset of the
-    modules when you don't need to play with everything.
+    You can also use an alternate .gitslave file with just a subset of the
+    slave repositories when you don't want to run commands on all of them.
+
+    Note that if you are using recursive gitslave superprojects, the
+    GITSLAVE environment variable overrides .gitslave at the top-level only.
+    Only if the alternate .gitslave file(s) #include .gitslave (or
+    alternate) in recursive superprojects will their slave repositories be
+    included.
 
 REQUIREMENTS
     perl 5 (probably almost any version of perl 5)
