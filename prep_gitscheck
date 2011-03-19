@@ -399,6 +399,8 @@ gits attach ../sub21 sub21
 gits attach --recursive=.gitslave ../../master/top submastertop ifpresent
 gits populate
 gits push
+: "Now done with optional component"
+gits release --just-ifpresent
 : "Person 2 takes a look"
 cd ..
 gits clone $BASE/checkdir/master2/top2 superopt2
@@ -412,3 +414,5 @@ gits --with-ifpresent populate
 find . -name datelist | while read f; do echo $f; date >> $f; done
 gits commit -a -m "superopt full update"
 gits push
+: "Person 2 is done"
+gits release --all

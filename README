@@ -7,7 +7,7 @@ SYNOPSIS
     gits [-p|--parallel COUNT] [-v|--verbose]+ [--quiet] [--help]
     [--version] [-n|--no-pager] [--paginate] [--eval-args] [--exclude
     SLAVE-REGEXP] [--keep-going] [--no-commit] [--no-hide] [--no-progress]
-    [--no-master] [--with-ifpresent] SUBCOMMAND [ARGS]...
+    [--no-master] [--with-ifpresent|--just-ifpresent] SUBCOMMAND [ARGS]...
 
 OVERVIEW
     gits is a program that assists in assembling a meta-project from a
@@ -126,20 +126,6 @@ OVERVIEW
 
     The push in the example is to share the attach with other users.
 
-   Remove a slave repository from top level master
-      gits detach LOCALPATH
-
-    Remove the named directory from the local filesystem, the .gitslave
-    management file, and the .gitignore file; so that it will not be used in
-    subsequent gits activities.
-
-     --------------------------------------------------
-     gits detach lib1
-     gits push
-     --------------------------------------------------
-
-    The push in the example is to share the detach with other users.
-
    Checkout any slave repositories that may have been added
       gits populate [--[no-]fromcheckout] [--nohooks] [SLAVES]...
 
@@ -165,6 +151,76 @@ OVERVIEW
       --------------------------------------------------
       gits populate
       --------------------------------------------------
+
+   Safely delete local repositories that are no longer wanted
+      gits release [-n] --all | --just-ifpresent | SUPERPROJECT | SLAVES...
+
+    Go through the list of configured slaves (or slave arguments) and
+    confirm that there are no unresolved conflicts, untracked (and not
+    ignored) files, uncommitted changes (including staged or stashed
+    changes), unpushed commits, or unmerged private branches, and that there
+    is a tracking branch in each repository. If these conditions are met in
+    *all* of the selected slaves, the selected slave directories are removed
+    (rm -rf).
+
+    The --no-commit (or -n) option prevents repositories from being removed.
+    (Note that if -n is passed to 'gits' instead of the 'release'
+    subcommand, it also disables automatic pagination as --no-pager). This
+    option is implied if the superproject is the root directory (/) or if
+    paths to any slave repositories start with dot (.), contain '..' (parent
+    directory) components, or are absolute (start with /).
+
+    The --just-ifpresent option can be used to release only conditional
+    slave repositories (marked with ifpresent flag). This option cannot be
+    used with slave repository arguments or --all.
+
+    The --all option releases the entire current superproject; unless -n,
+    --no-commit, or --no-master is used, the current directory is removed,
+    breaking relative paths until you change directory. Instead, you can
+    pass one superproject as an argument with an absolute path (starting
+    with /); this will work from any directory.
+
+    Other arguments are treated as the names of slave repositories to
+    release. Only one recursive superproject can be specified, and only as
+    an absolute path. Slave arguments cannot start with dot (.) or contain
+    certain shell metacharacters (semicolon, newline, or quotes). Slave
+    arguments cannot be combined with --all or --just-ifpresent options.
+
+    The --force option can be used to force removal even if the state of
+    some repositories does not meet the conditions noted above. This is
+    *EXTREMELY DANGEROUS* and roughly equivalent to rm -rf on the arguments;
+    for this reason the --force option cannot be combined with --all or a
+    superproject argument.
+
+      --------------------------------------------------
+      gits release --just-ifpresent
+      gits release lib1
+      gits release -n --all
+      gits release /path/to/super2
+      --------------------------------------------------
+
+   Remove a slave repository from top level master
+      gits detach [--force] SLAVE
+
+    Do a `gits release` on SLAVE; if this succeeds, besides removing the
+    slave repository from the local filesystem, also remove the slave from
+    .gitignore and the .gitslave management file, so that it will not be
+    used in subsequent gits activities.
+
+    The --force option can be used to override the gits release check; if
+    this is done, the repository will not be removed - only .gitignore and
+    .gitslave will be affected.
+
+    The --no-commit option will only remove the slave from .gitignore and
+    .gitslave; those changes will not be committed, and the slave repository
+    will not be removed from the local filesystem.
+
+     --------------------------------------------------
+     gits detach lib1
+     gits push
+     --------------------------------------------------
+
+    The push in the example is to share the detach with other users.
 
    Perform a pull operation for all tracked branches
       gits pulls [pull args]
@@ -480,20 +536,26 @@ DESCRIPTION
     identical) output such as commit hashes is output for slave
     repositories.
 
-  --no-master
-    This flag requests that gits only run the listed command on the slave
-    repositories and NOT the super/master/top repository.
-
   --no-progress
     This flag requests that gits NOT print a progress bar, which it does by
     default for slow operations if Term::ProgressBar is loaded. Slow
     operations are the checkout, fetch, pull(s), and push subcommands. You
     may use this flag for all operations.
 
+  --no-master
+    This flag requests that gits only run the listed command on the slave
+    repositories and NOT the super/master/top repository.
+
   --with-ifpresent
     Operate also on those slave repositories which are marked as "ifpresent"
     even if they are not present. This is mostly useful for `gits populate`
     and `gits checkout`.
+
+  --just-ifpresent
+    Operate *only* on those slave repositories which are marked as
+    "ifpresent" whether they are present or not. This is mostly useful for
+    `gits release`. Note that this implies --no-master, and overrides
+    --with-ifpresent.
 
   SUBCOMMAND [ARGS]...
     Run the specified git command (with associated arguments) on the

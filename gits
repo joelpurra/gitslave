@@ -55,7 +55,7 @@ our(@slaves);
 my($USAGE) = "Usage: gits [-p|--parallel COUNT] [-v|--verbose]+ [--quiet] [--help] [--version]\n".
 "\t[-n|--no-pager] [--paginate] [--eval-args] [--exclude SLAVE-REGEXP]\n".
 "\t[--keep-going] [--no-commit] [--no-hide] [--no-progress]\n".
-"\t[--no-master] [--with-ifpresent] SUBCOMMAND [ARGS]...\n";
+"\t[--no-master] [--with-ifpresent|--just-ifpresent] SUBCOMMAND [ARGS]...\n";
 our(%OPTIONS);
 my ($returncode) = 0;
 my $pagination;
@@ -325,7 +325,7 @@ sub ephemeral_command($;$)
 {
   my ($cmd,$depth) = @_;
 
-  if ($cmd eq "prepare" or $cmd eq "resolve" or $cmd eq "clone" or $cmd eq "help" or ($depth && $cmd eq "populate"))
+  if ($cmd eq "prepare" or $cmd eq "resolve" or $cmd eq "clone" or $cmd eq "help" or $cmd eq "release" or ($depth && $cmd eq "populate"))
   {
     $missingcount++;
     return 1;
@@ -361,14 +361,31 @@ sub git_slave_list_recursive($$$$$$$)
     if (/^\#include\s+\"([^\"]+)\"\s*(\sifpresent)?$/)
     {
       my ($slavefile,$flags) = ($1,$2);
+      my $slave = $slavefile;
+      $slave =~ s:^(.*)/.*:$1:;
       $slavefile = "$base/$slavefile" unless ($slavefile =~ m:^/:);
       my $newbase = $slavefile;
       $newbase =~ s:^(.*)/.*:$1:;
-      if ($flags =~ /ifpresent/ && !$OPTIONS{'with-ifpresent'})
+      my $newifpresent = 1
+	if (map($_->[1] eq $slave && $_->[3] =~ /ifpresent/, @$gitsp));
+      if ($flags =~ /ifpresent/ && !$OPTIONS{'with-ifpresent'} && !$OPTIONS{'just-ifpresent'})
       {
 	next unless (-f $slavefile);
       }
+      # Disable --just-ifpresent (and enable --with-ifpresent) for recursive
+      # superprojects with ifpresent (on either slave _or_ #include statement)
+      # - this is important for gits release to make sure that we don't rm -rf
+      # ifpresent slave superproject without checking state of all its slaves.
+      my $justifpresent =
+	($newifpresent || $flags =~ /ifpresent/) && $OPTIONS{'just-ifpresent'};
+      if ($justifpresent)
+      {
+	delete $OPTIONS{'just-ifpresent'};
+	$OPTIONS{'with-ifpresent'} = 1;
+      }
       git_slave_list_recursive($slavefile,$gitsp,$seenp,$cmd,$newbase,$vpresentp,$depth+1);
+      # no need to delete --with-ifpresent as --just-ifpresent subsumes it
+      $OPTIONS{'just-ifpresent'} = 1 if ($justifpresent);
       next;
     }
     next if (/^\s*(?:\#.*)$/);
@@ -376,7 +393,13 @@ sub git_slave_list_recursive($$$$$$$)
     die "Bad line $lineno in $file\n" unless (/^\"(.*)\" \"(.*)\"( ifpresent)?$/);
     my ($baserel,$ckoutrel,$flags) = ($1,$2,$3);
 
-    if ($flags !~ /ifpresent/ || $OPTIONS{'with-ifpresent'} || -d "$base/$ckoutrel/." || $vpresentp->{$ckoutrel})
+    # add to slaves if explicitly listed as argument, or,
+    # if --just-ifpresent, then if ifpresent flag,
+    # otherwise if not ifpresent flag or --with-ifpresent or actually present
+    if ($vpresentp->{$ckoutrel} ||
+	($OPTIONS{'just-ifpresent'} ? $flags =~ /ifpresent/ :
+	 ($flags !~ /ifpresent/ || $OPTIONS{'with-ifpresent'} ||
+	  -d "$base/$ckoutrel/.")))
     {
       my ($relbase) = $base;
       my ($qbase) = quotemeta($GITS_DIR);
@@ -385,7 +408,8 @@ sub git_slave_list_recursive($$$$$$$)
 
       $ckoutrel = "$relbase$ckoutrel";
 
-      push(@$gitsp,[$baserel, $ckoutrel, $base]) if (!$seenp->{$ckoutrel});
+      push(@$gitsp,[$baserel, $ckoutrel, $base, $flags])
+	if (!$seenp->{$ckoutrel});
       $seenp->{$ckoutrel} = 1;
     }
   }
@@ -799,30 +823,346 @@ sub stdout($;$)
 
 ######################################################################
 #
+# Check for rebase-in-progress/conflicted-merge, untracked files,
+# uncommitted changes (whether staged or not), stashed changes, unpushed
+# commits, unmerged tracking branches, or unknown other errors, and die()
+# if any are found.  Lack of a tracking branch in a repository is also
+# fatal.
+#
+sub releasecheck($@);
+sub releasecheck($@)
+{
+  my ($cmd, @list) = @_;
+  my $errs;
+  my %msg;
+  my @notonbranch;
+  my @untracked;
+  my @uncommitted;
+  my @stashed;
+  my @unpushed;
+  my @unmerged;
+  my @notracking;
+  my @unknown;
+
+  # This works much like `gits statuses` except that it does not assume that
+  # the master repository has all the branches of interest, so it processes
+  # each repository separately, once looking at the current branch for
+  # untracked files, uncommitted changes, and unpushed commits, and a second
+  # time looking at other branches for unpushed commits.
+
+  unshift(@list,[undef,".","."]) unless ($OPTIONS{'no-master'});
+
+  # suppress warning about missing slaves
+  $warngitslavesync = 1;
+
+  my $foundanything;
+
+  foreach my $group (@list)
+  {
+    my $slave = $group->[1];
+    my $repo = $slave;
+    $repo = $TOP if ($repo eq ".");
+
+    my $unclean;
+
+    next if missing_slave($slave);
+
+    $foundanything++;
+
+    if (! -d "$slave/.git")
+    {
+      $errs .= "$repo is not a git repository\n";
+      next;
+    }
+
+    my ($ret, $msg) = getcmd(qq^cd "%%dir%%" && $git status ^,$slave);
+    if ($ret != 0 && $ret != 256)
+    {
+      $errs .= "git status failed for: '$repo': " . exitcode($ret) . "\n";
+      $errs .= " $msg" if ($msg && $msg !~ /^\s$/);
+      last;
+    }
+
+    my ($premove);
+    while ($msg =~ s/(^[^\#].*\n)//)
+    {
+      $premove .= $1;
+    }
+
+    die "gits unexpected status output (missing branch): $msg" unless ($msg =~ s/^\# (?:On branch |(Not currently on any branch.))(.+)?\n//);
+    my $localbranch = $2;
+    if ($1 =~ /^Not/)
+    {
+      push(@notonbranch,$repo) if ($1);
+      $unclean = 1;
+      $localbranch = '';
+    }
+
+    my $bad;
+    if ($msg =~ /^\# Your branch/)
+    {
+      if ($msg !~ / can be fast-forwarded/)
+      {
+	$bad = 1;
+	push(@unpushed, $repo);
+	$unclean = 1;
+	$localbranch .= '@';
+      }
+      while ($msg =~ s/^(\# \S.*\n)//)
+      {
+	$premove .= $1 if ($bad);
+      }
+      $msg =~ s/^\#\s*\n//;
+    }
+    # working directory & stash changes don't need branch qualification
+    $localbranch = '' if (!$bad);
+
+    $msg =~ s/^no(thing| changes)( added)? to commit .*\n//m;
+
+    while ($msg =~ s/^(\# \S.*\n)//)
+    {
+      $unclean = 1;
+      $premove .= $1;
+      if ($1 =~ /^# Change/)
+      {
+	push(@uncommitted, $repo) if ($uncommitted[$#uncommitted] ne $repo);
+      }
+      elsif ($1 =~ /^# Untrack/)
+      {
+	push(@untracked, $repo) if ($untracked[$#untracked] ne $repo);
+      }
+      else
+      {
+	push(@unknown, $repo) if ($unknown[$#unknown] ne $repo);
+      }
+
+      while ($msg =~ s/^(\#\s{2,}\S.*\n)//)
+      {
+	$premove .= $1 if ($1 =~ /discard changes/);
+      }
+      die "Could not parse git status output for $slave <$msg>\n" unless ($msg =~ s/^(\#\s*\n)//);
+
+      while ($msg =~ s/^(\#(?:\s*|(\s{2,}|\t)\S.*)\n)//)
+      {
+	my ($line) = $1;
+
+	if ($line =~ /([^:]+:\s+)(.*)/s)
+	{
+	  $line = "$1$slave/$2";
+	}
+	elsif ($line =~ /(\#\s+)(.+)/)
+	{
+	  $line = "$1$slave/$2\n";
+	}
+	else
+	{
+	  next if ($line =~ /\#\s*\n/);
+	}
+
+	$premove .= $line;
+      }
+    }
+
+    my $stashes;
+    ($ret, $stashes) = getcmd(qq^cd "%%dir%%" && $git stash list^,$slave);
+    if ($ret)
+    {
+      $errs .= "git stash list failed for: '$repo': " . exitcode($ret) . "\n";
+      $errs .= " $stashes" if ($stashes && $stashes !~ /^\s$/);
+      last;
+    }
+    elsif ($stashes)
+    {
+      push(@stashed, $repo);
+      $unclean = 1;
+      # strip out previous commit from WIP stashes (messages are misleading)
+      $stashes =~ s/^(stash\@{\d+}: )WIP( on .*: [\da-f]+)\.\.\..*$/${1}Work-in-Progress${2}/mg;
+      $msg .= $stashes;
+    }
+
+    if ($unclean)
+    {
+      push(@{$msg{$premove.$msg}}, "$localbranch$repo");
+    }
+    else
+    {
+      push(@{$msg{""}}, "$localbranch$repo");
+    }
+  }
+
+  $errs .= "You are not on any branch (maybe rebase or unresolved conflicts?) in:\n " .
+    join(' ', @notonbranch) . "\n" if (@notonbranch);
+  $errs .= "There are uncommitted changes in:\n " .
+    join(' ', @uncommitted) . "\n" if (@uncommitted);
+  $errs .= "There are unknown other issues in:\n " .
+    join(' ', @unknown) . "\n" if (@unknown);
+
+  # Untracked files, stashed changes and unpushed commits are not
+  # considered fatal (yet), since we can still safely change to another
+  # branch if these are present (unlike not being on a branch, or having
+  # uncommitted changes to the working directory).
+  my $fatal = $errs;
+  $errs .= "There are untracked files in:\n " .
+    join(' ', @untracked) . "\n" if (@untracked);
+  $errs .= "There are stashed changes in:\n " .
+    join(' ', @stashed) . "\n" if (@stashed);
+
+  # Don't add @unpushed yet (we may add repos on other branches)
+
+  if ($fatal)
+  {
+    stdout(\%msg,1);
+    $errs .= "There are unpushed commits in:\n " .
+      join(' ', @unpushed) . "\n" if (@unpushed);
+    die $errs . "gits $cmd aborted (use --force to override)\n";
+  }
+
+  foreach my $group (@list)
+  {
+    my $slave = $group->[1];
+    my $repo = $slave;
+    $repo = $TOP if ($repo eq ".");
+
+    my ($unclean, $unknown);
+
+    next if missing_slave($slave);
+
+    my $oldbranch =
+      (grep { s/\s*\*\s+// }
+       split(/\n/,getcmd(qq^cd %%dir%% && $git branch --no-color^, $slave)))[0];
+    my @branches = grep { s/branch\.(.*)\.remote=.*/$1/ }
+      split(/\n/,getcmd(qq^cd %%dir%% && $git config -l^, $slave));
+    my $trackpat = join('|', @branches);
+    my %merged;
+
+    push(@notracking, $repo) if ($#branches < 0);
+    foreach my $branch (@branches)
+    {
+      if ($branch eq $oldbranch)
+      {
+	# original branch is a tracked branch, any branches merged into it
+	# are okay to release
+	foreach my $merge (grep { s/^  // }
+			   split(/\n/,getcmd(qq^cd %%dir%% && $git branch --no-color --contains $oldbranch^, $slave)))
+	{
+	  $merged{$merge} = 1;
+	}
+	# we don't need to check for unpushed as we have already done this
+	next;
+      }
+
+      my ($ret, $msg) = getcmd(qq^cd "%%dir%%" && $git checkout $branch^,$slave);
+      if ($ret)
+      {
+	$errs .= "git checkout failed for: '$repo': " . exitcode($ret) . "\n";
+	$errs .= " $msg" if ($msg && $msg !~ /^\s$/);
+	last;
+      }
+
+      foreach my $merge (grep { s/^  // }
+			 split(/\n/,getcmd(qq^cd %%dir%% && $git branch --no-color --merged^, $slave)))
+      {
+	$merged{$merge} = 1;
+      }
+
+      $msg =~ s/Switched to branch.*\n//;
+      $msg =~ s/Already on \".*\n//;
+
+      my ($premove);
+      if ($msg =~ /^Your branch(.*)\n/)
+      {
+	if ($1 !~ / can be fast-forwarded/)
+	{
+	  push(@unpushed, "$branch\@$repo");
+	  $unclean = 1;
+	  while ($msg =~ s/^(.*\S.*\n)//)
+	  {
+	    $premove .= "# " . $1;
+	  }
+	}
+	$msg =~ s/^\#?\s*\n//;
+      }
+
+      while ($msg =~ s/^(.*\S.*\n)//)
+      {
+	$unknown = $unclean = 1;
+	$premove .= $1;
+      }
+      $msg =~ s/^\#?\s*\n//;
+
+      push(@unknown, "$branch\@$repo") if ($unknown);
+
+      if ($unclean)
+      {
+	push(@{$msg{$premove.$msg}}, "$branch\@$repo");
+      }
+      else
+      {
+	push(@{$msg{""}}, "$branch\@$repo");
+      }
+    }
+
+    my @privates;
+    foreach my $private (grep { s/^  // && !/^($trackpat)$/ }
+			 split(/\n/,getcmd(qq^cd %%dir%% && $git branch --no-color --no-merged^, $slave)))
+    {
+      push (@privates, $private) if (!$merged{$private});
+    }
+    $errs .= "Repository $repo has unmerged private branches: "
+      . join(' ', @privates) . "\n" if (@privates);
+
+    docmd(qq^cd "$slave" && $git checkout $oldbranch >/dev/null 2>&1^);
+  }
+
+  $errs .= "There are unpushed commits in:\n " .
+    join(' ', @unpushed) . "\n" if (@unpushed);
+  $errs .= "There are unmerged private branches in:\n " .
+    join(' ', @unmerged) . "\n" if (@unmerged);
+  $errs .= "There are no tracking branches in:\n " .
+    join(' ', @notracking) . "\n" if (@notracking);
+  $errs .= "There are unknown other issues in:\n " .
+    join(' ', @unknown) . "\n" if (@unknown);
+
+  if ($errs)
+  {
+    stdout(\%msg,1);
+    die $errs . "gits $cmd aborted (use --force to override)\n";
+  }
+
+  return $foundanything;
+}
+
+
+
+######################################################################
+#
 # Main functionality
 #
 Getopt::Long::Configure("bundling", "no_ignore_case", "no_auto_abbrev", "no_getopt_compat", "require_order");
 GetOptions(\%OPTIONS, 'parallel|p=i', 'verbose|v+', 'quiet', 'help', 'version',
 	   'pager|paginate!', 'n', 'eval-args', 'exclude=s', 'keep-going',
-	   'no-commit', 'no-hide', 'no-master', 'no-progress',
-	   'with-ifpresent', 'press-on') || die $USAGE;
+	   'no-commit', 'no-hide', 'no-progress', 'press-on',
+	   'no-master', 'with-ifpresent', 'just-ifpresent') || die $USAGE;
 # -n option is separate from --pager/--no-pager/--paginate/--no-paginate due
 # to limitations of GetOptions API - the last explicit option overrides -n,
-# even if -n comes after the last explicit option
+# even if -n comes after the last explicit option.  Note that -n is *also*
+# interpreted as --no-commit for the `gits release` subcommand (only).
 
 while ($ARGV[0] =~ /^--/)
 {
   $git .= " " . shift @ARGV;
 }
 # provide baka terminology compatibility
-my $BAKANAMES = { 'inits' => 'prepare', 'clones' => 'attach',
-		  'checkouts' => 'populate', 'execs' => 'exec',
+my $BAKANAMES = { 'inits' => 'prepare', 'clones' => 'attach', 'execs' => 'exec',
+		  'checkouts' => 'populate', 'depopulate' => 'release',
 		  'resolves' => 'resolve', 'stati' => 'statuses' };
 $ARGV[0] = $BAKANAMES->{$ARGV[0]} if $BAKANAMES->{$ARGV[0]};
 $OPTIONS{'keep-going'} = 1 if $OPTIONS{'press-on'};
 
 $want_parallel = $OPTIONS{'parallel'} if (defined($want_parallel));
 $OPTIONS{'no-progress'} = 1 if ($want_parallel);
+
+$OPTIONS{'no-master'} = 1 if ($OPTIONS{'just-ifpresent'});
 
 # default is pagination; however, if verbose is set, default is no pager
 # because verbose generates warnings to STDERR, which is not paginated
@@ -1082,12 +1422,23 @@ elsif ($ARGV[0] eq 'attach')
 ##################################################
 elsif ($ARGV[0] eq 'detach')
 {
-  die "gits detach requires one (slave) directory argument, which must exist\nUsage: gits detach DIRECTORY\n" if ($#ARGV != 1);
+  my $force;
+
+  if (grep(/^--force$/,@ARGV))
+  {
+    $force = 1;
+    @ARGV = grep(!/^--force$/,@ARGV);
+  }
+
+  die "gits detach requires one (slave) directory argument, which must exist\nUsage: gits detach [--force] SLAVE\n" if ($#ARGV != 1);
 
   die "$ARGV[1] is not a git repository or does not exist\n" unless (-d "$ARGV[1]/.git");
 
   die "GITSLAVE environment variable specifies multiple files - cannot detach\n"
     if ($GITSLAVE =~ /, /);
+
+  # <TODO>check whether it found slave directory at all?</TODO>
+  releasecheck($ARGV[0], $ARGV[1]) unless ($force);
 
   my $files = $GITS_DIR."/".$GITSLAVE;
   die "The gitslave file '$files', does not exist\n" unless (-f $files);
@@ -1117,6 +1468,10 @@ elsif ($ARGV[0] eq 'detach')
   print W $save;
   close(W) || die "Cannot write $files";
 
+  # remove slave repo before we take it out of .gitignore, to avoid "untracked"
+  docmd(qq^rm -rf ^.quoteit($ARGV[1]))
+    unless ($OPTIONS{'no-commit'} || $OPTIONS{'force'});
+
   my ($gitignore, $ignorefile) = findignore($ARGV[1]);
 
   if (open(R,"<","$gitignore/.gitignore"))
@@ -1136,7 +1491,6 @@ elsif ($ARGV[0] eq 'detach')
     docmd(qq^cd "$gitignore" && $git commit -m 'gits removing ^.quoteit($ARGV[1])."' .gitignore") unless ($gitignore eq $GITS_DIR || $OPTIONS{'no-commit'});
   }
 
-  docmd(qq^rm -rf ^.quoteit($ARGV[1])) unless ($OPTIONS{'no-commit'});
   docmd(qq^$git commit -m 'gits removing ^.quoteit($ARGV[1])."' ".quoteit($GITSLAVE).($gitignore eq $GITS_DIR?" .gitignore":"")) unless ($OPTIONS{'no-commit'});
 }
 ##################################################
@@ -1219,6 +1573,142 @@ elsif ($ARGV[0] eq 'populate')
   }
 
   do_populate();
+}
+##################################################
+elsif ($ARGV[0] eq 'release')
+{
+  my ($force,$all);
+  my @list = @slaves;
+
+  shift @ARGV;
+
+  if (grep(/^--force$/,@ARGV))
+  {
+    $force = 1;
+    @ARGV = grep(!/^--force$/,@ARGV);
+  }
+
+  if (grep(/^--all$/,@ARGV))
+  {
+    $all = 1;
+    @ARGV = grep(!/^--all$/,@ARGV);
+  }
+
+  # accept git options --just-ifpresent, --no-master, and --no-commit here too
+  if (grep(/^--just-ifpresent$/,@ARGV))
+  {
+    @ARGV = grep(!/^--just-ifpresent$/,@ARGV);
+    if (!$OPTIONS{'just-ifpresent'})
+    {
+      $OPTIONS{'just-ifpresent'} = $OPTIONS{'no-master'} = 1;
+      @list = git_slave_list("release");
+    }
+  }
+  if (grep(/^--no-master$/,@ARGV))
+  {
+    @ARGV = grep(!/^--no-master$/,@ARGV);
+    if (!$OPTIONS{'no-master'})
+    {
+      $OPTIONS{'no-master'} = 1;
+      @list = git_slave_list("release");
+    }
+  }
+  if (grep(/^(-n|--no-commit)$/,@ARGV))
+  {
+    @ARGV = grep(!/^(-n|--no-commit)$/,@ARGV);
+    $OPTIONS{'no-commit'} = 1;
+  }
+
+  # gits option -n (meaning --no-pager) is *also* --no-commit for release
+  $OPTIONS{'no-commit'} = 1 if ($OPTIONS{'n'});
+
+  my $usage = "\nUsage: gits release [-n|--no-commit] [--force] [--no-master]\n\t--all | --just-ifpresent | SUPERPROJECT | SLAVES..\n";
+
+  die "Cannot combine --just-ifpresent or --all with slave args" . $usage
+    if (1 < $all + $OPTIONS{'just-ifpresent'}
+	    + (@ARGV && $ARGV[0] !~ m=^/=));
+
+  die "Must give --just-ifpresent, --all, superproject, or slave args" . $usage
+    if (1 > $all + $OPTIONS{'just-ifpresent'} + @ARGV);
+
+  die "For safety --force and --all cannot be used together" . $usage
+    if ($force && $all);
+
+  if (@ARGV)
+  {
+    if (grep(m=^/=, @ARGV))
+    {
+      die "Absolute path must be only argument to gits release" . $usage
+	if (@ARGV > 1);
+      die "Absolute path cannot be used with --force" . $usage
+	if ($force);
+      $GITS_DIR = $ARGV[0];
+      die "$GITS_DIR: $!" . $usage unless chdir($GITS_DIR);
+      die "Not a gitslave repository: $GITS_DIR" . $usage
+	unless (-f GITSLAVE && -d ".git");
+      @list = git_slave_list("release");
+      $all = 1;
+    }
+    else
+    {
+      # just be a little bit extra paranoid about args, since we will rm -rf 'em
+      my @bad = grep(/^\.|[\r\n;'"`]/, @ARGV);
+      die "Illegal slave name: " . quoteit(@bad) . $usage if (@bad);
+      @list = ();
+      foreach my $slave (@ARGV)
+      {
+	die "Not a git repository: $slave" . $usage
+	  unless (-d "$slave/.git");
+	die "Superproject $slave must be released as absolute path\n ( " .
+	  $GITS_DIR . "/" . $slave . " )" . $usage
+	  if (-f "$slave/" . GITSLAVE);
+	push (@list, ['', $slave]);
+      }
+    }
+  }
+
+  die "Could not find @{[GITSLAVE]} or git directory in " . Cwd::realpath(".") .
+    "\n To release entire superproject: `gits release /path/to/superproject`" .
+      "\n Otherwise you must be inside a superproject or one of its slaves\n"
+	unless (-f GITSLAVE && -d ".git");
+
+  if (@list == 0 && $OPTIONS{'no-master'})
+  {
+    warn "Nothing to do\n" unless ($OPTIONS{'quiet'});
+  }
+  # skip releasecheck if --force, nothing to do if it returns undef
+  elsif (!$force && !releasecheck("release", @list))
+  {
+    warn "Already removed" . join('', map(" " . $_->[1], @list)) . "\n"
+      unless ($OPTIONS{'quiet'});
+  }
+  else
+  {
+    @list = map($_->[1], @list);
+
+    # more paranoia - don't remove / or slaves with absolute or dot path or /../
+    $OPTIONS{'no-commit'} = 1
+      if ($GITS_DIR eq "/" || grep(m=^[/.]|/\.\./|/\.\.$=, @list));
+
+    my ($echo, $not);
+    if ($OPTIONS{'no-commit'})
+    {
+      $echo = "echo '\#' ";
+      $not = "Not ";
+    }
+
+    # a single . indicates that master is being removed
+    if ($all || grep(/^.$/,@list))
+    {
+      print $not . "removing $GITS_DIR (and slaves)\n";
+      docmd($echo . qq^rm -rf -- ^ . quoteit($GITS_DIR));
+    }
+    else
+    {
+      print $not . "removing " . join(' ',@list) ."\n";
+      docmd($echo . qq^rm -rf -- ^ . quoteit(@list));
+    }
+  }
 }
 ##################################################
 elsif ($ARGV[0] eq 'resolve')
@@ -2670,7 +3160,7 @@ gits - The git slave repository tool for multi-repository management
 gits [-p|--parallel COUNT] [-v|--verbose]+ [--quiet] [--help] [--version]
 [-n|--no-pager] [--paginate] [--eval-args] [--exclude SLAVE-REGEXP]
 [--keep-going] [--no-commit] [--no-hide] [--no-progress]
-[--no-master] [--with-ifpresent] SUBCOMMAND [ARGS]...
+[--no-master] [--with-ifpresent|--just-ifpresent] SUBCOMMAND [ARGS]...
 
 =head1 OVERVIEW
 
@@ -2804,23 +3294,6 @@ The push in the example is to share the attach with other users.
 
 
 
-=head3 Remove a slave repository from top level master
-
-  gits detach LOCALPATH
-
-Remove the named directory from the local filesystem, the .gitslave
-management file, and the .gitignore file; so that it will not be used in
-subsequent gits activities.
-
- --------------------------------------------------
- gits detach lib1
- gits push
- --------------------------------------------------
-
-The push in the example is to share the detach with other users.
-
-
-
 =head3 Checkout any slave repositories that may have been added
 
   gits populate [--[no-]fromcheckout] [--nohooks] [SLAVES]...
@@ -2846,6 +3319,83 @@ repositories.  Adding --nohooks will disable this management.
   --------------------------------------------------
   gits populate
   --------------------------------------------------
+
+
+
+=head3 Safely delete local repositories that are no longer wanted
+
+  gits release [-n] --all | --just-ifpresent | SUPERPROJECT | SLAVES...
+
+Go through the list of configured slaves (or slave arguments) and confirm
+that there are no unresolved conflicts, untracked (and not ignored) files,
+uncommitted changes (including staged or stashed changes), unpushed
+commits, or unmerged private branches, and that there is a tracking branch
+in each repository.  If these conditions are met in I<all> of the selected
+slaves, the selected slave directories are removed (rm -rf).
+
+The --no-commit (or -n) option prevents repositories from being removed.
+(Note that if -n is passed to 'gits' instead of the 'release' subcommand,
+it also disables automatic pagination as --no-pager).  This option is
+implied if the superproject is the root directory (/) or if paths to any
+slave repositories start with dot (.), contain '..' (parent directory)
+components, or are absolute (start with /).
+
+The --just-ifpresent option can be used to release only conditional slave
+repositories (marked with ifpresent flag).  This option cannot be used with
+slave repository arguments or --all.
+
+The --all option releases the entire current superproject; unless -n,
+--no-commit, or --no-master is used, the current directory is removed,
+breaking relative paths until you change directory.  Instead, you can pass
+one superproject as an argument with an absolute path (starting with /);
+this will work from any directory.
+
+Other arguments are treated as the names of slave repositories to release.
+Only one recursive superproject can be specified, and only as an absolute
+path. Slave arguments cannot start with dot (.)  or contain certain shell
+metacharacters (semicolon, newline, or quotes).  Slave arguments cannot be
+combined with --all or --just-ifpresent options.
+
+The --force option can be used to force removal even if the state of some
+repositories does not meet the conditions noted above.  This is I<EXTREMELY
+DANGEROUS> and roughly equivalent to rm -rf on the arguments; for this
+reason the --force option cannot be combined with --all or a superproject
+argument.
+
+
+  --------------------------------------------------
+  gits release --just-ifpresent
+  gits release lib1
+  gits release -n --all
+  gits release /path/to/super2
+  --------------------------------------------------
+
+
+
+=head3 Remove a slave repository from top level master
+
+  gits detach [--force] SLAVE
+
+Do a `gits release` on SLAVE; if this succeeds, besides removing the slave
+repository from the local filesystem, also remove the slave from .gitignore
+and the .gitslave management file, so that it will not be used in
+subsequent gits activities.
+
+The --force option can be used to override the gits release check; if this
+is done, the repository will not be removed - only .gitignore and .gitslave
+will be affected.
+
+The --no-commit option will only remove the slave from .gitignore and
+.gitslave; those changes will not be committed, and the slave repository
+will not be removed from the local filesystem.
+
+
+ --------------------------------------------------
+ gits detach lib1
+ gits push
+ --------------------------------------------------
+
+The push in the example is to share the detach with other users.
 
 
 
@@ -3206,11 +3756,6 @@ attach, should not commit their changes after they make them.
 This flag requests that gits not hide information when similar (but not
 identical) output such as commit hashes is output for slave repositories.
 
-=head2 --no-master
-
-This flag requests that gits only run the listed command on the slave
-repositories and NOT the super/master/top repository.
-
 =head2 --no-progress
 
 This flag requests that gits NOT print a progress bar, which it does
@@ -3218,11 +3763,23 @@ by default for slow operations if Term::ProgressBar is loaded.  Slow
 operations are the checkout, fetch, pull(s), and push subcommands.
 You may use this flag for all operations.
 
+=head2 --no-master
+
+This flag requests that gits only run the listed command on the slave
+repositories and NOT the super/master/top repository.
+
 =head2 --with-ifpresent
 
 Operate also on those slave repositories which are marked as
 "ifpresent" even if they are not present.  This is mostly useful for
 `gits populate` and `gits checkout`.
+
+=head2 --just-ifpresent
+
+Operate I<only> on those slave repositories which are marked as
+"ifpresent" whether they are present or not.  This is mostly useful for
+`gits release`.  Note that this implies --no-master, and overrides
+--with-ifpresent.
 
 =head2 SUBCOMMAND [ARGS]...
 
