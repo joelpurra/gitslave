@@ -428,7 +428,7 @@ sub git_slave_list($;@)
   my (@gits);
   my (%seen);
   my (%vpresent);
-  grep($vpresent{$_}=1,@virtualpresent);
+  map($vpresent{$_}=1,@virtualpresent);
 
   $missingcount = $foundcount = 0;
 
