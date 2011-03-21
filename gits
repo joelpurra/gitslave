@@ -1566,6 +1566,17 @@ elsif ($ARGV[0] eq 'populate')
     @ARGV = grep(!/^--no-fromcheckout$/,@ARGV);
   }
 
+  # accept git option --with-ifpresent here too
+  if (grep(/^--with-ifpresent$/,@ARGV))
+  {
+    @ARGV = grep(!/^--with-ifpresent$/,@ARGV);
+    if (!$OPTIONS{'with-ifpresent'})
+    {
+      $OPTIONS{'with-ifpresent'} = 1;
+      @slaves = git_slave_list($ARGV[0]) if (!$#ARGV);
+    }
+  }
+
   if ($#ARGV > 0)
   {
     my $cmd = shift(@ARGV);
