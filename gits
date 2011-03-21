@@ -1251,8 +1251,8 @@ elsif ($ARGV[0] eq 'pulls')
   my $fetched;
   my $rebase;
   my $force = 0;
-  my @fetchargs = grep(/^-[qvaftku]|--(no-)?(quiet|verbose|append|force|tags|keep|update-head-ok|depth=.*|upload-pack=.*|)$/, @ARGV);
-  my @mergeargs = grep(/^-[n]|--(no-)?(stat|summary|log|commit|squash|ff|strategy=.*)$/, @ARGV);
+  my @fetchargs = grep(/^(-[qvaftku]+|--(no-)?(quiet|verbose|append|force|tags|keep|update-head-ok|depth=.*|upload-pack=.*))$/, @ARGV);
+  my @mergeargs = grep(/^(-[n]|--(no-)?(stat|summary|log|commit|squash|ff|strategy=.*))$/, @ARGV);
   my $rebasearg = " -p";
 
   # sort branches to list current branch of master repository first
