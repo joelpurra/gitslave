@@ -551,13 +551,15 @@ sub do_populate(;$)
 
     $curbranch = (grep(s/\s*\*\s+//, split(/\n/,getcmd("$git branch --no-color"))))[0] unless ($curbranch);
 
+    ($ret, $out) = getcmd(qq^cd "$slave" && $git branch --no-color | sort^);
+
     if (! -d $slave || (! -f "$slave/config" && ! -d "$slave/.git"))
     {
       print STDERR "gits: Cloning $slave\n" if ($OPTIONS{'verbose'});
       my ($repos) = resolve_repository($group->[0],$group->[1],undef,undef,$group->[2]);
       docmd(qq^$git clone $nocheckout "$repos" "$slave"^) || die "Could not clone $repos onto $slave\n";
 
-      my $subbranch = (grep(s/\s*\*\s+//, split(/\n/,getcmd(qq^cd "$slave" && $git branch --no-color^))))[0];
+      my $subbranch = (grep(s/\s*\*\s+//, split(/\n/,$out)))[0];
       if ($curbranch ne $subbranch && $curbranch !~ /no branch/)
       {
 	print qq^Switching "$slave" to branch "$curbranch"\n^;
@@ -573,7 +575,11 @@ sub do_populate(;$)
     }
     else
     {
-      my ($cursubbranch,$subbranch) = grep(s/^\s*\*\s+(.*)|\s+($curbranch)$/$1$2/, split(/\n/,getcmd(qq^cd "$slave" && $git branch --no-color | sort^)));
+      # handle case of failed fetch during clone (e.g. network connectivity)
+      docmd(qq^cd "$slave" && git fetch^) || die "Could not fetch remote\n"
+	if (!$out);
+
+      my ($cursubbranch,$subbranch) = grep(s/^\s*\*\s+(.*)|\s+($curbranch)$/$1$2/, split(/\n/,$out));
       if ($curbranch ne $cursubbranch && $curbranch !~ /no branch/ && !$nocheckout)
       {
 	print qq^Switching "$slave" to branch "$curbranch"\n^;
