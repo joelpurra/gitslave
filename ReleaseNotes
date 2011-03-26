@@ -1,4 +1,31 @@
 			       Gitslave
+			    Release 2.0.2
+			      2011-xx-xx
+
+
+
+			     New Features
+
+
+* gits release created to remove temporarily unwanted slave repositories
+
+Inspired by cvs release, provide a mechanism to delete on-disk
+repositories that are not wanted.  Often used with --just-ifpresent
+Tries to be safe by checking for several classes of pending changes.
+
+Note that this does not detach the slave repositories from the
+superproject.
+
+
+		    Features or Bugs of Minor Note
+
+* gits populate now understands --withifpresent
+
+* gits clone/populate now recovers from failed fetch during clone.
+
+
+
+			       Gitslave
 			    Release 2.0.1
 			      2011-03-26
 
