@@ -1,3 +1,25 @@
+* gits detach/release should not test state of unaffected repositories
+
+When releasing a specific named resource or a non-complete group of
+resources, it would be convenient if OTHER repositories didn't been to
+be clean to do so.  If you are `gits release sub2`, it should not matter
+whether . or sub3 have unpushed/uncommitted changes.
+
+When this is fixed, uncomment XXXdetach in the prep_gitscheck.
+
+
+* gits release should be able to release untracked slaves
+
+gits release currently can only release resources which are defined
+gitslave repositories on the local branch.  However, it would be
+convenient if you could ask for a sub-git repository which was NOT
+tracked by gitslave to be released.  The usage case is a repository
+which exists on one but not all branches.  If you get it when you
+switch to a particular branch, it is not removed when you switch to a
+different branch, it left around marked as "Untracked".  It would be
+nice to be able to release such a stale repository (if appropriately
+safe).
+
 * gits status --porcelain|--short breaks the gits porcelain
 
 gits status depends on decoration not present if --porcelain or

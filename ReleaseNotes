@@ -7,7 +7,7 @@
 			     New Features
 
 
-* gits release created to remove temporarily unwanted slave repositories
+* gits release created to remove temporarily unwanted project repositories
 
 Inspired by cvs release, provide a mechanism to delete on-disk
 repositories that are not wanted.  Often used with --just-ifpresent
