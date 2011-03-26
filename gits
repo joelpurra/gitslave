@@ -1440,13 +1440,22 @@ elsif ($ARGV[0] eq 'detach')
 
   die "gits detach requires one (slave) directory argument, which must exist\nUsage: gits detach [--force] SLAVE\n" if ($#ARGV != 1);
 
-  die "$ARGV[1] is not a git repository or does not exist\n" unless (-d "$ARGV[1]/.git");
-
   die "GITSLAVE environment variable specifies multiple files - cannot detach\n"
     if ($GITSLAVE =~ /, /);
 
+  my $slaveref = (grep($_->[1] eq $ARGV[1], @slaves))[0];
+
+  die "$ARGV[1] is not an attached git slave\n" unless ($slaveref);
+
+  if (-d "$ARGV[1]")
+  {
+    my $gitdir1 = `cd "$ARGV[1]/.."; x=\$($git rev-parse --git-dir); if [ -d "\$x" ]; then cd \$x; pwd; fi`;
+    my $gitdir2 = `cd "$ARGV[1]"; x=\$($git rev-parse --git-dir); if [ -d "\$x" ]; then cd \$x; pwd; fi`;
+    die "$ARGV[1] exists but is not a checked out git directory\n" unless ($gitdir1 ne $gitdir2);
+  }
+
   # <TODO>check whether it found slave directory at all?</TODO>
-  releasecheck($ARGV[0], $ARGV[1]) unless ($force);
+  releasecheck($ARGV[0], ($slaveref)) unless ($force);
 
   my $files = $GITS_DIR."/".$GITSLAVE;
   die "The gitslave file '$files', does not exist\n" unless (-f $files);
