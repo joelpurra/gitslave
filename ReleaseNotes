@@ -7,6 +7,21 @@
 			     New Features
 
 
+* gits now has --reference support
+
+Several gits commands (clone, populate, and attach) have been taught
+to understand the --reference argument as documented in the git-clone
+man page.  Clone and populate adjust the --reference=/path/to/superrepo
+argument as normal to provide the correct path to git.  Clone and
+populate also take the --referencecheckout=/path/to/superrepo argument
+which adjusts the path as if --fromcheckout rules were in effect.
+
+The purpose is to allow avoid lengthy network clones if you have the
+bits stored locally in one form or another.  Note that you may wish to
+`gits repack -a` as documented in the git-clone man page to remove the
+linkage.
+
+
 * gits release created to remove temporarily unwanted project repositories
 
 Inspired by cvs release, provide a mechanism to delete on-disk

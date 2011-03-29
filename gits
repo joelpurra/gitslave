@@ -229,17 +229,18 @@ sub find_remote_repo($$)
 # ../lib1
 # ^/src/repos/lib1
 #
-sub resolve_repository($$;$$$)
+sub resolve_repository($$;$$$$)
 {
-  my ($relrepos,$relative,$remote,$absrepos,$localbase) = @_;
+  my ($relrepos,$relative,$remote,$absrepos,$localbase,$myfromcheckout) = @_;
 
   $remote = "origin" unless ($remote);
 
-  $fromcheckout = get_fromcheckout($remote) unless defined($fromcheckout);
+  $myfromcheckout = $fromcheckout unless defined($myfromcheckout);
+  $myfromcheckout = get_fromcheckout($remote) unless defined($myfromcheckout);
 
-  $localbase = "." if (!$localbase || $fromcheckout);
+  $localbase = "." if (!$localbase || $myfromcheckout);
 
-  if ($fromcheckout)
+  if ($myfromcheckout)
   {
     $relrepos = $relative;
   }
@@ -532,10 +533,10 @@ sub quoteit(@)
 #
 # Populate - clone projects listed in .gitslaves
 #
-sub do_populate(;$);
-sub do_populate(;$)
+sub do_populate(;$$);
+sub do_populate(;$$)
 {
-  my ($nocheckout)=@_;
+  my ($nocheckout,$reference)=@_;
   my $curbranch;
   our %hooked;
   my $wanthooks;
@@ -555,7 +556,12 @@ sub do_populate(;$)
     {
       print STDERR "gits: Cloning $slave\n" if ($OPTIONS{'verbose'});
       my ($repos) = resolve_repository($group->[0],$group->[1],undef,undef,$group->[2]);
-      docmd(qq^$git clone $nocheckout "$repos" "$slave"^) || die "Could not clone $repos onto $slave\n";
+      my ($refarg) = "";
+      if ($reference)
+      {
+	$refarg = "--reference ".quoteit(resolve_repository($group->[0],$group->[1],undef,$reference->[0],$group->[2],$reference->[1]));
+      }
+      docmd(qq^$git clone $refarg $nocheckout "$repos" "$slave"^) || die "Could not clone $repos onto $slave\n";
 
       ($ret, $out) = getcmd(qq^cd "$slave" && $git branch --no-color | sort^);
 
@@ -623,7 +629,7 @@ sub do_populate(;$)
     my ($oldfoundcount) = $foundcount;
     @slaves = git_slave_list($ARGV[0]);
     git_slave_list("errorme") if ($missingcount && $foundcount <= $oldfoundcount);
-    do_populate($nocheckout);
+    do_populate($nocheckout,$reference);
   }
 }
 
@@ -1359,6 +1365,9 @@ elsif ($ARGV[0] eq 'prepare')
 elsif ($ARGV[0] eq 'attach')
 {
   my $include;
+  my $reference = "";
+
+print STDERR "HERE0\n";
 
   if ($include = (grep(/^--recursive=(.+)$/,@ARGV))[0])
   {
@@ -1366,6 +1375,15 @@ elsif ($ARGV[0] eq 'attach')
     die "--recursive argument may not have directory components: it must be in base of new slave\n" if ($include =~ m:/:);
     @ARGV = grep(!/^--recursive=.+$/,@ARGV);
   }
+
+  # Try to save bandwidth
+  if ($reference = (grep(/^--reference=.*$/,@ARGV))[0])
+  {
+    $reference = quoteit($reference);
+    @ARGV = grep(!/^--reference=.*/,@ARGV);
+  }
+
+print STDERR "HERE1\n";
 
   die "gits attach requires at least two non-option arguments\nUsage: gits attach [--recursive=FILENAME] REPOSITORY LOCALPATH [FLAGS]\n" if ($#ARGV < 2 || !$ARGV[1] || !$ARGV[2]);
   my ($repos) = resolve_repository($ARGV[1],$ARGV[2]);
@@ -1381,7 +1399,8 @@ elsif ($ARGV[0] eq 'attach')
     die "Destination parent ($1) does not exist\n" if (!-d $1);
   }
   my $files = $GITS_DIR."/".$GITSLAVE;
-  docmd(qq^$git clone "$repos" "$ARGV[2]"^) || die "Could not clone $repos onto $ARGV[2]\n";
+print STDERR "HERE2\n";
+  docmd(qq^$git clone $reference @{[quoteit($repos)]} @{[quoteit($ARGV[2])]}^) || die "Could not clone $repos onto $ARGV[2]\n";
 
   open(W, ">>", $files);
   print W qq^"$ARGV[1]" "$ARGV[2]"^;
@@ -1515,6 +1534,7 @@ elsif ($ARGV[0] eq 'clone')
 {
   my $nohooks;
   my $fromcheckout;
+  my $reference;
   if (grep(/^--nohooks$/,@ARGV))
   {
     $nohooks=1;
@@ -1533,8 +1553,12 @@ elsif ($ARGV[0] eq 'clone')
     @ARGV = grep(!/^--no-fromcheckout$/,@ARGV);
   }
 
-  my ($ret,$out) = getcmd(qq^$git ^.quoteit(@ARGV));
-  print STDERR $out;
+  $reference=(grep(/^--reference(checkout)=(.*)$/,@ARGV))[0];
+  my (@cARGV) = @ARGV;
+  grep(s/--referencecheckout=/--reference=/,@cARGV);
+
+  my ($ret,$out) = getcmd(qq^$git ^.quoteit(@cARGV));
+  print STDERR $out unless ($OPTIONS{'quiet'});
   if ($ret != 0 ||
       ($out !~ /^Cloning into (.*)\.\.\.\n/
        && $out !~ m^Initialized empty Git repository in (.*)/\.git/\n^))
@@ -1552,19 +1576,29 @@ elsif ($ARGV[0] eq 'clone')
   {
     if ($arg eq "exclude" || $arg eq "parallel")
     {
-      $cmd .= qq^'--$arg=$OPTIONS{"$arg"}' ^;
+      $cmd .= quoteit("--$arg=".$OPTIONS{"$arg"})." ";
     }
     else
     {
-      $cmd .= "--$arg ";
+      my $cnt = $OPTIONS{$arg};
+      while ($cnt--)
+      {
+	$cmd .= "--$arg ";
+      }
     }
   }
   $cmd .= "populate";
+  if ($reference)
+  {
+    $cmd .= " ".quoteit($reference);
+  }
   docmd($cmd);
 }
 ##################################################
 elsif ($ARGV[0] eq 'populate')
 {
+  my ($reference);
+
   if (grep(/^--nohooks$/,@ARGV))
   {
     docmd(qq^$git config gits.nohooks 1^);
@@ -1594,13 +1628,21 @@ elsif ($ARGV[0] eq 'populate')
     }
   }
 
+  # Try to save bandwidth
+  if ($reference = (grep(/^--reference(checkout)=.*$/,@ARGV))[0])
+  {
+    $reference =~ s/--reference(checkout)=//;
+    $reference = [$reference,$1];
+    @ARGV = grep(!/^--reference(checkout)=.*/,@ARGV);
+  }
+
   if ($#ARGV > 0)
   {
     my $cmd = shift(@ARGV);
     @slaves = git_slave_list($cmd,@ARGV);
   }
 
-  do_populate();
+  do_populate(undef,$reference);
 }
 ##################################################
 elsif ($ARGV[0] eq 'release')
@@ -3239,7 +3281,7 @@ is:
 
 =head3 Clone a gits project
 
-gits clone [--[no-]fromcheckout] [--nohooks] SUPERPROJECT-URL
+gits clone [--[no-]fromcheckout] [--nohooks] [--reference[checkout]=/path/to/superrepo] SUPERPROJECT-URL
 
 This command clones an existing superproject and all associated slave
 repositories.  It runs `git clone` on the arguments you provide
@@ -3262,6 +3304,17 @@ repositories.  Adding --nohooks will disable this management.
 The gits option --with-ifpresent can be used with this command to populate
 all conditional slave repositories (those marked with ifpresent flag).
 
+The clone option --reference=/path works like the `git clone
+--reference` option, except obviously it modifies the path based on
+the normal rules for upstream repository construction.  You must use
+equals to seperate the argument from the path, not space like you can
+with git.
+
+The clone option --referencecheckout=/path works like the `git clone
+--reference` option, except obviously it modifies the path based on
+the normal rules for checked out repository construction.  You must use
+equals to seperate the argument from the path, not space like you can
+with git.
 
 
 =head3 Initialize a gits project
@@ -3283,7 +3336,7 @@ projects.
 
 =head3 Add a slave repository to top level master
 
-  gits attach [--recursive=FILENAME] REPOSITORY LOCALPATH [FLAGS]
+  gits attach [--recursive=FILENAME] [--reference=/path/to/repository] REPOSITORY LOCALPATH [FLAGS]
 
 Clone the named git repository into the named local directory, and set
 it up for further gits operations.
@@ -3311,6 +3364,11 @@ master underneath the top-level gitslave master.  The filename will
 typically be ".gitslave".  It is relative to the localpath
 you checked out and must not have any / in it.
 
+The attach option --reference=/path works exactly like the `git clone
+--reference` option.  In fact that argument will be passed as-is to
+the `git clone` command.  You must use equals to seperate the argument
+from the path, not space like you can with git.
+
  --------------------------------------------------
  gits attach ../lib1.git lib1
  gits attach ^/src/repos/lib2.git lib2
@@ -3324,7 +3382,7 @@ The push in the example is to share the attach with other users.
 
 =head3 Checkout any slave repositories that may have been added
 
-  gits populate [--[no-]fromcheckout] [--nohooks] [SLAVES]...
+  gits populate [--[no-]fromcheckout] [--nohooks] [--reference[checkout]=/path/to/superrepo] [SLAVES]...
 
 Go through the list of configured slaves and check out (clone) any which have
 not already been retrieved.
@@ -3343,6 +3401,17 @@ on the command line.
 By default, if there is a git-hooks directory present in the superproject,
 hooks there will be symlinked into the .git/hooks directory in all related
 repositories.  Adding --nohooks will disable this management.
+
+The option --reference=/path works like the `git clone --reference`
+option, except obviously it modifies the path based on the normal
+rules for upstream repository construction.  You must use equals to
+seperate the argument from the path, not space like you can with git.
+
+The option --referencecheckout=/path works like the `git clone
+--reference` option, except obviously it modifies the path based on
+the normal rules for checked out repository construction.  You must
+use equals to seperate the argument from the path, not space like you
+can with git.
 
   --------------------------------------------------
   gits populate

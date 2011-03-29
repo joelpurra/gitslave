@@ -405,12 +405,16 @@ gits attach ../sub21 sub21
 gits attach --recursive=.gitslave ../../master/top submastertop ifpresent
 gits populate
 gits push
+: Try out attach reference
+gits attach --reference=$BASE/checkdir/slave3 --recursive=.gitslave ../../master/top submastertop2
 : "Now done with optional component"
 gits release --just-ifpresent
 : "Person 2 takes a look"
 cd ..
-gits clone $BASE/checkdir/master2/top2 superopt2
+gits clone --referencecheckout=$BASE/checkdir/superopt $BASE/checkdir/master2/top2 superopt2
 cd superopt2
+# Clean up after the reference
+gits repack -a
 find . -name datelist | while read f; do echo $f; date >> $f; done
 gits commit -a -m "superopt update"
 gits push
