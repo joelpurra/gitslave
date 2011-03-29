@@ -249,7 +249,7 @@ sub resolve_repository($$;$$$$)
   return $relrepos if ($relrepos =~ m-^(/|.+?:)-);
 
   # Find upstream origin URL
-  $absrepos = find_remote_repo($remote,$localbase) if (!$absrepos || $localbase ne ".");
+  $absrepos = find_remote_repo($remote,$localbase) if (!$absrepos || ($localbase ne "." && $localbase ne $GITS_DIR));
 
   # Nuke trailing .git, if necessary
   $absrepos =~ s:/\.git$::;
@@ -1367,8 +1367,6 @@ elsif ($ARGV[0] eq 'attach')
   my $include;
   my $reference = "";
 
-print STDERR "HERE0\n";
-
   if ($include = (grep(/^--recursive=(.+)$/,@ARGV))[0])
   {
     $include =~ s/--recursive=//;
@@ -1382,8 +1380,6 @@ print STDERR "HERE0\n";
     $reference = quoteit($reference);
     @ARGV = grep(!/^--reference=.*/,@ARGV);
   }
-
-print STDERR "HERE1\n";
 
   die "gits attach requires at least two non-option arguments\nUsage: gits attach [--recursive=FILENAME] REPOSITORY LOCALPATH [FLAGS]\n" if ($#ARGV < 2 || !$ARGV[1] || !$ARGV[2]);
   my ($repos) = resolve_repository($ARGV[1],$ARGV[2]);
@@ -1399,7 +1395,6 @@ print STDERR "HERE1\n";
     die "Destination parent ($1) does not exist\n" if (!-d $1);
   }
   my $files = $GITS_DIR."/".$GITSLAVE;
-print STDERR "HERE2\n";
   docmd(qq^$git clone $reference @{[quoteit($repos)]} @{[quoteit($ARGV[2])]}^) || die "Could not clone $repos onto $ARGV[2]\n";
 
   open(W, ">>", $files);
@@ -1553,7 +1548,7 @@ elsif ($ARGV[0] eq 'clone')
     @ARGV = grep(!/^--no-fromcheckout$/,@ARGV);
   }
 
-  $reference=(grep(/^--reference(checkout)=(.*)$/,@ARGV))[0];
+  $reference=(grep(/^--reference(checkout)?=(.*)$/,@ARGV))[0];
   my (@cARGV) = @ARGV;
   grep(s/--referencecheckout=/--reference=/,@cARGV);
 
@@ -1629,11 +1624,11 @@ elsif ($ARGV[0] eq 'populate')
   }
 
   # Try to save bandwidth
-  if ($reference = (grep(/^--reference(checkout)=.*$/,@ARGV))[0])
+  if ($reference = (grep(/^--reference(checkout)?=.*$/,@ARGV))[0])
   {
-    $reference =~ s/--reference(checkout)=//;
+    $reference =~ s/--reference(checkout)?=//;
     $reference = [$reference,$1];
-    @ARGV = grep(!/^--reference(checkout)=.*/,@ARGV);
+    @ARGV = grep(!/^--reference(checkout)?=.*/,@ARGV);
   }
 
   if ($#ARGV > 0)
