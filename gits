@@ -1765,7 +1765,7 @@ elsif ($ARGV[0] eq 'release')
     }
 
     # a single . indicates that master is being removed
-    if ($all || grep(/^.$/,@list))
+    if (($all && !$OPTIONS{'no-master'}) || grep(/^.$/,@list))
     {
       print $not . "removing $GITS_DIR (and slaves)\n";
       docmd($echo . qq^rm -rf -- ^ . quoteit($GITS_DIR));
