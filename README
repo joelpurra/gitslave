@@ -52,7 +52,7 @@ OVERVIEW
 
    Clone a gits project
     gits clone [--[no-]fromcheckout] [--nohooks]
-    [--reference[checkout]=/path/to/superrepo] SUPERPROJECT-URL
+    [--reference[checkout]=PATH] SUPERPROJECT-URL
 
     This command clones an existing superproject and all associated slave
     repositories. It runs `git clone` on the arguments you provide (allowing
@@ -76,16 +76,18 @@ OVERVIEW
     populate all conditional slave repositories (those marked with ifpresent
     flag).
 
-    The clone option --reference=/path works like the `git clone
-    --reference` option, except obviously it modifies the path based on the
-    normal rules for upstream repository construction. You must use equals
-    to seperate the argument from the path, not space like you can with git.
+    The clone options --reference=PATH or --referencecheckout=PATH work like
+    the `git clone --reference` option, modifying the path based on the
+    normal rules (the --fromcheckout rules are used with
+    --referencecheckout) for upstream repository construction. You must use
+    equals (=) to separate the PATH argument from the option, you cannot use
+    whitespace as allowed by git.
 
-    The clone option --referencecheckout=/path works like the `git clone
-    --reference` option, except obviously it modifies the path based on the
-    normal rules for checked out repository construction. You must use
-    equals to seperate the argument from the path, not space like you can
-    with git.
+    The purpose of the --reference options is to avoid lengthy network
+    copies if you already have a local repository. Note that the use of
+    shared repositories created by --reference is potentially dangerous; see
+    the notes on --shared in the git-clone man page and consider running
+    `gits repack -a` to remove these linkages.
 
    Initialize a gits project
     gits prepare
@@ -101,7 +103,7 @@ OVERVIEW
       --------------------------------------------------
 
    Add a slave repository to top level master
-      gits attach [--recursive=FILENAME] [--reference=/path/to/repository] REPOSITORY LOCALPATH [FLAGS]
+      gits attach [--recursive=FILENAME] [--reference=PATH] REPOSITORY LOCALPATH [FLAGS]
 
     Clone the named git repository into the named local directory, and set
     it up for further gits operations.
@@ -129,10 +131,16 @@ OVERVIEW
     ".gitslave". It is relative to the localpath you checked out and must
     not have any / in it.
 
-    The attach option --reference=/path works exactly like the `git clone
-    --reference` option. In fact that argument will be passed as-is to the
-    `git clone` command. You must use equals to seperate the argument from
-    the path, not space like you can with git.
+    The attach option --reference=PATH works exactly like the `git clone
+    --reference` option. In fact this option will be passed as-is to the
+    `git clone` command. You must use equals (=) to separate the PATH
+    argument from the option, you cannot use whitespace as allowed by git.
+
+    The purpose of the --reference option is to avoid lengthy network copies
+    if you already have a local repository. Note that the use of shared
+    repositories created by --reference is potentially dangerous; see the
+    notes on --shared in the git-clone man page and consider running `gits
+    repack -a` to remove these linkages.
 
      --------------------------------------------------
      gits attach ../lib1.git lib1
@@ -144,7 +152,7 @@ OVERVIEW
     The push in the example is to share the attach with other users.
 
    Checkout any slave repositories that may have been added
-      gits populate [--[no-]fromcheckout] [--nohooks] [--reference[checkout]=/path/to/superrepo] [SLAVES]...
+      gits populate [--[no-]fromcheckout] [--nohooks] [--reference[checkout]=PATH] [SLAVES]...
 
     Go through the list of configured slaves and check out (clone) any which
     have not already been retrieved.
@@ -165,16 +173,18 @@ OVERVIEW
     directory in all related repositories. Adding --nohooks will disable
     this management.
 
-    The option --reference=/path works like the `git clone --reference`
-    option, except obviously it modifies the path based on the normal rules
-    for upstream repository construction. You must use equals to seperate
-    the argument from the path, not space like you can with git.
+    The populate options --reference=PATH or --referencecheckout=PATH work
+    like the `git clone --reference` option, modifying the path based on the
+    normal rules (the --fromcheckout rules are used with
+    --referencecheckout) for upstream repository construction. You must use
+    equals (=) to separate the PATH argument from the option, you cannot use
+    whitespace as allowed by git.
 
-    The option --referencecheckout=/path works like the `git clone
-    --reference` option, except obviously it modifies the path based on the
-    normal rules for checked out repository construction. You must use
-    equals to seperate the argument from the path, not space like you can
-    with git.
+    The purpose of the --reference options is to avoid lengthy network
+    copies if you already have a local repository. Note that the use of
+    shared repositories created by --reference is potentially dangerous; see
+    the notes on --shared in the git-clone man page and consider running
+    `gits repack -a` to remove these linkages.
 
       --------------------------------------------------
       gits populate
