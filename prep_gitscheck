@@ -153,10 +153,9 @@ gits populate
 if gits status | grep ' != slave branch'; then exit 1; fi
 : "Person 3 wants to nuke remove sub2"
 gits detach sub2
-# XXXdetach - cannot perform this test until release/detach can work when "other" changes are pending
-#: "Person 3 wants to nuke remove sub3 the hard way"
-#gits release sub3
-#gits detach sub3
+: "Person 3 wants to nuke remove sub3 the hard way"
+gits release sub3
+gits detach sub3
 : "Test a few relative URL schemes"
 gits remote add ssher ssh://example.com/repo/dir
 gits remote add ssheru ssh://user@example.com/repo/dir

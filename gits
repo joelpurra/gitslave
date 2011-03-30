@@ -1471,6 +1471,7 @@ elsif ($ARGV[0] eq 'detach')
   }
 
   # <TODO>check whether it found slave directory at all?</TODO>
+  $OPTIONS{'no-master'} = 1;
   releasecheck($ARGV[0], ($slaveref)) unless ($force);
 
   my $files = $GITS_DIR."/".$GITSLAVE;
@@ -1722,6 +1723,7 @@ elsif ($ARGV[0] eq 'release')
       my @bad = grep(/^\.|[\r\n;'"`]/, @ARGV);
       die "Illegal slave name: " . quoteit(@bad) . $usage if (@bad);
       @list = ();
+      $OPTIONS{'no-master'} = 1;
       foreach my $slave (@ARGV)
       {
 	die "Not a git repository: $slave" . $usage
