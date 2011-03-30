@@ -913,9 +913,9 @@ sub releasecheck($@)
     }
 
     my $bad;
-    if ($msg =~ /^\# Your branch/)
+    if ($msg =~ /^\# Your branch(.*)\n/)
     {
-      if ($msg !~ / can be fast-forwarded/)
+      if ($1 !~ / can be fast-forwarded/)
       {
 	$bad = 1;
 	push(@unpushed, $repo);
@@ -1082,17 +1082,19 @@ sub releasecheck($@)
       $msg =~ s/Switched to branch.*\n//;
       $msg =~ s/Already on \".*\n//;
 
+      my $bad;
       my ($premove);
       if ($msg =~ /^Your branch(.*)\n/)
       {
 	if ($1 !~ / can be fast-forwarded/)
 	{
+	  $bad = 1;
 	  push(@unpushed, "$branch\@$repo");
 	  $unclean = 1;
-	  while ($msg =~ s/^(.*\S.*\n)//)
-	  {
-	    $premove .= "# " . $1;
-	  }
+	}
+	while ($msg =~ s/^(.*\S.*\n)//)
+	{
+	  $premove .= "# " . $1 if ($bad);
 	}
 	$msg =~ s/^\#?\s*\n//;
       }
