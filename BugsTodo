@@ -10,6 +10,21 @@ different branch, it left around marked as "Untracked".  It would be
 nice to be able to release such a stale repository (if appropriately
 safe).
 
+
+* gits detach/release should not use rm -rf
+
+The current use of rm -rf to remove repositories is overkill, and can
+lead to bad consequences in some cases; if two repositories are nested
+(e.g. sub4 and sub4/sub1) and you release or detach sub4, only the
+sub4 repository will be checked, but sub4/sub1 will be removed by rm -rf.
+If git itself had some way to handle this, that would be ideal, but
+git clean doesn't really cut it.  Something with find and checking for
+.git directories would be better.  If a better solution were found,
+that properly handles nested repositories, it would also be possible
+to eliminate the "all or nothing" semantics for release, allowing
+partial release to be performed safely.
+
+
 * gits status --porcelain|--short breaks the gits porcelain
 
 gits status depends on decoration not present if --porcelain or
