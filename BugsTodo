@@ -1,3 +1,10 @@
+* gits release should be able to release non-existent directory
+
+`gits release foo bar` if foo does not exist should not be an error
+and should continue to release bar (or if bar also does not exist,
+exit with success).  Warning, perhaps if you like that sort of thing,
+but not an error.
+
 * gits release should be able to release untracked slaves
 
 gits release currently can only release resources which are defined
