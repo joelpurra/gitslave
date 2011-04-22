@@ -3086,7 +3086,15 @@ elsif ($ARGV[0] eq 'clean')
 
   if (!$COPTIONS{'n'} && $#unlinkers >= 0)
   {
-    rmtree(\@unlinkers, $OPTIONS{'verbose'}) || die "Cannot unlink";
+    # clean up Carp::carp messages from File::Path rmtree
+    open(STDERR, "| sed 's/ at [^ ]*gits line [0-9]*\$//'");
+    eval { rmtree(\@unlinkers, $OPTIONS{'verbose'}); };
+    die "$@\n" if ($@);
+    foreach my $path (@unlinkers)
+    {
+      die "Could not remove all paths\n" if (-e $path);
+    }
+    close(STDERR);
   }
 
   stdout(\%msg);
