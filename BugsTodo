@@ -1,9 +1,19 @@
+* Create gits autoattach
+
+For people who have manually assembled a superproject with subprojects
+already in place, create a convenient command which goes through and
+attempts to set up the configuration for each of the (new) existing
+subprojects.  Use origin's URL for the gitslave URL and try to deduce
+a relative relationship between the URLs.
+
+
 * gits release should be able to release non-existent directory
 
 `gits release foo bar` if foo does not exist should not be an error
 and should continue to release bar (or if bar also does not exist,
 exit with success).  Warning, perhaps if you like that sort of thing,
 but not an error.
+
 
 * gits release should be able to release untracked slaves
 
