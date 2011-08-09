@@ -525,6 +525,15 @@ DESCRIPTION
     Ask for less information, which currently means discarding the STDERR of
     some of the administrative git commands which are executed.
 
+  --rawout
+    Do not go through output summariziation ("On repo" and leading spaces)
+    for most gitslave commands. Note that the output may currently not be in
+    the same repository order as it was originally. Implies --no-hide
+
+    Often used for post-processing output. Example:
+
+      rsync -aR `gits --rawout exec sh -c 'git ls-tree -r --name-only HEAD | sed "s:^:%%dir%%/:"'` otherhost:/otherdir
+
   --help
     Print gits usage summary and details of gits options and substitutions
     from this documentation, then exit.

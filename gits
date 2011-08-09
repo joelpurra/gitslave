@@ -52,7 +52,7 @@ our($GITSLAVE) = $ENV{'GITSLAVE'}||GITSLAVE;
 our($GITS_DIR);
 my($TOP);
 our(@slaves);
-my($USAGE) = "Usage: gits [-p|--parallel COUNT] [-v|--verbose]+ [--quiet] [--help] [--version]\n".
+my($USAGE) = "Usage: gits [-p|--parallel COUNT] [-v|--verbose]+ [--quiet] [--rawout] [--help] [--version]\n".
 "\t[-n|--no-pager] [--paginate] [--eval-args] [--exclude SLAVE-REGEXP]\n".
 "\t[--keep-going] [--no-commit] [--no-hide] [--no-progress]\n".
 "\t[--no-master] [--with-ifpresent|--just-ifpresent] SUBCOMMAND [ARGS]...\n";
@@ -807,6 +807,14 @@ sub stdout($;$)
 
   foreach my $msg (sort { $#{$msgp->{$a}} <=> $#{$msgp->{$b}} } keys %{$msgp})
   {
+    if ($OPTIONS{'rawout'})
+    {
+      foreach my $repos (@{$msgp->{$msg}})
+      {
+	print $msg;
+      }
+      next;
+    }
     $keys--;
     if ($suppressempty && !$OPTIONS{'verbose'} && $msg eq "")
     {
@@ -1155,7 +1163,7 @@ sub releasecheck($@)
 # Main functionality
 #
 Getopt::Long::Configure("bundling", "no_ignore_case", "no_auto_abbrev", "no_getopt_compat", "require_order");
-GetOptions(\%OPTIONS, 'parallel|p=i', 'verbose|v+', 'quiet', 'help', 'version',
+GetOptions(\%OPTIONS, 'parallel|p=i', 'verbose|v+', 'quiet', 'rawout', 'help', 'version',
 	   'pager|paginate!', 'n', 'eval-args', 'exclude=s', 'keep-going',
 	   'no-commit', 'no-hide', 'no-progress', 'press-on',
 	   'no-master', 'with-ifpresent', 'just-ifpresent') || die $USAGE;
@@ -1163,6 +1171,8 @@ GetOptions(\%OPTIONS, 'parallel|p=i', 'verbose|v+', 'quiet', 'help', 'version',
 # to limitations of GetOptions API - the last explicit option overrides -n,
 # even if -n comes after the last explicit option.  Note that -n is *also*
 # interpreted as --no-commit for the `gits release` subcommand (only).
+
+$OPTIONS{'no-hide'} = 1 if ($OPTIONS{'rawout'});
 
 while ($ARGV[0] =~ /^--/)
 {
@@ -1383,7 +1393,7 @@ elsif ($ARGV[0] eq 'attach')
     @ARGV = grep(!/^--reference=.*/,@ARGV);
   }
 
-  die "gits attach requires at least two non-option arguments\nUsage: gits attach [--recursive=FILENAME] REPOSITORY LOCALPATH [FLAGS]\n" if ($#ARGV < 2 || !$ARGV[1] || !$ARGV[2]);
+  die "gits attach requires at least two non-option arguments\nUsage: gits attach [--reference=PATH] [--recursive=FILENAME] REPOSITORY LOCALPATH [FLAGS]\n" if ($#ARGV < 2 || !$ARGV[1] || !$ARGV[2]);
   my ($repos) = resolve_repository($ARGV[1],$ARGV[2]);
   die "Unknown flag $ARGV[3] (only flag is 'ifpresent')\n"
     if ($ARGV[3] && $ARGV[3] ne "ifpresent");
@@ -3803,6 +3813,16 @@ print the data being returned from them.
 
 Ask for less information, which currently means discarding the STDERR
 of some of the administrative git commands which are executed.
+
+=head2 --rawout
+
+Do not go through output summariziation ("On repo" and leading spaces)
+for most gitslave commands.  Note that the output may currently not be
+in the same repository order as it was originally.  Implies --no-hide
+
+Often used for post-processing output.  Example:
+
+  rsync -aR `gits --rawout exec sh -c 'git ls-tree -r --name-only HEAD | sed "s:^:%%dir%%/:"'` otherhost:/otherdir
 
 =head2 --help
 
