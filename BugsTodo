@@ -1,3 +1,17 @@
+* Windows
+
+Gits purportedly works with strawberry-perl on windows.  The
+installation Makefile probably doesn't work usefully and test scripts
+probably do not work without Cygwin.  However, gits itself does, for
+public URLs.  Private URLs which use '\' for path separators do not
+support relative URLs.
+
+* Inappropriate/hanging pager use
+
+If a user has $LESS defined to something like "-MM", all gitslave
+commands will hang, probably on a blank screen, especially if they
+produce no output.  The -F option appears to be basically required.
+
 * Create gits autoattach
 
 For people who have manually assembled a superproject with subprojects

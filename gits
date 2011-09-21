@@ -121,6 +121,22 @@ sub gitsubst($$)
     $data =~ s/$pattern/$subst/g;
   }
 
+  $pattern = quotemeta('%%upstream%%');
+  if ($data =~ /$pattern/)
+  {
+    my $subst = scalar(`cd "$slave" && $git config remote.origin.url`);
+    chomp($subst);
+    $data =~ s/$pattern/$subst/g;
+  }
+
+  $pattern = quotemeta('%%upstream_base%%');
+  if ($data =~ /$pattern/)
+  {
+    my $subst = basename(scalar(`cd "$slave" && $git config remote.origin.url`));
+    chomp($subst);
+    $data =~ s/$pattern/$subst/g;
+  }
+
   $data;
 }
 
@@ -3936,13 +3952,22 @@ typically the last component of %%dir%% except for the superproject
 for which it is whatever the last directory name of the path to the
 superproject.
 
+%%upstream%% represents the URL to the origin repository for the
+repository in question.
+
+%%upstream_base%% represents the basename to the URL to the origin
+repository for the repository in question.
+
+  # Create a shadow set of bare repositories locally w/o massive transfers from origin
+  gits exec git clone --bare --reference=%%path%% %%upstream%% /tmp/r/%%upstream_base%%
+
 Also see --eval-args for an option to support standard shell `cmd`
 and $VARIABLE expansion where it might otherwise be quoted.  Run the
 following commmands to see the difference:
 
-gits exec echo '`ls -ld $PWD`'
+  gits exec echo '`ls -ld $PWD`'
 
-gits --eval-args exec echo '`ls -ld $PWD`'
+  gits --eval-args exec echo '`ls -ld $PWD`'
 
 =head1 BUGS
 
