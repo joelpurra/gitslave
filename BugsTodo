@@ -6,11 +6,13 @@ probably do not work without Cygwin.  However, gits itself does, for
 public URLs.  Private URLs which use '\' for path separators do not
 support relative URLs.
 
+
 * Inappropriate/hanging pager use
 
 If a user has $LESS defined to something like "-MM", all gitslave
 commands will hang, probably on a blank screen, especially if they
 produce no output.  The -F option appears to be basically required.
+
 
 * Create gits autoattach
 
@@ -19,6 +21,27 @@ already in place, create a convenient command which goes through and
 attempts to set up the configuration for each of the (new) existing
 subprojects.  Use origin's URL for the gitslave URL and try to deduce
 a relative relationship between the URLs.
+
+
+* gits chown to fix ownership
+
+This could also be something added to git itself, I suppose, but
+it may be easier to do in gitslave.  When doing a make install as
+root, ownership of version-tracked files may be set to root, and
+this can cause problems for git commands (reset, etc.).  It would be
+nice to have all version-tracked (or not explicitly ignored) files
+(and all not-ignored directories) change ownership to the real user,
+as determined by real uid (if != effective uid) or $USER/$LOGNAME,
+if not explicitly specified on command line.
+
+Further complicating this is that after performing a manual chown,
+the ctime on many or all files is updated, which can cause some git
+operations (notably reset --hard or checkout) to force the checkout
+of many or all of the files in a repository.  Some way of "touching"
+the git status cache for these files to prevent that would be nice.
+(It is possible that the problem is actually due to ctime update on
+.git/ repository files after a chmod -R, so that a limited update in
+`gits chown` might eliminate this problem without an explicit fix.)
 
 
 * gits release should be able to release non-existent directory
