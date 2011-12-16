@@ -20,13 +20,6 @@ Getting the system fully (or at least generally) supporting windows
 would be very nice.
 
 
-* Inappropriate/hanging pager use
-
-If a user has $LESS defined to something like "-MM", all gitslave
-commands will hang, probably on a blank screen, especially if they
-produce no output.  The -F option appears to be basically required.
-
-
 * Create gits autoattach
 
 For people who have manually assembled a superproject with subprojects
