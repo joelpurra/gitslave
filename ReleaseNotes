@@ -26,10 +26,27 @@ linkage.
 
 Inspired by cvs release, provide a mechanism to delete on-disk
 repositories that are not wanted.  Often used with --just-ifpresent
-Tries to be safe by checking for several classes of pending changes.
+Tries to be safe by checking for several classes of pending changes
+but deleting stuff is always risky.
 
 Note that this does not detach the slave repositories from the
 superproject.
+
+
+* gits now understands --rawout
+
+Rawout asks for gitslave to not go though output summarization ("On
+repo" and leading spaces) for most gitslave commands.  Note that the
+output may currently not be in the same repository order as it was
+originally.  Implies --no-hide.  Often used for post-processing output.
+
+
+* Limited windows support
+
+Multiple users have been successful in using gitslave with Windows.
+This is "supported" only in the sense that people have reported it to
+work and we accept bugfixes, not that it is QAed prior to release.
+
 
 
 		    Features or Bugs of Minor Note
@@ -38,6 +55,11 @@ superproject.
 
 * gits clone/populate now recovers from failed fetch during clone.
 
+* gits can now understand .gitslave files with DOS style line endings
+
+* gits no longer tries to pass -K to less on Windows.
+
+* gits now disables paging for subsidiary git commands, just in case.
 
 
 			       Gitslave
