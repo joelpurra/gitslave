@@ -45,7 +45,8 @@ originally.  Implies --no-hide.  Often used for post-processing output.
 
 Multiple users have been successful in using gitslave with Windows.
 This is "supported" only in the sense that people have reported it to
-work and we accept bugfixes, not that it is QAed prior to release.
+work and we accept bugfixes, not that you can `make` install or check,
+or that it is QAed on this platform prior to release.
 
 
 

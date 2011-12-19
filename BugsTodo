@@ -10,9 +10,9 @@ ASCII formatting.
 
 * Windows
 
-Gits purportedly works with strawberry-perl on windows.  The
-installation Makefile probably doesn't work usefully and test scripts
-probably do not work without Cygwin.  However, gits itself does, for
+Gits purportedly works with strawberry-perl and msysgit's perl on
+windows.  The installation Makefile doesn't work usefully and test
+scripts probably also do not work.  However, gits itself does, for
 public URLs.  Private URLs which use '\' for path separators do not
 support relative URLs.
 
