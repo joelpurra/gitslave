@@ -1269,7 +1269,7 @@ if ($pagination && -t STDOUT && open(TTY, "</dev/tty"))
   $PAGER = $ENV{'GIT_PAGER'} if (defined $ENV{'GIT_PAGER'});
 
   # Windows less doesn't seem to have -K
-  if ($^O ne "MSWin32" && $^O ne "cygwin")
+  if ($^O ne "MSWin32" && $^O ne "cygwin" && $^O ne "msys")
   {
     # for less, explicitly add -K so that SIGINT will terminate (and cleanup)
     $PAGER .= " -K" if ($PAGER =~ m!^([^\s\(\`;]*/)?less([-+\$\w ]*)?$!);
