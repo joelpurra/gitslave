@@ -1277,16 +1277,14 @@ if ($pagination && -t STDOUT && open(TTY, "</dev/tty"))
 
   if ($PAGER && $PAGER ne "cat")
   {
+    my $lessenv = $ENV{'LESS'} || "FRSX";
+
+    # gits is pretty unusable without -F, and -F requires -X
+    $lessenv =~ s/^(-?)/${1}X/ if $lessenv !~ /X/;
+    $lessenv =~ s/^(-?)/${1}F/ if $lessenv !~ /F/;
+
     # set LESS environment for pager only (not later git subcommands)
-    if ($ENV{'LESS'})
-    {
-      # gits is pretty unusuable without -F, and -F requires -X
-      $ENV{'LESS'} .= " -XF";
-    }
-    else
-    {
-      $PAGER = "LESS=FRSX " . $PAGER ;
-    }
+    $PAGER = "LESS='$lessenv' " . $PAGER ;
 
     my $pid;
     if ($pid = open(STDOUT, "|$PAGER"))
