@@ -1,0 +1,69 @@
+You may have glanced at the LICENSE.TXT file, seen LGPL, and stashed
+just that little bit of information.  Perhaps you noted it was LGPL
+version 2.1, or might have noticed something about section 3 and 13.
+
+But it's unlikely you actually went and grabbed the original LGPL 2.1
+from which this is derived (http://www.gnu.org/licenses/lgpl-2.1.txt)
+to see what sections 3 and 13 were, or tried to understand what their
+removal actually meant.
+
+This is not a legal opinion, or even the opinion of the primary
+developer who applied this license to this project - but hopefully it
+will help you better understand this variant of the LGPL.
+
+Section 3 of the LGPL 2.1 (included below) discusses a right to apply
+an alternate license (specifically, GPL 2 or later) to anything that
+is covered by LGPL 2.1.  This is intended to allow code from an LGPL
+project to be included directly in a GPL project - however, it could
+also be used to change the license of a forked version of an entire
+project from LGPL 2.1 to GPL 2 or later.
+
+Section 13 of the LGPL 2.1 (included at end) discusses a right to
+apply an alternate license (in effect, LGPL 3 or later) to anything
+that is covered by "LGPL 2.1 or any later version" - it also allows
+applying an earlier version of LGPL if the reference is to just "LGPL"
+without any version.  Section 13 would not apply to this project in
+any case, since it explicitly references version 2.1, and not "any
+later version" but it is nonetheless removed from this license.
+
+The effect of eliding these two sections is that the remaining
+provisions of LGPL 2.1 are "fixed" and cannot be modified except by
+the original copyright holder(s).  Therefore, you cannot copy code
+from this project to any other project unless it has this same
+license, and you cannot "convert" the LGPL 2.1 license of a copy
+(fork) of this project into another (L)GPL license.
+
+
+LGPL 2.1 sections 3 and 13 reproduced below:
+------------------------------------------------------------------------
+  3. You may opt to apply the terms of the ordinary GNU General Public
+License instead of this License to a given copy of the Library.  To do
+this, you must alter all the notices that refer to this License, so
+that they refer to the ordinary GNU General Public License, version 2,
+instead of to this License.  (If a newer version than version 2 of the
+ordinary GNU General Public License has appeared, then you can specify
+that version instead if you wish.)  Do not make any other change in
+these notices.
+
+  Once this change is made in a given copy, it is irreversible for
+that copy, so the ordinary GNU General Public License applies to all
+subsequent copies and derivative works made from that copy.
+
+  This option is useful when you wish to copy part of the code of
+the Library into a program that is not a library.
+
+------------------------------------------------------------------------
+  13. The Free Software Foundation may publish revised and/or new
+versions of the Lesser General Public License from time to time.
+Such new versions will be similar in spirit to the present version,
+but may differ in detail to address new problems or concerns.
+
+Each version is given a distinguishing version number.  If the Library
+specifies a version number of this License which applies to it and
+"any later version", you have the option of following the terms and
+conditions either of that version or of any later version published by
+the Free Software Foundation.  If the Library does not specify a
+license version number, you may choose any version ever published by
+the Free Software Foundation.
+
+------------------------------------------------------------------------
