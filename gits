@@ -1405,6 +1405,7 @@ elsif ($ARGV[0] eq 'attach')
 {
   my $include;
   my $reference = "";
+  my $adminonly;
 
   if ($include = (grep(/^--recursive=(.+)$/,@ARGV))[0])
   {
@@ -1420,7 +1421,14 @@ elsif ($ARGV[0] eq 'attach')
     @ARGV = grep(!/^--reference=.*/,@ARGV);
   }
 
-  die "gits attach requires at least two non-option arguments\nUsage: gits attach [--reference=PATH] [--recursive=FILENAME] REPOSITORY LOCALPATH [FLAGS]\n" if ($#ARGV < 2 || !$ARGV[1] || !$ARGV[2]);
+  # Help people not wanting to reclone or use --reference
+  if ($adminonly = (grep(/^--adminonly$/,@ARGV))[0])
+  {
+    $adminonly = 1;
+    @ARGV = grep(!/^--adminonly/,@ARGV);
+  }
+
+  die "gits attach requires at least two non-option arguments\nUsage: gits attach [--reference=PATH] [--recursive=FILENAME] [--adminonly] REPOSITORY LOCALPATH [FLAGS]\n" if ($#ARGV < 2 || !$ARGV[1] || !$ARGV[2]);
   my ($repos) = resolve_repository($ARGV[1],$ARGV[2]);
   die "Unknown flag $ARGV[3] (only flag is 'ifpresent')\n"
     if ($ARGV[3] && $ARGV[3] ne "ifpresent");
@@ -1434,7 +1442,10 @@ elsif ($ARGV[0] eq 'attach')
     die "Destination parent ($1) does not exist\n" if (!-d $1);
   }
   my $files = $GITS_DIR."/".$GITSLAVE;
-  docmd(qq^$git clone $reference @{[quoteit($repos)]} @{[quoteit($ARGV[2])]}^) || die "Could not clone $repos onto $ARGV[2]\n";
+  if (!$adminonly)
+  {
+    docmd(qq^$git clone $reference @{[quoteit($repos)]} @{[quoteit($ARGV[2])]}^) || die "Could not clone $repos onto $ARGV[2]\n";
+  }
 
   open(W, ">>", $files);
   print W qq^"$ARGV[1]" "$ARGV[2]"^;
@@ -1472,12 +1483,15 @@ elsif ($ARGV[0] eq 'attach')
   $msg .= qq^ and recursively $include^ if ($include);
   docmd(qq^$git commit -m '$msg' $files^) unless ($OPTIONS{'no-commit'});
 
-  my $curbranch = (grep(s/\s*\*\s+//, split(/\n/,getcmd("$git branch --no-color"))))[0];
-  my $subbranch = (grep(s/\s*\*\s+//, split(/\n/,getcmd(qq^cd "$ARGV[2]" && $git branch --no-color^))))[0];
-  if ($curbranch ne $subbranch)
+  if (!$adminonly)
   {
-    print qq^Switching "$ARGV[2]" to branch "$curbranch"\n^;
-    docmd(qq^cd "$ARGV[2]" && $git checkout $curbranch --^) || die "Branch inconsistency, branch $curbranch does not exist\n";
+    my $curbranch = (grep(s/\s*\*\s+//, split(/\n/,getcmd("$git branch --no-color"))))[0];
+    my $subbranch = (grep(s/\s*\*\s+//, split(/\n/,getcmd(qq^cd "$ARGV[2]" && $git branch --no-color^))))[0];
+    if ($curbranch ne $subbranch)
+    {
+      print qq^Switching "$ARGV[2]" to branch "$curbranch"\n^;
+      docmd(qq^cd "$ARGV[2]" && $git checkout $curbranch --^) || die "Branch inconsistency, branch $curbranch does not exist\n";
+    }
   }
 }
 ##################################################
@@ -3384,7 +3398,7 @@ projects.
 
 =head3 Add a slave repository to top level master
 
-  gits attach [--recursive=FILENAME] [--reference=PATH] REPOSITORY LOCALPATH [FLAGS]
+  gits attach [--recursive=FILENAME] [--reference=PATH] [--adminonly] REPOSITORY LOCALPATH [FLAGS]
 
 Clone the named git repository into the named local directory, and set
 it up for further gits operations.
@@ -3422,6 +3436,10 @@ copies if you already have a local repository.  Note that the use of
 shared repositories created by --reference is potentially dangerous;
 see the notes on --shared in the git-clone man page and consider
 running `gits repack -a` to remove these linkages.
+
+If the --adminonly option is given, this tells gitslave to set up the
+management files and to NOT clone.  You must clone through a
+subsequent prepare or some manual action.
 
  --------------------------------------------------
  gits attach ../lib1.git lib1

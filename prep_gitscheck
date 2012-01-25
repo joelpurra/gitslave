@@ -44,7 +44,7 @@ set -x
 : Configure the git slave setup and upload it
 GITS_DIR=`pwd` gits prepare
 gits attach ../sub1 sub1
-gits attach ../sub2 sub2
+gits attach --adminonly ../sub2 sub2
 gits populate
 gits push
 : Someone else gets a copy of the package and git slave config
