@@ -1597,7 +1597,7 @@ elsif ($ARGV[0] eq 'clone')
   my ($ret,$out) = getcmd(qq^$git ^.quoteit(@cARGV));
   print STDERR $out unless ($OPTIONS{'quiet'});
   if ($ret != 0 ||
-      ($out !~ /^Cloning into (.*)\.\.\.\n/
+      ($out !~ /^Cloning into '?(.*?)'?\.\.\.\n/
        && $out !~ m^Initialized empty Git repository in (.*)/\.git/\n^))
   {
     die "Could not parse git clone output\n";
