@@ -273,6 +273,8 @@ gits.
 
 * Inconsistent state on an abort is bad
 
+[https://sourceforge.net/tracker/?func=detail&aid=3069464&group_id=353214&atid=1475673]
+
 This can happen most easily on a push if someone else managed to sneak
 in a push of their own between your last pull and the current push
 attempt.  This is a race condition.
@@ -321,6 +323,8 @@ gits exec sh -c 'git log -n 10 --pretty=oneline  --abbrev-commit `git describe -
 
 
 * Interactive commit messages not available
+
+[http://sourceforge.net/tracker/?func=detail&aid=3310400&group_id=353214&atid=1475673]
 
 You cannot nicely use gits commit and have the system put up an editor
 for you to type your commit message in.  Or rather, you can, but you
