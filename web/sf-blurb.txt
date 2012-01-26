@@ -1,0 +1,1 @@
+Superproject mutli-repository management. Creates a group of related and typically currently developed repositories and on which all git operations should operate, so when you, for example, branch, each repository in the project is branched in turn.
