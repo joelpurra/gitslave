@@ -1,1 +1,7 @@
-Superproject mutli-repository management. Creates a group of related and typically currently developed repositories and on which all git operations should operate, so when you, for example, branch, each repository in the project is branched in turn.
+[Text for https://sourceforge.net/project/admin/public_info.php?group_id=353214]
+
+Summary: Coordinated multi-repository super-projects for Git
+
+Gitslave is a script for coordinated version control of large projects combining code from multiple independent repositories using Git.  More flexible than traditional git submodules, gitslave provides a simple wrapper around command-line git that manages a directory tree with multiple subsidiary ("slave") git repositories in sub-directories of a "master" git repository.  Any git command run from the "gits" wrapper will be performed in all the git repositories; for example gits checkout -b newbranch will create the new branch in all repositories.
+
+Gitslave has been used for mid-sized product development with many slave repositories (representing different programs and plugins), branches, tags, and developers; and for single-person repositories tracking groups of .emacs and .vim repositories (in the latter case, it is basically used to keep the slave repositories up to date via a single command).
