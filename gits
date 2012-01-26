@@ -1435,7 +1435,7 @@ elsif ($ARGV[0] eq 'attach')
   die "Too many flags " . join(' ',@ARGV[3..$#ARGV]) . "\n" if ($#ARGV > 3);
   die "GITSLAVE environment variable specifies multiple files - cannot attach\n"
     if ($GITSLAVE =~ /, /);
-  die "Destination ($ARGV[2]) already exists\n" if (-e $ARGV[2]);
+  die "Destination ($ARGV[2]) already exists\n" if (-e $ARGV[2] && !$adminonly);
   if ($ARGV[2] =~ m:(.*)/(.*):)
   {
     die "Destination ($ARGV[2]) cannot end in a slash" if (length($2) < 1);

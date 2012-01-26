@@ -62,7 +62,8 @@ gits push
 : Get the latest changes, create another slave and publish it
 cd ../slave
 gits pull
-gits attach ../sub3 sub3
+git clone $BASE/checkdir/master/sub3
+gits attach --adminonly ../sub3 sub3
 gits push
 : Person2 gets the new slave module
 cd ../slave2

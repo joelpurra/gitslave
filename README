@@ -103,7 +103,7 @@ OVERVIEW
       --------------------------------------------------
 
    Add a slave repository to top level master
-      gits attach [--recursive=FILENAME] [--reference=PATH] REPOSITORY LOCALPATH [FLAGS]
+      gits attach [--recursive=FILENAME] [--reference=PATH] [--adminonly] REPOSITORY LOCALPATH [FLAGS]
 
     Clone the named git repository into the named local directory, and set
     it up for further gits operations.
@@ -141,6 +141,10 @@ OVERVIEW
     repositories created by --reference is potentially dangerous; see the
     notes on --shared in the git-clone man page and consider running `gits
     repack -a` to remove these linkages.
+
+    If the --adminonly option is given, this tells gitslave to set up the
+    management files and to NOT clone. You must clone through a subsequent
+    prepare or some manual action.
 
      --------------------------------------------------
      gits attach ../lib1.git lib1
