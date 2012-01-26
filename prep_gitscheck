@@ -18,6 +18,7 @@ BASE=`pwd`
     git init
     date > datelist
     echo $f > packagename
+    echo > $f.h
     git add *
     git commit -a -m "Initial files"
     cd ../../master; git clone --bare --mirror ../masterprep/$f $f)
@@ -56,6 +57,8 @@ gits pull
 :  Make some mods and commit
 date >> datelist
 date >> sub1/datelist
+date >> top.h
+date >> sub1/sub1.h
 gits status
 gits commit -a -m "First stage updates"
 gits push
