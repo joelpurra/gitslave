@@ -1,6 +1,6 @@
 			       Gitslave
 			    Release 2.0.2
-			      2011-xx-xx
+			      2012-01-25
 
 
 
@@ -20,6 +20,14 @@ The purpose is to allow avoid lengthy network clones if you have the
 bits stored locally in one form or another.  Note that you may wish to
 `gits repack -a` as documented in the git-clone man page to remove the
 linkage.
+
+
+* gits attach now supports --adminonly
+
+Even though gits attach --reference avoids doing the majority of the
+network transfers, some users still want to "attach in place" or use
+an existing git repository which was positioned in the correct
+location instead of re-cloning the repository.
 
 
 * gits release created to remove temporarily unwanted project repositories
@@ -51,6 +59,9 @@ or that it is QAed on this platform prior to release.
 
 
 		    Features or Bugs of Minor Note
+
+* gits clone now understands "git clone" output from versions 1.7.7.2
+  or greater.
 
 * gits populate now understands --withifpresent
 
