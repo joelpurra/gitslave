@@ -1,13 +1,3 @@
-* Inappropriate output substitution
-
-I had a superproject name foo with folders.  Inside the folders were
-files which started with the project name (bar/foo.h baz/foo-biff.spec
-etc) When performing a `gits pull` the resulting changes had %REPO%
-substitutions performed on them so that I actually saw (bar/%REPO%.h
-and baz/%REPO%-biff.spec) incorrect filenames which screwed with the
-ASCII formatting.
-
-
 * Windows
 
 Gits purportedly works with strawberry-perl and msysgit's perl on

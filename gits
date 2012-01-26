@@ -2031,10 +2031,11 @@ elsif ($ARGV[0] eq 'pulls')
 	chomp $mod;
 	$mod =~ s=.*/==;
       }
-      $msg =~ s/\b$mod\b/%REPO%/g;
+      $msg =~ s#(?:\A|[/'"\s])\K$mod(?=(?:[/\s'"]|\z))#%REPO%#g;
       my $submod = $mod;
       $submod =~ s=.*/==;
-      $msg =~ s/\b$submod\b/%REPO%/g if ($mod ne $submod);
+      $msg =~ s#(?:\A|[/'"\s])\K$submod(?=(?:[/\s'"]|\z))#%REPO%#g
+	if ($mod ne $submod);
       # remove hash ids in various places to collapse redundant messages
       if (!$OPTIONS{'no-hide'})
       {
@@ -2140,10 +2141,11 @@ elsif ($ARGV[0] eq 'pull' || $ARGV[0] eq 'fetch')
       chomp $mod;
       $mod =~ s=.*/==;
     }
-    $msg =~ s/\b$mod\b/%REPO%/g;
+    $msg =~ s#(?:\A|[/'"\s])\K$mod(?=(?:[/\s'"]|\z))#%REPO%#g;
     my $submod = $mod;
     $submod =~ s=.*/==;
-    $msg =~ s/\b$submod\b/%REPO%/g if ($mod ne $submod);
+    $msg =~ s#(?:\A|[/'"\s])\K$submod(?=(?:[/\s'"]|\z))#%REPO%#g
+      if ($mod ne $submod);
     # remove hash ids in various places to collapse redundant messages
     if (!$OPTIONS{'no-hide'})
     {
