@@ -3,7 +3,7 @@ gits-man-page.html: ../gits
 	pod2html $^ > $@
 	@rm -f pod2htm*.tmp
 
-install: gits-man-page.html ReleaseNotes.txt index.html tutorial-basic.html tutorial.css gitslave.png gitslaveicon.png
+install: gits-man-page.html ReleaseNotes.txt index.html tutorial-basic.html tutorial.css gitslave.png gitslaveicon*.png
 	rsync -Lv $^ bakaproject,gitslave@web.sourceforge.net:/home/project-web/gitslave/htdocs
 
 clean nuke:
