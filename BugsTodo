@@ -114,6 +114,52 @@ gitslave.  We would just need some magic to use the right arguments
 a .gitslave config thing).
 
 
+* Properly handle .git files and git clone --separate-git-dir
+
+Currently it is not clear whether git repositories set up with a .git
+file (not directory) with "gitdir: some/path/to/git" are properly
+handled by gitslave.  It's not even clear if these are properly handled
+by git in all cases, cf http://www.spinics.net/lists/git/msg160659.html.
+
+It is not clear what version of git introduced support for .git files
+(previously one would have simply used a symbolic link in .git) and the
+--separate-git-dir option for git clone.
+
+
+* Allow slave .git directories to be located under master .git
+
+[http://p.sf.net/gitslave/bug3480711]
+
+When cloning or populating slaves, it could be useful in some cases for
+gitslave to keep the slaves' .git directories in subdirectories of the
+master .git rather than in the slave directories themselves.  Not so
+coincidentally, this is where git submodule keeps the .git directories
+for submodules, and if this ability is added, it would make sense to use
+the same convention for the location of the slave gitdirs -
+master/.git/slave).
+
+For sanity's sake, it is probably a good idea to use a relative path
+(e.g. `echo gitdir: ../.git/$SLAVE > .git`) when creating the .git file
+in the slave directory, although this gets tricky if the master is not
+directly above the slave and/or there are multiple levels of slave.
+
+Advantages of this would include more complete (potentially filesystem-
+level) separation of git repositories and working directories, fewer
+files to ignore in recursive find/grep etc. and protection of the slave
+git repositories from errant rm -rf due to git clean or gits release.
+
+
+* Support git submodule .gitmodules files for configuration
+
+[http://p.sf.net/gitslave/bug3480712]
+
+It might be possible to use the same configuration files that git
+submodule uses (they have most of the same information as .gitslave
+files, although no support for flags).  It is unclear whether using both
+gitslave and git submodules on the same repository tree will potentially
+cause damage due to unforeseen interactions.
+
+
 * Allow API to move submodules
 
 There is a workaround of removing it and re-adding it, but allowing
@@ -273,7 +319,7 @@ gits.
 
 * Inconsistent state on an abort is bad
 
-[https://sourceforge.net/tracker/?func=detail&aid=3069464&group_id=353214&atid=1475673]
+[http://p.sf.net/gitslave/bug3069464]
 
 This can happen most easily on a push if someone else managed to sneak
 in a push of their own between your last pull and the current push
@@ -324,7 +370,7 @@ gits exec sh -c 'git log -n 10 --pretty=oneline  --abbrev-commit `git describe -
 
 * Interactive commit messages not available
 
-[http://sourceforge.net/tracker/?func=detail&aid=3310400&group_id=353214&atid=1475673]
+[http://p.sf.net/gitslave/bug3310400]
 
 You cannot nicely use gits commit and have the system put up an editor
 for you to type your commit message in.  Or rather, you can, but you
