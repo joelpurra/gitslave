@@ -21,14 +21,14 @@ contrib/gitslave.spec: contrib/gitslave.spec.in
 	fi
 
 install: $(TARGETS)
-	mkdir -p $(DESTDIR)/$(man1dir) $(DESTDIR)/$(bindir)
-	install -m 444 gits.1 $(DESTDIR)/$(man1dir)
+	mkdir -p $(DESTDIR)$(man1dir) $(DESTDIR)$(bindir)
+	install -m 444 gits.1 $(DESTDIR)$(man1dir)
 	if [ -d .git ]; then						    \
 	  VERSION=`./gits --version`;					    \
-	  sed "s/{UNTAGGED}/$${VERSION}/" gits > $(DESTDIR)/$(bindir)/gits; \
-	  chmod 755 $(DESTDIR)/$(bindir)/gits;				    \
+	  sed "s/{UNTAGGED}/$${VERSION}/" gits > $(DESTDIR)$(bindir)/gits; \
+	  chmod 755 $(DESTDIR)$(bindir)/gits;				    \
 	else								    \
-	  install -m 755 gits $(DESTDIR)/$(bindir)/;			    \
+	  install -m 755 gits $(DESTDIR)$(bindir)/;			    \
 	fi
 	@perl -MTerm::ProgressBar -e 1 >/dev/null 2>&1 || echo Warning: Missing optional Term::ProgressBar
 	@perl -MParallel::Iterator -e 1 >/dev/null 2>&1 || echo Warning: Missing optional Parallel::Iterator package
