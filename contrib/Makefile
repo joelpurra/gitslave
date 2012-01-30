@@ -12,13 +12,13 @@ all: $(TARGETS)
 	pod2man < $^ > $@
 
 install: $(TARGETS)
-	mkdir -p $(DESTDIR)/$(man1dir) $(DESTDIR)/$(bindir)
-	install -m 444 gits-checkup.1 $(DESTDIR)/$(man1dir)
-	install -m 444 gitin.1 $(DESTDIR)/$(man1dir)
-	install -m 444 gitin.1 $(DESTDIR)/$(man1dir)/gitout.1
-	install -m 755 gits-checkup $(DESTDIR)/$(bindir)
-	install -m 755 gitin $(DESTDIR)/$(bindir)/
-	install -m 755 gitin $(DESTDIR)/$(bindir)/gitout
+	mkdir -p $(DESTDIR)$(man1dir) $(DESTDIR)$(bindir)
+	install -m 444 gits-checkup.1 $(DESTDIR)$(man1dir)
+	install -m 444 gitin.1 $(DESTDIR)$(man1dir)
+	install -m 444 gitin.1 $(DESTDIR)$(man1dir)/gitout.1
+	install -m 755 gits-checkup $(DESTDIR)$(bindir)
+	install -m 755 gitin $(DESTDIR)$(bindir)/
+	install -m 755 gitin $(DESTDIR)$(bindir)/gitout
 
 clean nuke:
 	rm -rf $(JUNK) *~ core* \#*
