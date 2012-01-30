@@ -3,8 +3,6 @@ bindir=${prefix}/bin
 mandir=${prefix}/share/man
 man1dir=${mandir}/man1
 
-override DESTDIR:="${DESTDIR:/=}/"
-
 TARGETS=gits.1 README gits contrib/gitslave.spec webtargets contribtargets
 JUNK=gits.1 checkdir contrib/gitslave.spec
 
