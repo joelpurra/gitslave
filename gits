@@ -1391,7 +1391,7 @@ elsif ($ARGV[0] eq 'prepare')
   my $init;
   if ($ARGV[1] eq '--init')
   {
-    $init = "$git init;";
+    $init = "$git init";
     @ARGV = grep(!/^--init$/,@ARGV);
   }
   die "gits prepare only takes --init option\n" if ($#ARGV != 0);
@@ -1399,6 +1399,15 @@ elsif ($ARGV[0] eq 'prepare')
   $GITS_DIR=$ENV{'GITS_DIR'} || ".";
   die "Refusing to prepare, \$GITSLAVE variable is multipath\n"
     if ($GITSLAVE =~ /, /);
+  die "Cannot initialize git\n"
+    if ($init && !docmd("$git rev-parse 2>/dev/null") && !docmd($init));
+  # explicit $ENV{'GIT_DIR'} defeats rev-parse here, not much we can do
+  my ($nogit, $toplevel) = getcmd("$git rev-parse --show-cdup");
+  die "Refusing to prepare, not a git repository" .
+    " (gits prepare --init makes it one)\n" if ($nogit);
+  chomp $toplevel;
+  die "Cannot change directory to repository root\n"
+    if ($toplevel && !chdir($toplevel));
   die "Refusing to prepare, $GITS_DIR/@{[$GITSLAVE]} already exists\n"
     if (-f $GITS_DIR."/".$GITSLAVE);
   die "Refusing to prepare, $SUPER_GITS_DIR/@{[$GITSLAVE]} already exists\n"
@@ -1406,10 +1415,9 @@ elsif ($ARGV[0] eq 'prepare')
       if (-f $SUPER_GITS_DIR."/".$GITSLAVE && !defined($ENV{'GITS_DIR'}));
   open(W, ">", $GITS_DIR."/".$GITSLAVE) || die "Could not create $GITS_DIR/@{[$GITSLAVE]}\n";
   close(W);
-  if (!docmd("$init$git add @{[$GITSLAVE]}"))
+  if (!docmd("$git add @{[$GITSLAVE]}"))
   {
     unlink($GITS_DIR."/".$GITSLAVE);
-    die "(if this is not a git repository, gits prepare --init makes it one)\n";
   }
   docmd(qq^$git commit -m "gits creating @{[$GITSLAVE]}" @{[$GITSLAVE]}^) unless ($OPTIONS{'no-commit'});
 }
