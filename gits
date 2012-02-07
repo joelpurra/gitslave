@@ -24,6 +24,7 @@ use constant GITSLAVE => '.gitslave';
 use Getopt::Long;
 use File::Path;
 use File::Basename;
+use Fcntl ':mode';
 
 my $eval_errs = '';
 my ($want_parallel) = (0);
@@ -406,7 +407,7 @@ sub ephemeral_command($;$)
 {
   my ($cmd,$depth) = @_;
 
-  if ($cmd eq "prepare" or $cmd eq "resolve" or $cmd eq "clone" or $cmd eq "help" or $cmd eq "release" or ($depth && $cmd eq "populate"))
+  if ($cmd eq "prepare" or $cmd eq "resolve" or $cmd eq "clone" or $cmd eq "help" or $cmd eq "release" or $cmd eq "enable" or ($depth && $cmd eq "populate"))
   {
     $missingcount++;
     return 1;
@@ -1314,7 +1315,15 @@ if (-f $GITS_DIR."/".GITSLAVE)
 }
 else
 {
-  die "Could not find @{[GITSLAVE]}, either you are not inside a superproject\nor one of its slaves or this is a new superproject that has not yet\nbeen configured for gits.  Probably it is the first case so you simply\nneed to cd into the correct git checkout with a @{[GITSLAVE]} file, but in\nthe rare event that this is a new superproject, you need run `gits\nprepare` and then a few `gits attach` commands to set up gits for this\nnew superproject.\n"
+  die
+    "Could not find @{[GITSLAVE]}; the current working directory isn't in a\n" .
+    "gitslave superproject or one of its slaves, or it is in a repository\n" .
+    "that has not been enabled for gitslave. In the common first case, you\n" .
+    "need to `cd` into the superproject repository. If you want to make a\n" .
+    "repository into a superproject, run `gits prepare`, then `gits attach`\n" .
+    "commands for each slave, to enable it for gitslave. If you just want\n" .
+    "to enable gitslave for a repository without enabling it in any other\n" .
+    "repository, you can run `gits enable` instead.\n"
     unless ($#ARGV < 0 or ephemeral_command($ARGV[0]));
 }
 $TOP = "(" . basename(Cwd::realpath(".")) . ")";
@@ -1453,6 +1462,7 @@ elsif ($ARGV[0] eq 'help' or $OPTIONS{'help'})
 elsif ($ARGV[0] eq 'prepare')
 {
   my $init;
+  my $refusing = "Refusing to $ARGV[0],";
   if ($ARGV[1] eq '--init')
   {
     $init = "$git init";
@@ -1461,46 +1471,144 @@ elsif ($ARGV[0] eq 'prepare')
   die "gits prepare only takes --init option\n" if ($#ARGV != 0);
   my $SUPER_GITS_DIR = $GITS_DIR;
   $GITS_DIR = $ENV{'GITS_DIR'} || ".";
-  die "Refusing to prepare, \$GITSLAVE variable is multipath\n"
+  die "$refusing \$GITSLAVE variable is multipath\n"
     if ($GITSLAVE =~ /, /);
-  die "Refusing to prepare, \$GITS_DIR=$GITS_DIR: $!\n"
+  die "$refusing \$GITS_DIR=$GITS_DIR: $!\n"
     if (!chdir($GITS_DIR));
-  die "Refusing to prepare, $GITS_DIR/@{[$GITSLAVE]} already exists\n"
-    if (-f $GITS_DIR."/".$GITSLAVE);
+  if (-f $GITS_DIR."/".$GITSLAVE)
+  {
+    my $mode = (stat($GITS_DIR."/".$GITSLAVE))[2];
+    die "$refusing writable $GITS_DIR/@{[$GITSLAVE]} already exists\n"
+      if ($mode & (S_IWUSR|S_IWGRP|S_IWOTH));
+  }
   die "Cannot initialize git\n"
     if ($init && ($ENV{'GITS_DIR'} || !docmd("$git rev-parse 2>/dev/null"))
 	&& !docmd($init));
   # explicit $ENV{'GIT_DIR'} defeats rev-parse here, not much we can do
   my ($nogit, $toplevel) = getcmd("$git rev-parse --show-cdup");
-  die "Refusing to prepare, not a git repository" .
+  die "$refusing not a git repository" .
     " (gits prepare --init makes it one)\n" if ($nogit);
   chomp $toplevel;
-  die "Refusing to prepare, \$GITS_DIR=$GITS_DIR is not a repository root\n" .
+  die "$refusing \$GITS_DIR=$GITS_DIR is not a repository root\n" .
     " (gits prepare --init makes it one)\n"
       if ($toplevel && $ENV{'GITS_DIR'});
   if ($toplevel)
   {
-    die "Refusing to prepare, $SUPER_GITS_DIR/@{[$GITSLAVE]} already exists\n"
+    die "$refusing $SUPER_GITS_DIR/@{[$GITSLAVE]} already exists\n"
       . " (GITS_DIR=".cwd()." gits prepare --init will override)\n"
 	if (-f $SUPER_GITS_DIR."/".$GITSLAVE && !defined($ENV{'GITS_DIR'}));
     die "Cannot change directory to repository root\n"
       if (!chdir($toplevel));
   }
   $GITS_DIR = cwd();
-  die "Refusing to prepare, $GITS_DIR/@{[$GITSLAVE]} already exists\n"
-    if (-f $GITSLAVE);
-  die "Refusing to prepare, $SUPER_GITS_DIR/@{[$GITSLAVE]} already exists\n"
-    . " (GITS_DIR=".cwd()." gits prepare will override)\n"
-      if (-f $SUPER_GITS_DIR."/".$GITSLAVE && !defined($ENV{'GITS_DIR'}));
+  if (-f $GITSLAVE)
+  {
+    my $mode = (stat($GITSLAVE))[2];
+    die "$refusing writable $GITS_DIR/@{[$GITSLAVE]} already exists\n"
+      if ($mode & (S_IWUSR|S_IWGRP|S_IWOTH));
+  }
+  if (-f $SUPER_GITS_DIR."/".$GITSLAVE && !defined($ENV{'GITS_DIR'}))
+  {
+    my $mode = (stat($GITSLAVE))[2];
+    die "$refusing writable $SUPER_GITS_DIR/@{[$GITSLAVE]} already exists\n"
+      . " (GITS_DIR=".cwd()." gits prepare will override)\n"
+	if ($mode & (S_IWUSR|S_IWGRP|S_IWOTH));
+  }
+  chmod 0666 & ~umask, $GITSLAVE;
   open(W, ">", $GITSLAVE) || die "Could not create $GITS_DIR/@{[$GITSLAVE]}\n";
   close(W);
-  if (!docmd("$git add @{[$GITSLAVE]}"))
+  if (!docmd("$git add -f @{[$GITSLAVE]}"))
   {
     unlink($GITSLAVE);
     die "Could not add @{[$GITSLAVE]}\n";
   }
   docmd(qq^$git commit -m "gits creating @{[$GITSLAVE]}" @{[$GITSLAVE]}^)
     unless ($OPTIONS{'no-commit'});
+}
+##################################################
+elsif ($ARGV[0] eq 'enable')
+{
+  my $errs;
+  my $refusing = "Refusing to $ARGV[0],";
+  die "gits enable takes no arguments\n" if ($#ARGV != 0);
+  my $SUPER_GITS_DIR = $GITS_DIR;
+  $GITS_DIR = $ENV{'GITS_DIR'} || ".";
+  die "$refusing \$GITSLAVE variable is multipath\n"
+    if ($GITSLAVE =~ /, /);
+  die "$refusing \$GITS_DIR=$GITS_DIR: $!\n"
+    if (!chdir($GITS_DIR));
+  die "$refusing $GITS_DIR/@{[$GITSLAVE]} already exists\n"
+    if (-f $GITS_DIR."/".$GITSLAVE);
+  # explicit $ENV{'GIT_DIR'} defeats rev-parse here, not much we can do
+  my ($nogit, $toplevel) = getcmd("$git rev-parse --show-cdup");
+  die "$refusing not a git repository\n" if ($nogit);
+  chomp $toplevel;
+  die "$refusing \$GITS_DIR=$GITS_DIR is not a repository root\n"
+    if ($toplevel && $ENV{'GITS_DIR'});
+  if ($toplevel)
+  {
+    die "$refusing $SUPER_GITS_DIR/@{[$GITSLAVE]} already exists\n"
+	if (-f $SUPER_GITS_DIR."/".$GITSLAVE && !defined($ENV{'GITS_DIR'}));
+    die "Cannot change directory to repository root\n"
+      if (!chdir($toplevel));
+  }
+  $GITS_DIR = cwd();
+  die "$refusing $GITS_DIR/@{[$GITSLAVE]} already exists\n"
+    if (-f $GITSLAVE);
+  die "$refusing $SUPER_GITS_DIR/@{[$GITSLAVE]} already exists\n"
+    . " (GITS_DIR=".cwd()." gits enable will override)\n"
+      if (-f $SUPER_GITS_DIR."/".$GITSLAVE && !defined($ENV{'GITS_DIR'}));
+  my $ignore = ".gitignore";
+  my $ignoreignore = ! -f $ignore;
+  my $untrackedignore = $ignoreignore;
+  ($untrackedignore) = getcmd("$git ls-files --error-unmatch $ignore")
+    unless ($ignoreignore);
+  my ($stash, $stashout);
+  if ($ignoreignore || !docmd("grep -q '^$GITSLAVE\$' '$ignore'"))
+  {
+    ($stash,$stashout) = gitstash($ignore, 'git-enable')
+      unless ($OPTIONS{'no-commit'} || $untrackedignore);
+    warn $stashout if ($stash);
+    # handle case where newly added but uncommitted .gitignore has been stashed
+    if (!$untrackedignore && ! -f $ignore && defined $stash && !$stash)
+    {
+      # avoid add/add conflict, just make the change but don't commit it
+      ($stash,$stashout) = gitunstash() if (defined $stash && !$stash);
+      warn $stashout if ($stash);
+      $untrackedignore = 1;
+      undef $stash;
+      warn "$GITS_DIR/$GITSLAVE ignored (but .gitignore change uncommitted)\n";
+    }
+    if (!open(I, ">>", $ignore))
+    {
+      ($stash,$stashout) = gitunstash() if (defined $stash && !$stash);
+      warn $stashout if ($stash);
+      $errs = warn "Could not ignore $GITS_DIR/@{[$GITSLAVE]}\n";
+    }
+    else
+    {
+      print I "$ignore\n" if ($ignoreignore);
+      print I "$GITSLAVE\n";
+      close(I);
+      $errs = !docmd(qq^$git commit -m "gits ignoring @{[$GITSLAVE]}" $ignore^)
+	unless ($untrackedignore);
+      if (defined $stash && !$stash)
+      {
+	# reset .gitignore to avoid conflicts on unstash
+	($stash,$stashout) = getcmd("$git checkout -- $ignore");
+	warn $stashout if ($stash);
+	($stash,$stashout) = gitunstash();
+	warn $stashout if ($stash);
+      }
+      warn "Could not add ignore of $GITS_DIR/@{[$GITSLAVE]}\n" if ($errs);
+    }
+  }
+  open(W, ">", $GITSLAVE) || die "Could not create $GITS_DIR/@{[$GITSLAVE]}\n";
+  # make .gitslave read-only, to allow later `gits prepare`
+  chmod 0444 & ~umask, *W;
+  close(W);
+  print "gitslave commands enabled\n" if (-f $GITSLAVE);
+  $returncode = $errs if ($errs);
 }
 ##################################################
 elsif ($ARGV[0] eq 'attach')
@@ -3907,6 +4015,24 @@ output filename.
   gits archive --format gits-tar -o /tmp/foo.tar master
   --------------------------------------------------
   gits archive --format tar -o /tmp/foo-%%basename%%.tar master
+  --------------------------------------------------
+
+
+
+=head3 Enable gits on a single git repository
+
+gits enable
+
+Sometimes you may wish to use gitslave commands (like gits release) in
+a single git repository; you can enable this (without committing the
+.gitslave file) using this command.  You run this command in the git
+root directory.  If you later want to manage it as a superproject, you
+can still use gits prepare to do so.
+
+  --------------------------------------------------
+  git clone ssh://sourcemaster/src/repos/single.git single
+  cd single
+  gits enable
   --------------------------------------------------
 
 

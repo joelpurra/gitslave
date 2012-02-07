@@ -473,6 +473,21 @@ OVERVIEW
       gits archive --format tar -o /tmp/foo-%%basename%%.tar master
       --------------------------------------------------
 
+   Enable gits on a single git repository
+    gits enable
+
+    Sometimes you may wish to use gitslave commands (like gits release) in a
+    single git repository; you can enable this (without committing the
+    .gitslave file) using this command. You run this command in the git root
+    directory. If you later want to manage it as a superproject, you can
+    still use gits prepare to do so.
+
+      --------------------------------------------------
+      git clone ssh://sourcemaster/src/repos/single.git single
+      cd single
+      gits enable
+      --------------------------------------------------
+
    Everything else
     All other commands are passed directly though to git, with one command
     being run per repository. Output summarizing is performed so that
