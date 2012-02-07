@@ -215,6 +215,52 @@ sub gitversion()
 
 ######################################################################
 #
+# Stash/unstash current state
+#
+my @gitstashes;
+
+sub gitstash(;$$)
+{
+  my ($path,$stashname) = @_;
+  my $exit;
+  my $out;
+
+  $stashname = 'gits-' . $path if ($path && !$stashname);
+  $stashname = 'gits' unless ($stashname);
+  $stashname .= '-' . $$;
+  # is there anything to stash?
+  return (undef, 'no changes to stash')
+    if (docmd("$git diff --quiet -- $path") &&
+	docmd("$git diff --cached --quiet -- $path"));
+  ($exit, $out) = getcmd("$git stash save $stashname");
+  push @gitstashes, $stashname unless ($exit);
+  return ($exit, $out);
+}
+
+
+
+sub gitunstash()
+{
+  my $exit;
+  my $out;
+
+  return (-1, 'no auto-generated stash') unless @gitstashes;
+  my $stashname = pop @gitstashes;
+  ($exit, $out) = getcmd("$git stash list");
+  return ($exit, $out) if ($exit);
+  return (-2, "auto-generated stash $stashname not found")
+    unless ($out =~ /^(stash@\{\d+\}): .*: $stashname$/m);
+  my $stashref = $1;
+  ($exit, $out) = getcmd("$git stash apply --index $stashref");
+  return ($exit, $out) if ($exit);
+  ($exit, $out) = getcmd("$git stash drop $stashref");
+  return ($exit, $out);
+}
+
+
+
+######################################################################
+#
 # Find the repository URL for this remote
 #
 sub find_remote_repo($$)
