@@ -196,6 +196,25 @@ sub getcmd($;$)
 
 ######################################################################
 #
+# Get the version of git being used
+#
+my @gitv;
+
+sub gitversion()
+{
+  @gitv = getcmd("$git --version")
+    unless @gitv && !$gitv[0];
+
+  return @gitv if wantarray;
+  # assume ancient version if git --version fails
+  return "git version 1.1." . $gitv[0] if $gitv[0];
+  return $gitv[1];
+}
+
+
+
+######################################################################
+#
 # Find the repository URL for this remote
 #
 sub find_remote_repo($$)
@@ -207,7 +226,6 @@ sub find_remote_repo($$)
   die "Could not find git upstream clone which this is relative to ($base $remote)\n" unless ($ret == 0 && $master_repo);
   $master_repo;
 }
-
 
 
 
@@ -609,8 +627,8 @@ sub do_populate(;$$)
       {
 	print qq^Switching "$slave" to branch "$curbranch"\n^;
 
-	my $gitversion = `$git --version`;
-	if ($curbranch ne $subbranch && $gitversion =~ /git version (1\.[12345]\.|1\.6\.[012345])/)
+	# git checkout auto-creates tracking branches in 1.6.6 and later
+	if ($curbranch ne $subbranch && gitversion() =~ /git version (1\.[12345]\.|1\.6\.[012345])/)
 	{
 	  docmd(qq^cd "$slave" && $git checkout -b $curbranch origin/$curbranch^) || die "Branch inconsistency, branch $curbranch does not exist for $slave\n";
 	}
@@ -1361,7 +1379,7 @@ if ($ARGV[0] eq 'version' or $OPTIONS{'version'})
   else
   {
     print "gits version $version\n";
-    my ($vret,$vers) = getcmd("$git --version");
+    my ($vret,$vers) = gitversion();
     if ($vret || ($vers !~ /version ([2-9]|1\.[6-9])/))
     {
       print STDERR "$git version >= 1.6 required!\n";
@@ -1921,9 +1939,8 @@ elsif ($ARGV[0] eq 'pulls')
   }
   $rebase = -1 if ($rebase && $fetched < 0);
   # only git version 1.6.1 and later support `git rebase -p`
-  my $gitversion = `$git --version`;
   if ($rebase < 0 ||
-      ($rebase > 0 && $gitversion =~ /git version (1\.[12345]\.|1\.6\.0)/))
+      ($rebase > 0 && gitversion() =~ /git version (1\.[12345]\.|1\.6\.0)/))
   {
     $rebasearg = "";
     warn "Warning: merges may be lost when rebasing!\n" unless ($OPTIONS{'quiet'});
