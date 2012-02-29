@@ -329,6 +329,9 @@ sub resolve_repository($$;$$$$)
   # Check for already absolute
   return $relrepos if ($relrepos =~ m-^(/|.+?:)-);
 
+  # Remove single trailing / from command-line (maybe added by completion?)
+  $absrepos =~ s:(?<!/)/$::;
+
   # Find upstream origin URL
   $absrepos = find_remote_repo($remote,$localbase) if (!$absrepos || ($localbase ne "." && $localbase ne $GITS_DIR));
 
@@ -374,7 +377,8 @@ sub resolve_repository($$;$$$$)
     return (($lprefix || $rprefix).$1);
   }
 
-  my $newpath = "$rsuffix/$lsuffix";
+  my $newpath = "$rsuffix";
+  $newpath .= "/$lsuffix" if ($lsuffix);
 
   # Handle "xxx//yyy" -> "xxx/yyy"
   while ($newpath =~ s://:/:) {;}
