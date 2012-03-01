@@ -125,6 +125,11 @@ It is not clear what version of git introduced support for .git files
 (previously one would have simply used a symbolic link in .git) and the
 --separate-git-dir option for git clone.
 
+This would be great for branches which didn't support the same
+.gitslave file.  Note that truly supporting that requires handling
+untracked and ignored files, and the fact that the URL (and thus repo)
+might be different between different branches.
+
 
 * Allow slave .git directories to be located under master .git
 
@@ -155,9 +160,11 @@ git repositories from errant rm -rf due to git clean or gits release.
 
 It might be possible to use the same configuration files that git
 submodule uses (they have most of the same information as .gitslave
-files, although no support for flags).  It is unclear whether using both
-gitslave and git submodules on the same repository tree will potentially
-cause damage due to unforeseen interactions.
+files, although no support for flags).  Using both gitslave and git
+submodules on the same repository tree will cause brain damage due to
+interactions.
+
+A conversion tool would be a good start.
 
 
 * Allow API to move submodules
