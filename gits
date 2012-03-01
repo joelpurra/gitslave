@@ -53,7 +53,7 @@ our($GITSLAVE) = $ENV{'GITSLAVE'}||GITSLAVE;
 our($GITS_DIR);
 my($TOP);
 our(@slaves);
-my($USAGE) = "Usage: gits [-p|--parallel COUNT] [-v|--verbose]+ [--quiet] [--rawout] [--help] [--version]\n".
+my($USAGE) = "Usage: gits [-p|--parallel COUNT] [-v|--verbose]+ [--quiet] [--rawout] [--help] [--version[p]]\n".
 "\t[-n|--no-pager] [--paginate] [--eval-args] [--exclude SLAVE-REGEXP]\n".
 "\t[--keep-going] [--no-commit] [--no-hide] [--no-progress]\n".
 "\t[--no-master] [--with-ifpresent|--just-ifpresent] SUBCOMMAND [ARGS]...\n";
@@ -1249,7 +1249,7 @@ sub releasecheck($@)
 # Main functionality
 #
 Getopt::Long::Configure("bundling", "no_ignore_case", "no_auto_abbrev", "no_getopt_compat", "require_order");
-GetOptions(\%OPTIONS, 'parallel|p=i', 'verbose|v+', 'quiet', 'rawout', 'help', 'version',
+GetOptions(\%OPTIONS, 'parallel|p=i', 'verbose|v+', 'quiet', 'rawout', 'help', 'version', 'versionp',
 	   'pager|paginate!', 'n', 'eval-args', 'exclude=s', 'keep-going',
 	   'no-commit', 'no-hide', 'no-progress', 'press-on',
 	   'no-master', 'with-ifpresent', 'just-ifpresent') || die $USAGE;
@@ -1284,7 +1284,7 @@ $pagination = 0 if ($OPTIONS{'n'});
 # but explicit --pager/--no-pager/--pagination/--no-pagination overrides that
 $pagination = $OPTIONS{'pager'} if (defined $OPTIONS{'pager'});
 
-die "$USAGE" if ($#ARGV < 0 and !($OPTIONS{'version'} or $OPTIONS{'help'}));
+die "$USAGE" if ($#ARGV < 0 and !($OPTIONS{'version'} or $OPTIONS{'versionp'} or $OPTIONS{'help'}));
 
 print STDERR $eval_errs if ($eval_errs ne '' && $OPTIONS{'verbose'} > 1);
 
@@ -1407,7 +1407,7 @@ if ($OPTIONS{'parallel'})
 
 
 ##################################################
-if ($ARGV[0] eq 'version' or $OPTIONS{'version'})
+if ($ARGV[0] eq 'version' or $OPTIONS{'version'} or $OPTIONS{'versionp'})
 {
   my $version = "{UNTAGGED}";
 
@@ -1419,21 +1419,26 @@ if ($ARGV[0] eq 'version' or $OPTIONS{'version'})
 
   if ($version eq "{" . "UNTAGGED" . "}")
   {
-    my ($ret,$hash) = getcmd("$git log --pretty=format:%H -n 1");
-    chomp($hash);
-
-    my ($dret,$desc) = getcmd("$git describe --candidates=1 --tags $hash 2>/dev/null");
+    my ($dret,$desc) = getcmd("$git describe --dirty --candidates=1 --tags 2>/dev/null");
     if ($dret)
     {
-      $desc = "Untagged ($hash)\n";
+      $desc = getcmd("$git rev-parse HEAD");
+      chomp($desc);
+      $desc = "Untagged ($desc)";
     }
     else
     {
       # strip out leading tag alphabetic and space, get just the numbers
-      $desc =~ s/^.*?([0-9][0-9._-]*[0-9]).*/$1/;
+      $desc =~ s/^.*?([0-9][0-9._-]*[0-9])(?:-g[a-f0-9]*)?/$1/;
       $desc =~ y=/_=--=;
     }
-    print $desc;
+    chomp($desc);
+    $version = $desc;
+  }
+
+  if ($ARGV[1] eq '--porcelain' or $OPTIONS{"versionp"})
+  {
+    print "$version\n";
   }
   else
   {
@@ -1448,7 +1453,7 @@ if ($ARGV[0] eq 'version' or $OPTIONS{'version'})
     ($vret,$vers) = getcmd("perl --version");
     $vers =~ s/^\n//;
     $vers =~ s/This is perl,/Perl/;
-    $vers =~ s/\nCopyright.*//s;
+    $vers =~ s/\nCopyright.*/Perl OS declared as $^O\n/s;
     print $vers;
   }
 }
@@ -4043,6 +4048,16 @@ can still use gits prepare to do so.
 
 
 
+=head3 Enable gits on a single git repository
+
+gits version [--porcelain]
+
+Print version information for gits, git, and Perl.
+
+With --porcelain, just print gits' revision without any human decoration.
+
+
+
 =head3 Everything else
 
 All other commands are passed directly though to git, with one command
@@ -4119,9 +4134,11 @@ Often used for post-processing output.  Example:
 Print gits usage summary and details of gits options and substitutions
 from this documentation, then exit.
 
-=head2 --version
+=head2 --version --versionp
 
-Print version information for gits, git, and Perl.
+--version will print version information for gits, git, and Perl.
+
+--versionp just prints gits' revision without any human decoration.
 
 =head2 --paginate --no-pager -n
 

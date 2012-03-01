@@ -491,6 +491,14 @@ OVERVIEW
       gits enable
       --------------------------------------------------
 
+   Enable gits on a single git repository
+    gits version [--porcelain]
+
+    Print version information for gits, git, and Perl.
+
+    With --porcelain, just print gits' revision without any human
+    decoration.
+
    Everything else
     All other commands are passed directly though to git, with one command
     being run per repository. Output summarizing is performed so that
@@ -560,8 +568,10 @@ DESCRIPTION
     Print gits usage summary and details of gits options and substitutions
     from this documentation, then exit.
 
-  --version
-    Print version information for gits, git, and Perl.
+  --version --versionp
+    --version will print version information for gits, git, and Perl.
+
+    --versionp just prints gits' revision without any human decoration.
 
   --paginate --no-pager -n
     Disable or re-enable default pagination of gits output using a pager.
