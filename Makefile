@@ -16,7 +16,7 @@ gits-checkup.1: gits-checkup
 
 contrib/gitslave.spec: contrib/gitslave.spec.in
 	if [ -d .git ]; then			    \
-	  VERSION=`./gits --version`;		    \
+	  VERSION=`./gits --versionp`;		    \
 	  sed "s/{UNTAGGED}/$${VERSION}/" <$^ > $@; \
 	fi
 
