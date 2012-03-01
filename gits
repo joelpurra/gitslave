@@ -3596,7 +3596,7 @@ running `gits repack -a` to remove these linkages.
 
 =head3 Initialize a gits project
 
-gits prepare
+gits prepare [--init]
 
 You run this command in the git directory which will be your top level
 master repository (super here).  Typically you would clone this top
@@ -3609,6 +3609,8 @@ projects.
   gits prepare
   --------------------------------------------------
 
+If you use the optional "--init" argument, `git init` will be executed
+to create the git repository.
 
 
 =head3 Add a slave repository to top level master
