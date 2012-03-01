@@ -2354,10 +2354,10 @@ elsif ($ARGV[0] eq 'pull' || $ARGV[0] eq 'fetch')
       chomp $mod;
       $mod =~ s=.*/==;
     }
-    $msg =~ s#(?<=\A|[/'"\s])$mod(?=(?:[/\s'"]|\z))#%REPO%#g;
+    $msg =~ s#(\A|[/'"\s])$mod(?=(?:[/\s'"]|\z))#$1%REPO%#g;
     my $submod = $mod;
     $submod =~ s=.*/==;
-    $msg =~ s#(?<=\A|[/'"\s])$submod(?=(?:[/\s'"]|\z))#%REPO%#g
+    $msg =~ s#(\A|[/'"\s])$submod(?=(?:[/\s'"]|\z))#$1%REPO%#g
       if ($mod ne $submod);
     # remove hash ids in various places to collapse redundant messages
     if (!$OPTIONS{'no-hide'})
