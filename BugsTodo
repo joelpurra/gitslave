@@ -1,3 +1,17 @@
+* Support attaching subslaves to slaves which you do not want to change
+
+If you have a slave to which you want to put a subsidiary slave under
+it, but you would prefer to not fork the first level slave just for
+the purpose of having a .gitignore to ignore the subsidiary slave,
+have a flag which supports configuration of .git/info/exclude instead.
+
+We could do this as a matter of course instead of manipulating
+.gitignore, which has a lot to be said for it.  However, what cannot
+be said for it is that it doesn't easily allow different branches to
+have different configurations (or rather it does, but the system would
+have to rewrite that exclude file under various conditions).
+
+
 * Windows
 
 Gits purportedly works with strawberry-perl and msysgit's perl on
