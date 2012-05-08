@@ -10,36 +10,6 @@ Getting the system fully (or at least generally) supporting windows
 would be very nice.
 
 
-* Create gits autoattach
-
-For people who have manually assembled a superproject with subprojects
-already in place, create a convenient command which goes through and
-attempts to set up the configuration for each of the (new) existing
-subprojects.  Use origin's URL for the gitslave URL and try to deduce
-a relative relationship between the URLs.
-
-
-* gits chown to fix ownership
-
-This could also be something added to git itself, I suppose, but
-it may be easier to do in gitslave.  When doing a make install as
-root, ownership of version-tracked files may be set to root, and
-this can cause problems for git commands (reset, etc.).  It would be
-nice to have all version-tracked (or not explicitly ignored) files
-(and all not-ignored directories) change ownership to the real user,
-as determined by real uid (if != effective uid) or $USER/$LOGNAME,
-if not explicitly specified on command line.
-
-Further complicating this is that after performing a manual chown,
-the ctime on many or all files is updated, which can cause some git
-operations (notably reset --hard or checkout) to force the checkout
-of many or all of the files in a repository.  Some way of "touching"
-the git status cache for these files to prevent that would be nice.
-(It is possible that the problem is actually due to ctime update on
-.git/ repository files after a chmod -R, so that a limited update in
-`gits chown` might eliminate this problem without an explicit fix.)
-
-
 * gits release should be able to release non-existent directory
 
 `gits release foo bar` if foo does not exist should not be an error
@@ -80,21 +50,6 @@ partial release to be performed safely.
 gits status depends on decoration not present if --porcelain or
 --short are given.  (git status --short --branch presents the branch
 information, but differently).  It should be protected in some way.
-
-
-* Automatically disable pager for interactive git commands
-
-Gits uses the configured (or default if unconfigured) pager from the
-master repository (default is `less -FRSX`) to page gits output.  For
-most gits commands, this makes sense, but some commands like `gits
-commit` may want to perform interactive operations using $EDITOR or
-built-in functionality (e.g. commit --interactive).  It is possible to
-disable the pager with -n or --no-pager, or setting GIT_PAGER=cat, but
-if it were possible for gits to detect interactive commands reliably
-and do this automatically, that would be better.
-
-Some interactive functionality (notably SSH password/key-phrase input)
-uses /dev/tty directly and seems to work even with pagination.
 
 
 * Superproject branches having different slaves is hard
@@ -185,12 +140,6 @@ directly attached and other times might need to go through an ssh
 tunnel or otherwise have various tricks.
 
 
-* Add "gits branch --set-upstream" support
-
-Currently there is no support for changing upstream repositories via
---set-upstream with the correct relative URLs.  See update-remote-url.
-
-
 * Add -n, --dry-run option to display, but not run, subcommands
 
 This is especially useful when trying to understand how this all works.
@@ -212,26 +161,6 @@ out alternate .gitslave files with a different set of slaves, there
 may be slaves present that aren't in the currently active set, and you
 probably (although not always) don't want to remove them.  Another -f
 argument (or maybe -F?) should be necessary to force their removal.
-
-
-* Auto-colorized output
-
-Gits uses the configured (or default if unconfigured) pager from the
-master repository (default is `less -FRSX`) to page gits output.
-However, auto-colorization of git subcommands depends on detecting
-standard output as a terminal (rather than a pipe to gits) and is
-therefore disabled.  Adding --color to subcommands based on the output
-of `git config --get-colorbool color.XXX` could fix this problem, but
-not all commands support this option, and the presence of ANSI color
-markup might confuse gits summarization or other parsing (explicit
---no-color has already been added to all `git branch` commands to
-handle that case already).
-
-As a workaround, setting `gits config color.ui always` enables
-colorized output from gits (but also from git in other contexts where
-it may not be desirable, e.g. `git $command | grep $pattern`).
-However, gits can handle this setting, and as noted above, disables
-color where it would cause confusion (in branch name parsing)
 
 
 * Enhance docmd/getcmd to take an optional third argument for directory
@@ -268,6 +197,157 @@ but also if older version of git is present.
 
 On the other hand, adding unnecessary incompatibilities with git isn't
 something to be desired.
+
+Also note that pull --rebase is NOT 100% identical to fetch+rebase,
+specifically in the case of history rewriting where it does something
+like `git rebase -p @{u}@{1} ORIG_UPSTREAM_HEAD HEAD`
+
+
+* Create gits autoattach
+
+For people who have manually assembled a superproject with subprojects
+already in place, create a convenient command which goes through and
+attempts to set up the configuration for each of the (new) existing
+subprojects.  Use origin's URL for the gitslave URL and try to deduce
+a relative relationship between the URLs.
+
+
+* On an abort, you don't get to see the output of what worked, so
+  recovery is made harder.
+
+It can be added, but seemingly it is only going to make things more
+cluttered and confused.
+
+Should we stick it in a tmp file somewhere to be cleaned up on the
+next gits operation?
+
+
+* Interactive commit messages not available
+
+[http://p.sf.net/gitslave/bug3310400]
+
+You cannot nicely use gits commit and have the system put up an editor
+for you to type your commit message in.  Or rather, you can, but you
+will have to retype once per slave with a change.
+
+If we could detect this state, we could put up the editor ourselves,
+make a unified template with unified status, and then add the -F flag
+to point at the newly created message
+
+A sample prepare-commit-msg hook could try to figure out the right
+stuff.  It could do a gits status to prepare an all-repo example set
+of changes and then pop in previous commit messages
+
+
+* Collapse of redundant messages in output stymied by hash ids
+
+In quite a few commands the presence of different hash ids in each slave
+module generates insignificant differences in the output that prevent them
+from being coalesced.  There is better support for eliminating these in the
+gits pulls command (even there it is probably not complete) but not really
+any for other commands, especially pass-throughs.
+
+
+* Eliminate dependence on .gitslave searching
+
+Rather than searching for .gitslave files in parent directories, save
+the master directory with `git config gits.master ../../...` (or use
+an absolute path if the slave was added to master using an absolute
+path).  Use `git rev-parse --show-cdup` to get the git top-level
+directory, then `git config gits.master` to get GITS_DIR.  This will
+allow master and slave repositories to be located in non-hierarchical
+locations, using relative or absolute paths.
+
+Interaction with recursive projects will need to be considered.  It is
+unclear what the least surprise would be, or whether both are equally
+desirable.  Note that some people prefer to manually move git repos
+around inside of gitslave superprojects (either for a manual attach or
+the non-existent rename) to reduce cloning costs.  This might mean
+that we need to support traditional .gitslave location discovery if we
+cannot find a .gitslave using the cached value (if we do it at all).
+However, as long as we are doing any kind of .gitslave discovery (even
+if we do NOT do any caching—I'm a little dubious that this will
+actually speed things up), we should probably support the
+GIT_CEILING_DIRECTORIES and GIT_DISCOVERY_ACROSS_FILESYSTEM.
+
+
+* gits flags to control hooks management
+
+One of the features of git is that it supports automatic management of
+git-hooks.  However, some people might not like this since it allows
+anyone in the project to run arbitrary commands in the environment of
+everyone else on the project (eventually).  Support some method (git
+config [--global [--includes]]) to control on a per-user basis what
+happens.  Perhaps default warn-off which detects the existence of
+management desires and warns.  Users can then turn on or off.
+
+Support per-repo control of whether you want to do this, with some
+override on clone.
+
+
+----------------------------------------------------------------------
+
+
+* gits chown to fix ownership
+
+This could also be something added to git itself, I suppose, but
+it may be easier to do in gitslave.  When doing a make install as
+root, ownership of version-tracked files may be set to root, and
+this can cause problems for git commands (reset, etc.).  It would be
+nice to have all version-tracked (or not explicitly ignored) files
+(and all not-ignored directories) change ownership to the real user,
+as determined by real uid (if != effective uid) or $USER/$LOGNAME,
+if not explicitly specified on command line.
+
+Further complicating this is that after performing a manual chown,
+the ctime on many or all files is updated, which can cause some git
+operations (notably reset --hard or checkout) to force the checkout
+of many or all of the files in a repository.  Some way of "touching"
+the git status cache for these files to prevent that would be nice.
+(It is possible that the problem is actually due to ctime update on
+.git/ repository files after a chmod -R, so that a limited update in
+`gits chown` might eliminate this problem without an explicit fix.)
+
+
+* Automatically disable pager for interactive git commands
+
+Gits uses the configured (or default if unconfigured) pager from the
+master repository (default is `less -FRSX`) to page gits output.  For
+most gits commands, this makes sense, but some commands like `gits
+commit` may want to perform interactive operations using $EDITOR or
+built-in functionality (e.g. commit --interactive).  It is possible to
+disable the pager with -n or --no-pager, or setting GIT_PAGER=cat, but
+if it were possible for gits to detect interactive commands reliably
+and do this automatically, that would be better.
+
+Some interactive functionality (notably SSH password/key-phrase input)
+uses /dev/tty directly and seems to work even with pagination.
+
+
+* Add "gits branch --set-upstream" support
+
+Currently there is no support for changing upstream repositories via
+--set-upstream with the correct relative URLs.  See update-remote-url.
+
+
+* Auto-colorized output
+
+Gits uses the configured (or default if unconfigured) pager from the
+master repository (default is `less -FRSX`) to page gits output.
+However, auto-colorization of git subcommands depends on detecting
+standard output as a terminal (rather than a pipe to gits) and is
+therefore disabled.  Adding --color to subcommands based on the output
+of `git config --get-colorbool color.XXX` could fix this problem, but
+not all commands support this option, and the presence of ANSI color
+markup might confuse gits summarization or other parsing (explicit
+--no-color has already been added to all `git branch` commands to
+handle that case already).
+
+As a workaround, setting `gits config color.ui always` enables
+colorized output from gits (but also from git in other contexts where
+it may not be desirable, e.g. `git $command | grep $pattern`).
+However, gits can handle this setting, and as noted above, disables
+color where it would cause confusion (in branch name parsing)
 
 
 * Pull is very slow
@@ -341,22 +421,14 @@ clocks, and can still have the race if clocks are not synchronized,
 the push gets stalled/takes longer than expected, etc.
 
 
-* On an abort, you don't get to see the output of what worked, so
-  recovery is made harder.
-
-It can be added, but seemingly it is only going to make things more
-cluttered and confused.
-
-Should we stick it in a tmp file somewhere to be cleaned up on the
-next gits operation?
-
-
 * wb/bkmk requires complete rebuild after pulls with multiple branches
 
 In a repository with multiple local tracking branches, `gits pulls` will
 perform a `git checkout` for each branch.  One undesirably side-effect of
 this is that wb/bkmk will detect a (timestamp?) change to the configure
 script or its results, and re-run the entire Baka configure script again.
+
+In theory we could use an alternate working directory...
 
 
 * Complete log history not available in superproject
@@ -370,51 +442,7 @@ purview of what is happening.
 
 Alternately, we could have it pull all logs since the last checkpoint.
 
-The following gives you unifiedish history since the last tag.
+The following gives you unifiedish history since the last tag (for a
+particular tag naming convention).
 
 gits exec sh -c 'git log -n 10 --pretty=oneline  --abbrev-commit `git describe --match "*-20[01][0-9]*" --long  | sed "s/-[0-9][0-9]*-[a-z0-9][a-z0-9]*\$//"`..HEAD'
-
-
-* Interactive commit messages not available
-
-[http://p.sf.net/gitslave/bug3310400]
-
-You cannot nicely use gits commit and have the system put up an editor
-for you to type your commit message in.  Or rather, you can, but you
-will have to retype once per slave with a change.
-
-If we could detect this state, we could put up the editor ourselves,
-make a unified template with unified status, and then add the -F flag
-to point at the newly created message
-
-
-* Collapse of redundant messages in output stymied by hash ids
-
-In quite a few commands the presence of different hash ids in each slave
-module generates insignificant differences in the output that prevent them
-from being coalesced.  There is better support for eliminating these in the
-gits pulls command (even there it is probably not complete) but not really
-any for other commands, especially pass-throughs.
-
-
-* Eliminate dependence on .gitslave searching
-
-Rather than searching for .gitslave files in parent directories, save
-the master directory with `git config gits.master ../../...` (or use
-an absolute path if the slave was added to master using an absolute
-path).  Use `git rev-parse --show-cdup` to get the git top-level
-directory, then `git config gits.master` to get GITS_DIR.  This will
-allow master and slave repositories to be located in non-hierarchical
-locations, using relative or absolute paths.
-
-Interaction with recursive projects will need to be considered.  It is
-unclear what the least surprise would be, or whether both are equally
-desirable.  Note that some people prefer to manually move git repos
-around inside of gitslave superprojects (either for a manual attach or
-the non-existent rename) to reduce cloning costs.  This might mean
-that we need to support traditional .gitslave location discovery if we
-cannot find a .gitslave using the cached value (if we do it at all).
-However, as long as we are doing any kind of .gitslave discovery (even
-if we do NOT do any caching—I'm a little dubious that this will
-actually speed things up), we should probably support the
-GIT_CEILING_DIRECTORIES and GIT_DISCOVERY_ACROSS_FILESYSTEM.
