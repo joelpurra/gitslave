@@ -1,3 +1,15 @@
+* gits enable causes subsequent attaches to fail
+
+gits-enable is, I guess, supposed to be used when you want to use
+gitslave in a non-git directory or when you don't want to contaminate
+the repo with .gitslave stuff (note this is probably a good time to
+use .git/info/exclude in place of .gitignore).
+
+However, subsequent `gits attach` commands fail so it seems entirely
+broken/useless right now.  The system should recognize this configuration
+and support it for real.
+
+
 * Support attaching subslaves to slaves which you do not want to change
 
 If you have a slave to which you want to put a subsidiary slave under
