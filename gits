@@ -25,6 +25,7 @@ use Getopt::Long;
 use File::Path;
 use File::Basename;
 use Fcntl ':mode';
+use Pod::Usage;
 
 my $eval_errs = '';
 my ($want_parallel) = (0);
@@ -53,10 +54,6 @@ our($GITSLAVE) = $ENV{'GITSLAVE'}||GITSLAVE;
 our($GITS_DIR);
 my($TOP);
 our(@slaves);
-my($USAGE) = "Usage: gits [-p|--parallel COUNT] [-v|--verbose]+ [--quiet] [--rawout] [--help] [--version[p]]\n".
-"\t[-n|--no-pager] [--paginate] [--eval-args] [--exclude SLAVE-REGEXP]\n".
-"\t[--keep-going] [--no-commit] [--no-hide] [--no-progress]\n".
-"\t[--no-master] [--with-ifpresent|--just-ifpresent] SUBCOMMAND [ARGS]...\n";
 our(%OPTIONS);
 my ($returncode) = 0;
 my $pagination;
@@ -1271,14 +1268,19 @@ sub releasecheck($@)
 # Main functionality
 #
 Getopt::Long::Configure("bundling", "no_ignore_case", "no_auto_abbrev", "no_getopt_compat", "require_order");
-GetOptions(\%OPTIONS, 'parallel|p=i', 'verbose|v+', 'quiet', 'rawout', 'help', 'version', 'versionp',
+GetOptions(\%OPTIONS, 'parallel|p=i', 'verbose|v+', 'quiet', 'rawout', 'help', 'long-help', 'version', 'versionp',
 	   'pager|paginate!', 'n', 'eval-args', 'exclude=s', 'keep-going',
 	   'no-commit', 'no-hide', 'no-progress', 'press-on',
-	   'no-master', 'with-ifpresent', 'just-ifpresent') || die $USAGE;
+	   'no-master', 'with-ifpresent', 'just-ifpresent') || pod2usage;
 # -n option is separate from --pager/--no-pager/--paginate/--no-paginate due
 # to limitations of GetOptions API - the last explicit option overrides -n,
 # even if -n comes after the last explicit option.  Note that -n is *also*
 # interpreted as --no-commit for the `gits release` subcommand (only).
+
+if ($OPTIONS{'long-help'})
+{
+  pod2usage(-verbose=>2, -exitval=>0);
+}
 
 $OPTIONS{'no-hide'} = 1 if ($OPTIONS{'rawout'});
 
@@ -1306,7 +1308,7 @@ $pagination = 0 if ($OPTIONS{'n'});
 # but explicit --pager/--no-pager/--pagination/--no-pagination overrides that
 $pagination = $OPTIONS{'pager'} if (defined $OPTIONS{'pager'});
 
-die "$USAGE" if ($#ARGV < 0 and !($OPTIONS{'version'} or $OPTIONS{'versionp'} or $OPTIONS{'help'}));
+pod2usage if ($#ARGV < 0 and !($OPTIONS{'version'} or $OPTIONS{'versionp'} or $OPTIONS{'help'}));
 
 print STDERR $eval_errs if ($eval_errs ne '' && $OPTIONS{'verbose'} > 1);
 
@@ -1482,12 +1484,7 @@ if ($ARGV[0] eq 'version' or $OPTIONS{'version'} or $OPTIONS{'versionp'})
 ##################################################
 elsif ($ARGV[0] eq 'help' or $OPTIONS{'help'})
 {
-  print "$USAGE";
-  use FindBin qw($Bin $Script);
-  docmd("pod2text < $Bin/$Script |" .
-	"sed -n -e '/^DESCRIPTION/,/^BUGS/H'" .
-	" -e '/^BUGS/{x;s/\\n[[:upper:]]*/\\n/g;s/\\n\\n/\\n/;p;}'");
-  exit;
+  pod2usage("Use --long-help to see full man page\n");
 }
 ##################################################
 elsif ($ARGV[0] eq 'prepare')
@@ -3529,10 +3526,11 @@ gits - The git slave repository tool for multi-repository management
 
 =head1 SYNOPSIS
 
-gits [-p|--parallel COUNT] [-v|--verbose]+ [--quiet] [--help] [--version]
-[-n|--no-pager] [--paginate] [--eval-args] [--exclude SLAVE-REGEXP]
-[--keep-going] [--no-commit] [--no-hide] [--no-progress]
-[--no-master] [--with-ifpresent|--just-ifpresent] SUBCOMMAND [ARGS]...
+gits [-p|--parallel COUNT] [-v|--verbose]+ [--quiet] [--help] [--long-help]
+  [--version] [-n|--no-pager] [--paginate] [--eval-args]
+  [--exclude SLAVE-REGEXP] [--no-master]
+  [--keep-going] [--no-commit] [--no-hide] [--no-progress]
+  [--with-ifpresent|--just-ifpresent] SUBCOMMAND [ARGS]...
 
 =head1 OVERVIEW
 
