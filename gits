@@ -71,6 +71,20 @@ delete($ENV{'CDPATH'});
 
 ######################################################################
 #
+# Maybedie - die unless we are asked not to
+#
+sub maybedie($)
+{
+  my ($msg) = @_;
+  die $msg unless ($OPTIONS{'keep-going'});
+  $returncode = 10;
+  warn $msg;
+  1;
+}
+
+
+######################################################################
+#
 # Translate wait status ($?) into human-readable terms
 #
 sub exitcode(;$)
@@ -662,7 +676,7 @@ sub do_populate(;$$)
 	# deleting all files that prevents checkout of the new branch</TRICKY>
 	my $force = "";
 	$force = " -f" if ($nocheckout);
-	docmd(qq^cd "$slave" && $git checkout$force -b $curbranch origin/$curbranch^) || die "Branch inconsistency, branch $curbranch does not exist for $slave\n";
+	docmd(qq^cd "$slave" && $git checkout$force -b $curbranch origin/$curbranch^) || do { maybedie "Branch inconsistency, branch $curbranch does not exist for $slave\n"; next; };
       }
     }
     else
@@ -670,7 +684,7 @@ sub do_populate(;$$)
       ($ret, $out) = getcmd(qq^cd "$slave" && $git branch --no-color | sort^);
 
       # handle case of failed fetch during clone (e.g. network connectivity)
-      docmd(qq^cd "$slave" && git fetch^) || die "Could not fetch remote\n"
+      docmd(qq^cd "$slave" && git fetch^) || do { maybedie "Could not fetch remote\n"; next; }
 	if (!$out);
 
       my ($cursubbranch,$subbranch) = grep(s/^\s*\*\s+(.*)|\s+($curbranch)$/$1$2/, split(/\n/,$out));
@@ -681,11 +695,11 @@ sub do_populate(;$$)
 	# git checkout auto-creates tracking branches in 1.6.6 and later
 	if ($curbranch ne $subbranch && gitversion() =~ /git version (1\.[12345]\.|1\.6\.[012345])/)
 	{
-	  docmd(qq^cd "$slave" && $git checkout -b $curbranch origin/$curbranch^) || die "Branch inconsistency, branch $curbranch does not exist for $slave\n";
+	  docmd(qq^cd "$slave" && $git checkout -b $curbranch origin/$curbranch^) || do { maybedie "Branch inconsistency, branch $curbranch does not exist for $slave\n"; next; };
 	}
 	else
 	{
-	  docmd(qq^cd "$slave" && $git checkout $curbranch^) || die "Branch inconsistency, branch $curbranch does not exist for $slave\n";
+	  docmd(qq^cd "$slave" && $git checkout $curbranch^) || do { maybedie "Branch inconsistency, branch $curbranch does not exist for $slave\n"; next; };
 	}
       }
       else
@@ -759,6 +773,11 @@ sub do_checkout($@)
       do_populate(1);
     }
   }
+  else
+  {
+    undef($repo);
+  }
+
   my ($totcnt) = $#slaves + ($OPTIONS{'no-master'} ? 1 : 2);
   my ($progress) = Term::ProgressBar->new({remove=>1, count=>($#slaves+1)}) if ($want_progress && !$pushprocessing);
   $progress->max_update_rate(1) if ($progress);
@@ -800,17 +819,20 @@ sub do_checkout($@)
     }
     else
     {
-      $ok .= " $repo";
-      $okcnt++;
-      if ($pushprocessing)
+      if (defined($repo))
       {
-	$msg =~ s/Switched to branch.*\n//;
-	$msg =~ s/Already on \".*\n//;
-	push(@{$msg{"$args[0]\@$repo"}}, $repo);
-      }
-      else
-      {
-	push(@{$msg{$msg}}, $repo);
+	$ok .= " $repo";
+	$okcnt++;
+	if ($pushprocessing)
+	{
+	  $msg =~ s/Switched to branch.*\n//;
+	  $msg =~ s/Already on \".*\n//;
+	  push(@{$msg{"$args[0]\@$repo"}}, $repo);
+	}
+	else
+	{
+	  push(@{$msg{$msg}}, $repo);
+	}
       }
     }
 
