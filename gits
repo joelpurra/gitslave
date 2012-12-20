@@ -3257,7 +3257,7 @@ elsif ($ARGV[0] eq 'clean')
 
   my $CLEAN_USAGE = "Usage: gits clean -f|-n [-edqxX] [--] [PATH]...\n";
   my %COPTIONS;
-  GetOptions(\%COPTIONS, 'e=s', 'd', 'f', 'q', 'n', 'X', 'x') || die $CLEAN_USAGE;
+  GetOptions(\%COPTIONS, 'e|exclude=s@', 'd', 'f', 'q', 'n', 'X', 'x') || die $CLEAN_USAGE;
 
   die "Must set exactly one of -n or -f\n$CLEAN_USAGE" unless (!$COPTIONS{'f'} != !$COPTIONS{'n'});
 
@@ -3274,7 +3274,7 @@ elsif ($ARGV[0] eq 'clean')
     $cmd .= " -f" if ($COPTIONS{'f'});
     $cmd .= " -X" if ($COPTIONS{'X'});
     $cmd .= " -x" if ($COPTIONS{'x'});
-    $cmd .= (" -e ".quoteit($COPTIONS{'e'})) if (defined($COPTIONS{'e'}));
+    $cmd .= " -e ".quoteit($_) for (@{$COPTIONS{'e'}});
     $cmd .= " -- ".quoteit(@ARGV) if ($#ARGV >= 0);
 
     my ($ret, $msg) = getcmd($cmd,$slave);
