@@ -2866,7 +2866,7 @@ elsif ($ARGV[0] eq 'update-remote-url')
     {
       $thisurl = resolve_repository($group->[0],$group->[1],$name,$url,$group->[2]);
 
-      print qq^For slave $slave, "@{[$group->[0]]}" "@{[$group->[1]]}" $name $url  "@{[$group->[2]]}" => $thisurl\n^;
+      print qq^For slave $slave, "@{[$group->[0]]}" "@{[$group->[1]]}" $name $url  "@{[$group->[2]]}" => $thisurl\n^ if ($OPTIONS{'verbose'});
     }
 
     my ($ret, $msg) = getcmd(qq^cd "%%dir%%" && $git config "remote.$name.url" "$thisurl"^,$slave);
