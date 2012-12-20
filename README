@@ -5,9 +5,10 @@ NAME
 
 SYNOPSIS
     gits [-p|--parallel COUNT] [-v|--verbose]+ [--quiet] [--help]
-    [--version] [-n|--no-pager] [--paginate] [--eval-args] [--exclude
-    SLAVE-REGEXP] [--keep-going] [--no-commit] [--no-hide] [--no-progress]
-    [--no-master] [--with-ifpresent|--just-ifpresent] SUBCOMMAND [ARGS]...
+    [--long-help] [--version] [-n|--no-pager] [--paginate] [--eval-args]
+    [--exclude SLAVE-REGEXP] [--no-master] [--keep-going] [--no-commit]
+    [--no-hide] [--no-progress] [--with-ifpresent|--just-ifpresent]
+    SUBCOMMAND [ARGS]...
 
 OVERVIEW
     gits is a program that assists in assembling a meta-project from a

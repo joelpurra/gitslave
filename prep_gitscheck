@@ -429,3 +429,12 @@ gits commit -a -m "superopt full update"
 gits push
 : "Person 2 is done"
 gits release --all
+unset GITSLAVE
+: "Try out gits clean -e"
+cd $BASE/checkdir/superduper
+touch {.,sub21}/{x,xx}
+gits clean -e '/xx' -dfx
+if [ -f x -o -f sub21/x ]; then  echo "Failed to delete desired files with clean -e"; exit 2; fi
+if [ ! -f xx -o ! -f sub21/xx ]; then echo "Failed to preserve desired files with clean -e"; exit 2; fi
+gits clean  -dfx
+if [ -f xx -o -f sub21/xx ]; then echo "Failed to delete desired files without clean -e"; exit 2; fi
