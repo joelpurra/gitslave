@@ -2774,7 +2774,7 @@ elsif ($ARGV[0] eq 'remote')
 
     next if missing_slave($slave);
 
-    if ($ARGV[1] eq "add")
+    if ($ARGV[1] eq "add" || $ARGV[1] eq "set-url")
     {
       $ARGV[$#ARGV] = resolve_repository($group->[0],$group->[1],$ARGV[2],$realurl);
     }
