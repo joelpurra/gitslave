@@ -438,3 +438,10 @@ if [ -f x -o -f sub21/x ]; then  echo "Failed to delete desired files with clean
 if [ ! -f xx -o ! -f sub21/xx ]; then echo "Failed to preserve desired files with clean -e"; exit 2; fi
 gits clean  -dfx
 if [ -f xx -o -f sub21/xx ]; then echo "Failed to delete desired files without clean -e"; exit 2; fi
+: "Try out gits autoinit"
+cd $BASE/checkdir/superduper
+gits autoinit
+if [ "`git status --porcelain`" != "" ]; then echo "autoinit produced different results than expected"; exit 2; fi
+rm -f .gitslave .gitignore
+gits autoinit
+if [ "`git status --porcelain`" != "" ]; then echo "autoinit produced different results than expected"; exit 2; fi

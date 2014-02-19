@@ -10,6 +10,12 @@ SYNOPSIS
     [--no-hide] [--no-progress] [--with-ifpresent|--just-ifpresent]
     SUBCOMMAND [ARGS]...
 
+    Special subcommands include: prepare, autoinit, attach, populate,
+    release, detach, pulls, logs, exec, resolve, update-remote-url,
+    statuses, archive, enable, version.
+
+    See --long-help for full details.
+
 OVERVIEW
     gits is a program that assists in assembling a meta-project from a
     number of individual git repositories which operate (when using gits) as
@@ -31,11 +37,12 @@ OVERVIEW
     involved, but the hope is that it is minimized compared to all of the
     other alternatives.
 
-    The basic theory is that there are a few sub-commands (prepare, attach,
-    populate) which help set up the meta-project for gits operations. Then,
-    except for git commands with specific filenames, like git add FILENAME;
-    git reset FILENAME; etc., you should use "gits" instead of "git", and
-    the command will run on all repositories in the project.
+    The basic theory is that there are a few sub-commands (prepare,
+    autoinit, attach, populate) which help set up the meta-project for gits
+    operations. Then, except for git commands with specific filenames, like
+    git add FILENAME; git reset FILENAME; etc., you should use "gits"
+    instead of "git", and the command will run on all repositories in the
+    project.
 
   Example Usage
     In the following example, we will have the following master
@@ -105,6 +112,34 @@ OVERVIEW
 
     If you use the optional "--init" argument, `git init` will be executed
     to create the git repository.
+
+   Automatically set up slaves based on current checkout
+    gits autoinit
+
+    You run this command in the git directory which will be your top level
+    master repository where you have manually performed checkouts or move
+    operations or whatever was necessary to get the current disk structure
+    to look like you want. This command will try to compute relative paths
+    (assuming your URLs are uniform--if you checked out one repository using
+    a fully qualified domain name and another by a hostname, the current
+    relative URL generation system will not be able to tell the difference).
+
+      --------------------------------------------------
+      git clone ssh://sourcemaster/src/repos/super.git super
+      cd super
+      git clone ssh://sourcemaster/src/repos/slave1.git
+      git clone ssh://sourcemaster/src/repos/slave2.git
+      git clone ssh://sourcemaster/src/other/slave3.git
+      gits autoinit
+      git status
+      git diff --cached
+      git commit -m "Created gitslave infrastructure"
+      --------------------------------------------------
+
+    Note that this will not release/detach any slaves which are no longer
+    present, this is an additive operation only. You may delete the
+    .gitslave file (and manually strip out the correct lines from
+    .gitignore) beforehand to simulate a replacement operation.
 
    Add a slave repository to top level master
       gits attach [--recursive=FILENAME] [--reference=PATH] [--adminonly] REPOSITORY LOCALPATH [FLAGS]

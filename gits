@@ -181,7 +181,7 @@ sub docmd($)
 ######################################################################
 #
 # Run a command, retrieving the output
-#
+
 sub getcmd($;$)
 {
   my ($cmd,$slave) = @_;
@@ -422,7 +422,7 @@ sub ephemeral_command($;$)
 {
   my ($cmd,$depth) = @_;
 
-  if ($cmd eq "prepare" or $cmd eq "resolve" or $cmd eq "clone" or $cmd eq "help" or $cmd eq "release" or $cmd eq "enable" or ($depth && $cmd eq "populate"))
+  if ($cmd eq "prepare" or $cmd eq "autoinit" or $cmd eq "resolve" or $cmd eq "clone" or $cmd eq "help" or $cmd eq "release" or $cmd eq "enable" or ($depth && $cmd eq "populate"))
   {
     $missingcount++;
     return 1;
@@ -1338,7 +1338,7 @@ else
 if (-f $GITS_DIR."/".GITSLAVE)
 {
   $GITS_DIR = Cwd::realpath($GITS_DIR);
-  chdir($GITS_DIR) unless ($ARGV[0] eq "prepare" || $ARGV[0] eq "clone");
+  chdir($GITS_DIR) unless ($ARGV[0] eq "prepare" || $ARGV[0] eq "autoinit" || $ARGV[0] eq "clone");
   print STDERR "gits: Gitslave found in $GITS_DIR\n" if ($OPTIONS{'verbose'} > 1);
 }
 else
@@ -1485,6 +1485,104 @@ if ($ARGV[0] eq 'version' or $OPTIONS{'version'} or $OPTIONS{'versionp'})
 elsif ($ARGV[0] eq 'help' or $OPTIONS{'help'})
 {
   pod2usage("Use --long-help to see full man page\n");
+}
+##################################################
+elsif ($ARGV[0] eq 'autoinit')
+{
+  my $d = getcmd('find . -mindepth 2 -name .git -print0');
+  my @d = sort(grep(s/\.\/(.*)\/\.git$/$1/,split(/\0/,$d)));
+  die "No subsidiary git repositories, cannot autoinit.  Try attach.\n" if ($#d < 0);
+  my (%rconfig,%subslave);
+  foreach $d ('.',@d)
+  {
+    foreach my $slave (keys %subslave)
+    {
+      if ($slave eq substr($d,0,length($slave)))
+      {
+	undef($d);
+	last;
+      }
+    }
+    last unless defined($d);
+
+    my $x = getcmd(qq^cd "$d" && git config remote.origin.url^);
+    if (-f "$d/.gitslave")
+    {
+      $subslave{$d} = "$d/.gitslave";
+    }
+    chomp($x);
+    if (!($rconfig{$d} = $x))
+    {
+      die "No remote.origin.url for $d\n";
+    }
+    if ($d ne '.')
+    {
+      my ($master) = $rconfig{'.'};
+      my ($gcp);
+      my ($dots) = "..";
+      while ($master =~ s:(.+/).+:$1:)
+      {
+#	printf("<%s> comparing <%s> to <%s>\n",$dots,$master,substr($rconfig{$d},0,length($master)));
+	if ($master eq substr($rconfig{$d},0,length($master)))
+	{
+	  $gcp = $master;
+	  last;
+	}
+	$dots .= "/..";
+      }
+      if ($gcp)
+      {
+	$rconfig{$d} = "$dots/".substr($rconfig{$d},length($master));
+      }
+    }
+  }
+  my (@gitslave,@gitignore);
+  foreach $d (@d)
+  {
+    next unless $rconfig{$d};
+    push(@gitslave, sprintf(qq^"%s" "%s"\n^,$rconfig{$d},$d));
+    push(@gitignore, sprintf(qq^/%s/\n^,$d));
+    if ($subslave{$d})
+    {
+      push(@gitslave, sprintf(qq^\#include "%s"\n^,$subslave{$d}));
+    }
+  }
+  if (open(G,"<",".gitslave"))
+  {
+    foreach my $line (<G>)
+    {
+      @gitslave = grep($line ne $_,@gitslave);
+    }
+    close(G);
+  }
+  if (open(G,"<",".gitignore"))
+  {
+    foreach my $line (<G>)
+    {
+      @gitignore = grep($line ne $_,@gitignore);
+    }
+    close(G);
+  }
+  if ($OPTIONS{'n'})
+  {
+    print "Added lines for .gitslave\n".join('',@gitslave);
+    print "\nAdded lines for .gitignore\n".join('',@gitignore);
+  }
+  else
+  {
+    if (open(G,">>",".gitslave"))
+    {
+      print G join('',@gitslave);
+      close(G);
+    }
+    if (open(G,">>",".gitignore"))
+    {
+      print G join('',@gitignore);
+      close(G);
+    }
+  }
+  docmd("git add .gitslave .gitignore");
+  print STDERR "Inspect the result and commit\n";
 }
 ##################################################
 elsif ($ARGV[0] eq 'prepare')
@@ -3533,6 +3631,12 @@ gits [-p|--parallel COUNT] [-v|--verbose]+ [--quiet] [--help] [--long-help]
   [--keep-going] [--no-commit] [--no-hide] [--no-progress]
   [--with-ifpresent|--just-ifpresent] SUBCOMMAND [ARGS]...
 
+Special subcommands include: prepare, autoinit, attach, populate,
+release, detach, pulls, logs, exec, resolve, update-remote-url,
+statuses, archive, enable, version.
+
+See --long-help for full details.
+
 =head1 OVERVIEW
 
 gits is a program that assists in assembling a meta-project from a
@@ -3555,11 +3659,12 @@ Thus, to solve these problems gits was born.  Complexity pain is still
 involved, but the hope is that it is minimized compared to all of the
 other alternatives.
 
-The basic theory is that there are a few sub-commands (prepare, attach,
-populate) which help set up the meta-project for gits operations.
-Then, except for git commands with specific filenames, like git add
-FILENAME; git reset FILENAME; etc., you should use "gits" instead
-of "git", and the command will run on all repositories in the project.
+The basic theory is that there are a few sub-commands (prepare,
+autoinit, attach, populate) which help set up the meta-project for
+gits operations.  Then, except for git commands with specific
+filenames, like git add FILENAME; git reset FILENAME; etc., you should
+use "gits" instead of "git", and the command will run on all
+repositories in the project.
 
 =head2 Example Usage
 
@@ -3638,6 +3743,36 @@ projects.
 If you use the optional "--init" argument, `git init` will be executed
 to create the git repository.
 
+
+=head3 Automatically set up slaves based on current checkout
+
+gits autoinit
+
+You run this command in the git directory which will be your top level
+master repository where you have manually performed checkouts or move
+operations or whatever was necessary to get the current disk structure
+to look like you want.  This command will try to compute relative
+paths (assuming your URLs are uniform--if you checked out one
+repository using a fully qualified domain name and another by a
+hostname, the current relative URL generation system will not be able
+to tell the difference).
+
+  --------------------------------------------------
+  git clone ssh://sourcemaster/src/repos/super.git super
+  cd super
+  git clone ssh://sourcemaster/src/repos/slave1.git
+  git clone ssh://sourcemaster/src/repos/slave2.git
+  git clone ssh://sourcemaster/src/other/slave3.git
+  gits autoinit
+  git status
+  git diff --cached
+  git commit -m "Created gitslave infrastructure"
+  --------------------------------------------------
+
+Note that this will not release/detach any slaves which are no longer
+present, this is an additive operation only.  You may delete the
+.gitslave file (and manually strip out the correct lines from
+.gitignore) beforehand to simulate a replacement operation.
 
 =head3 Add a slave repository to top level master
 
