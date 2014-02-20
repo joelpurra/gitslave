@@ -229,15 +229,6 @@ specifically in the case of history rewriting where it does something
 like `git rebase -p @{u}@{1} ORIG_UPSTREAM_HEAD HEAD`
 
 
-* Create gits autoattach
-
-For people who have manually assembled a superproject with subprojects
-already in place, create a convenient command which goes through and
-attempts to set up the configuration for each of the (new) existing
-subprojects.  Use origin's URL for the gitslave URL and try to deduce
-a relative relationship between the URLs.
-
-
 * On an abort, you don't get to see the output of what worked, so
   recovery is made harder.
 

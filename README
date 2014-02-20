@@ -10,7 +10,7 @@ SYNOPSIS
     [--no-hide] [--no-progress] [--with-ifpresent|--just-ifpresent]
     SUBCOMMAND [ARGS]...
 
-    Special subcommands include: prepare, autoinit, attach, populate,
+    Special subcommands include: prepare, autoattach, attach, populate,
     release, detach, pulls, logs, exec, resolve, update-remote-url,
     statuses, archive, enable, version.
 
@@ -38,9 +38,9 @@ OVERVIEW
     other alternatives.
 
     The basic theory is that there are a few sub-commands (prepare,
-    autoinit, attach, populate) which help set up the meta-project for gits
-    operations. Then, except for git commands with specific filenames, like
-    git add FILENAME; git reset FILENAME; etc., you should use "gits"
+    autoattach, attach, populate) which help set up the meta-project for
+    gits operations. Then, except for git commands with specific filenames,
+    like git add FILENAME; git reset FILENAME; etc., you should use "gits"
     instead of "git", and the command will run on all repositories in the
     project.
 
@@ -114,7 +114,7 @@ OVERVIEW
     to create the git repository.
 
    Automatically set up slaves based on current checkout
-    gits autoinit
+    gits autoattach
 
     You run this command in the git directory which will be your top level
     master repository where you have manually performed checkouts or move
@@ -130,7 +130,7 @@ OVERVIEW
       git clone ssh://sourcemaster/src/repos/slave1.git
       git clone ssh://sourcemaster/src/repos/slave2.git
       git clone ssh://sourcemaster/src/other/slave3.git
-      gits autoinit
+      gits autoattach
       git status
       git diff --cached
       git commit -m "Created gitslave infrastructure"

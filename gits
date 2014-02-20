@@ -422,7 +422,7 @@ sub ephemeral_command($;$)
 {
   my ($cmd,$depth) = @_;
 
-  if ($cmd eq "prepare" or $cmd eq "autoinit" or $cmd eq "resolve" or $cmd eq "clone" or $cmd eq "help" or $cmd eq "release" or $cmd eq "enable" or ($depth && $cmd eq "populate"))
+  if ($cmd eq "prepare" or $cmd eq "autoattach" or $cmd eq "resolve" or $cmd eq "clone" or $cmd eq "help" or $cmd eq "release" or $cmd eq "enable" or ($depth && $cmd eq "populate"))
   {
     $missingcount++;
     return 1;
@@ -1338,7 +1338,7 @@ else
 if (-f $GITS_DIR."/".GITSLAVE)
 {
   $GITS_DIR = Cwd::realpath($GITS_DIR);
-  chdir($GITS_DIR) unless ($ARGV[0] eq "prepare" || $ARGV[0] eq "autoinit" || $ARGV[0] eq "clone");
+  chdir($GITS_DIR) unless ($ARGV[0] eq "prepare" || $ARGV[0] eq "autoattach" || $ARGV[0] eq "clone");
   print STDERR "gits: Gitslave found in $GITS_DIR\n" if ($OPTIONS{'verbose'} > 1);
 }
 else
@@ -1487,11 +1487,11 @@ elsif ($ARGV[0] eq 'help' or $OPTIONS{'help'})
   pod2usage("Use --long-help to see full man page\n");
 }
 ##################################################
-elsif ($ARGV[0] eq 'autoinit')
+elsif ($ARGV[0] eq 'autoattach')
 {
   my $d = getcmd('find . -mindepth 2 -name .git -print0');
   my @d = sort(grep(s/\.\/(.*)\/\.git$/$1/,split(/\0/,$d)));
-  die "No subsidiary git repositories, cannot autoinit.  Try attach.\n" if ($#d < 0);
+  die "No subsidiary git repositories, cannot autoattach.  Try attach.\n" if ($#d < 0);
   my (%rconfig,%subslave);
   foreach $d ('.',@d)
   {
@@ -3631,7 +3631,7 @@ gits [-p|--parallel COUNT] [-v|--verbose]+ [--quiet] [--help] [--long-help]
   [--keep-going] [--no-commit] [--no-hide] [--no-progress]
   [--with-ifpresent|--just-ifpresent] SUBCOMMAND [ARGS]...
 
-Special subcommands include: prepare, autoinit, attach, populate,
+Special subcommands include: prepare, autoattach, attach, populate,
 release, detach, pulls, logs, exec, resolve, update-remote-url,
 statuses, archive, enable, version.
 
@@ -3660,7 +3660,7 @@ involved, but the hope is that it is minimized compared to all of the
 other alternatives.
 
 The basic theory is that there are a few sub-commands (prepare,
-autoinit, attach, populate) which help set up the meta-project for
+autoattach, attach, populate) which help set up the meta-project for
 gits operations.  Then, except for git commands with specific
 filenames, like git add FILENAME; git reset FILENAME; etc., you should
 use "gits" instead of "git", and the command will run on all
@@ -3746,7 +3746,7 @@ to create the git repository.
 
 =head3 Automatically set up slaves based on current checkout
 
-gits autoinit
+gits autoattach
 
 You run this command in the git directory which will be your top level
 master repository where you have manually performed checkouts or move
@@ -3763,7 +3763,7 @@ to tell the difference).
   git clone ssh://sourcemaster/src/repos/slave1.git
   git clone ssh://sourcemaster/src/repos/slave2.git
   git clone ssh://sourcemaster/src/other/slave3.git
-  gits autoinit
+  gits autoattach
   git status
   git diff --cached
   git commit -m "Created gitslave infrastructure"
