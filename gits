@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 #
 # Support .gitslave files, recursive processing of git commands into slave directories
 #
@@ -1045,6 +1045,28 @@ sub releasecheck($@)
     $localbranch = '' if (!$bad);
 
     $msg =~ s/^no(thing| changes)( added)? to commit .*\n//m;
+
+    # Work around an issue:
+    # When 'git status' takes time to complete the task,
+    # it can display a message, the output from the 'git status'
+    # can look like:
+    #
+    # # On branch master
+    # # Changes not staged for commit:
+    # #   (use "git add <file>..." to update what will be committed)
+    # #   (use "git checkout -- <file>..." to discard changes in working directory)
+    # #
+    # #	modified:   .gitignore
+    # #
+    # #
+    # # It took 2.60 seconds to enumerate untracked files. 'status -uno'
+    # # may speed it up, but you have to be careful not to forget to add
+    # # new files yourself (see 'git help status').
+    # no changes added to commit (use "git add" and/or "git commit -a")
+    #
+    $msg =~ s/^\# It took .*\n//m;
+    $msg =~ s/^\# may speed it up.*\n//m;
+    $msg =~ s/^\# new files yourself.*\n//m;
 
     while ($msg =~ s/^(\# \S.*\n)//)
     {
@@ -3080,6 +3102,28 @@ elsif ($ARGV[0] eq 'status')
 
     $msg =~ s/^no(thing| changes)( added)? to commit .*\n//m;
 
+    # Work around an issue:
+    # When 'git status' takes time to complete the task,
+    # it can display a message, the output from the 'git status'
+    # can look like:
+    #
+    # # On branch master
+    # # Changes not staged for commit:
+    # #   (use "git add <file>..." to update what will be committed)
+    # #   (use "git checkout -- <file>..." to discard changes in working directory)
+    # #
+    # #	modified:   .gitignore
+    # #
+    # #
+    # # It took 2.60 seconds to enumerate untracked files. 'status -uno'
+    # # may speed it up, but you have to be careful not to forget to add
+    # # new files yourself (see 'git help status').
+    # no changes added to commit (use "git add" and/or "git commit -a")
+    #
+    $msg =~ s/^\# It took .*\n//m;
+    $msg =~ s/^\# may speed it up.*\n//m;
+    $msg =~ s/^\# new files yourself.*\n//m;
+
     while ($msg =~ s/^(\# \S.*\n)//)
     {
       my ($group) = $1;
@@ -3227,6 +3271,28 @@ elsif ($ARGV[0] eq 'statuses')
       }
 
       $msg =~ s/^no(thing| changes)( added)? to commit .*\n//m;
+
+      # Work around an issue:
+      # When 'git status' takes time to complete the task,
+      # it can display a message, the output from the 'git status'
+      # can look like:
+      #
+      # # On branch master
+      # # Changes not staged for commit:
+      # #   (use "git add <file>..." to update what will be committed)
+      # #   (use "git checkout -- <file>..." to discard changes in working directory)
+      # #
+      # #  	modified:   .gitignore
+      # #
+      # #
+      # # It took 2.60 seconds to enumerate untracked files. 'status -uno'
+      # # may speed it up, but you have to be careful not to forget to add
+      # # new files yourself (see 'git help status').
+      # no changes added to commit (use "git add" and/or "git commit -a")
+      #
+    $msg =~ s/^\# It took .*\n//m;
+    $msg =~ s/^\# may speed it up.*\n//m;
+    $msg =~ s/^\# new files yourself.*\n//m;
 
       while ($msg =~ s/^(\# \S.*\n)//)
       {
