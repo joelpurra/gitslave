@@ -59,7 +59,7 @@ my ($returncode) = 0;
 my $pagination;
 delete($ENV{'GIT_DIR'});
 our($fromcheckout);
-our($git) = 'git';
+our($git) = 'git -c status.displayCommentPrefix=true';
 
 # Some people are stupid enough to set CDPATH and that screws up the formatting
 delete($ENV{'CDPATH'});
