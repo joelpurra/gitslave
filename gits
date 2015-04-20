@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 #
 # Support .gitslave files, recursive processing of git commands into slave directories
 #
