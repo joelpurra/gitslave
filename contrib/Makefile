@@ -9,7 +9,7 @@ JUNK=gits-checkup.1 gitin.1
 all: $(TARGETS)
 
 %.1: %
-	pod2man < $^ > $@
+	pod2man -n $^ < $^ > $@
 
 install: $(TARGETS)
 	mkdir -p $(DESTDIR)$(man1dir) $(DESTDIR)$(bindir)
