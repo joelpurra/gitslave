@@ -9,10 +9,10 @@ JUNK=gits.1 checkdir contrib/gitslave.spec
 all: $(TARGETS)
 
 gits.1: gits
-	pod2man < $^ > $@
+	pod2man -n $^ < $^ > $@
 
 gits-checkup.1: gits-checkup
-	pod2man < $^ > $@
+	pod2man -n $^ < $^ > $@
 
 contrib/gitslave.spec: contrib/gitslave.spec.in
 	if [ -d .git ]; then			    \
