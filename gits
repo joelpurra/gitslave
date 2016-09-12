@@ -1125,7 +1125,7 @@ sub releasecheck($@)
       push(@stashed, $repo);
       $unclean = 1;
       # strip out previous commit from WIP stashes (messages are misleading)
-      $stashes =~ s/^(stash\@{\d+}: )WIP( on .*: [\da-f]+)\.\.\..*$/${1}Work-in-Progress${2}/mg;
+      $stashes =~ s/^(stash\@\{\d+}: )WIP( on .*: [\da-f]+)\.\.\..*$/${1}Work-in-Progress${2}/mg;
       $msg .= $stashes;
     }
 
